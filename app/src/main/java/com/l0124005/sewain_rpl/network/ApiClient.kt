@@ -12,10 +12,10 @@ object ApiClient {
     // Emulator : "http://10.0.2.2:8000/api/"
     // HP Fisik : "http://192.168.x.x:8000/api/"
     // Production: "https://api.domainmu.com/api/"
-    private const val BASE_URL = "http://10.40.196.248:8000/api/"
+    private const val BASE_URL = "http://10.54.177.248/api/"
 
     // URL tanpa /api/ — untuk load gambar
-    const val IMAGE_BASE_URL = "http://10.40.196.248:8000/storage/"
+    const val IMAGE_BASE_URL = "http://10.54.177.248/storage/"
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY  // Ganti ke NONE saat production

@@ -1,15 +1,19 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
 }
 
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localProperties.load(localPropertiesFile.inputStream())
+}
+
 android {
     namespace = "com.l0124005.sewain_rpl"
-    compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
-    }
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.l0124005.sewain_rpl"
@@ -19,6 +23,8 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"${localProperties.getProperty("GOOGLE_WEB_CLIENT_ID") ?: ""}\"")
     }
 
     buildTypes {
@@ -36,6 +42,8 @@ android {
     }
     buildFeatures {
         compose = true
+        viewBinding = true
+        buildConfig = true
     }
 }
 
@@ -73,9 +81,6 @@ dependencies {
     // ── RecyclerView ──────────────────────────
     implementation("androidx.recyclerview:recyclerview:1.3.2")
 
-    // ── ViewBinding (aktifkan di android{}) ───
-    // buildFeatures { viewBinding = true }
-
     // ── Glide (load gambar dari URL) ──────────
     implementation("com.github.bumptech.glide:glide:4.16.0")
 
@@ -91,10 +96,4 @@ dependencies {
 
     // ── SwipeRefreshLayout ────────────────────
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
-}
-
-android {
-    buildFeatures {
-        viewBinding = true   // Wajib aktifkan ini
-    }
 }
