@@ -3,12 +3,8 @@ package com.l0124005.sewain_rpl.repository
 import com.l0124005.sewain_rpl.network.ApiClient
 import com.l0124005.sewain_rpl.network.LoginRequest
 import com.l0124005.sewain_rpl.network.RegisterRequest
-import com.l0124005.sewain_rpl.network.OtpRequest
-import com.l0124005.sewain_rpl.network.GoogleLoginRequest
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.utils.SessionManager
-
-
 
 class AuthRepository(private val session: SessionManager) {
 
@@ -19,9 +15,10 @@ class AuthRepository(private val session: SessionManager) {
             val response = api.login(LoginRequest(email, password))
             if (response.isSuccessful) {
                 val body = response.body()!!
-                if (body.success && body.access_token != null) {
-                    session.saveToken(body.access_token)
-                    session.saveRole(body.user?.role ?: "user")
+                if (body.success && body.token != null) {
+                    session.saveToken(body.token)
+                    // Jika role tidak ada di model baru, kita default ke "user"
+                    session.saveRole("user") 
                     Resource.Success(body.message)
                 } else {
                     Resource.Error(body.message)
@@ -37,29 +34,15 @@ class AuthRepository(private val session: SessionManager) {
     suspend fun register(req: RegisterRequest): Resource<String> {
         return try {
             val response = api.register(req)
-            if (response.isSuccessful && response.body()?.success == true) {
-                Resource.Success(response.body()!!.message)
-            } else {
-                Resource.Error(response.body()?.message ?: "Registrasi gagal")
-            }
-        } catch (e: Exception) {
-            Resource.Error("Error: ${e.message}")
-        }
-    }
-
-    suspend fun verifyOtp(email: String, otp: String): Resource<String> {
-        return try {
-            val response = api.verifyOtp(OtpRequest(email, otp))
             if (response.isSuccessful) {
-                val body = response.body()!!
-                if (body.success && body.access_token != null) {
-                    session.saveToken(body.access_token)
-                    Resource.Success("OTP berhasil")
+                val body = response.body()
+                if (body?.success == true) {
+                    Resource.Success(body.message)
                 } else {
-                    Resource.Error(body.message)
+                    Resource.Error(body?.message ?: "Registrasi gagal")
                 }
             } else {
-                Resource.Error("OTP tidak valid")
+                Resource.Error("Registrasi gagal: Data tidak valid atau sudah terdaftar")
             }
         } catch (e: Exception) {
             Resource.Error("Error: ${e.message}")
@@ -68,32 +51,13 @@ class AuthRepository(private val session: SessionManager) {
 
     suspend fun logout(): Resource<String> {
         return try {
-            api.logout(session.getToken() ?: "")
+            val token = "Bearer ${session.getToken()}"
+            api.logout(token)
             session.clearSession()
             Resource.Success("Logout berhasil")
         } catch (e: Exception) {
             session.clearSession()
             Resource.Success("Logout berhasil")
-        }
-    }
-
-    suspend fun googleLogin(idToken: String): Resource<String> {
-        return try {
-            val response = api.googleLogin(GoogleLoginRequest(idToken))
-            if (response.isSuccessful) {
-                val body = response.body()!!
-                if (body.success && body.access_token != null) {
-                    session.saveToken(body.access_token)
-                    session.saveRole(body.user?.role ?: "user")
-                    Resource.Success(body.message)
-                } else {
-                    Resource.Error(body.message)
-                }
-            } else {
-                Resource.Error("Login Google gagal: ${response.code()}")
-            }
-        } catch (e: Exception) {
-            Resource.Error("Gagal menghubungkan ke server: ${e.message}")
         }
     }
 }
