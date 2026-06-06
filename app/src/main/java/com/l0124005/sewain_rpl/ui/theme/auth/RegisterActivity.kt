@@ -2,13 +2,9 @@ package com.l0124005.sewain_rpl.ui.theme.auth
 
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -34,11 +30,8 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import com.google.android.gms.common.api.ApiException
 import com.l0124005.sewain_rpl.MainActivity
-  import com.l0124005.sewain_rpl.network.RegisterRequest
+import com.l0124005.sewain_rpl.network.RegisterRequest
 import com.l0124005.sewain_rpl.repository.AuthRepository
 import com.l0124005.sewain_rpl.ui.theme.Sewain_rplTheme
 import com.l0124005.sewain_rpl.utils.Resource
@@ -74,67 +67,35 @@ fun SignUpScreen(
     onNavigateToLogin: () -> Unit,
     onRegisterSuccess: () -> Unit
 ) {
-    // State untuk menyimpan input teks pengguna
-    var firstName by remember { mutableStateOf("") }
-    var lastName by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
 
     val registerState by viewModel.registerState.observeAsState()
-    val loginState by viewModel.loginState.observeAsState()
     val context = LocalContext.current
 
-    // Konfigurasi Google Sign In
-    val gso = remember {
-        GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken("YOUR_WEB_CLIENT_ID.apps.googleusercontent.com") // GANTI DENGAN WEB CLIENT ID ANDA
-            .requestEmail()
-            .build()
-    }
-    val googleSignInClient = remember { GoogleSignIn.getClient(context, gso) }
-
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
-        try {
-            val account = task.getResult(ApiException::class.java)
-            val idToken = account?.idToken
-            if (idToken != null) {
-                viewModel.googleLogin(idToken)
-            }
-        } catch (e: ApiException) {
-            Log.e("GoogleSignIn", "Sign in failed: ${e.statusCode}")
-            Toast.makeText(context, "Google Sign In Failed", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    LaunchedEffect(registerState, loginState) {
-        val state = registerState ?: loginState
-        when (state) {
-            is Resource.Success<*> -> {
-                Toast.makeText(context, state.data?.toString() ?: "Berhasil!", Toast.LENGTH_SHORT).show()
+    LaunchedEffect(registerState) {
+        when (registerState) {
+            is Resource.Success -> {
+                Toast.makeText(context, registerState?.data ?: "Akun berhasil terdaftar!", Toast.LENGTH_LONG).show()
                 onRegisterSuccess()
             }
-            is Resource.Error<*> -> {
-                Toast.makeText(context, state.message ?: "Error", Toast.LENGTH_SHORT).show()
+            is Resource.Error -> {
+                Toast.makeText(context, registerState?.message ?: "Terjadi kesalahan", Toast.LENGTH_LONG).show()
             }
             else -> {}
         }
     }
 
-    // Warna kustom berdasarkan desain
-    val darkBlueBorder = Color(0xFF285473)
     val textGray = Color(0xFF8C8C8C)
     val linkBlue = Color(0xFF1E5276)
 
-    // Latar belakang gradient
     val backgroundGradient = Brush.verticalGradient(
         colors = listOf(
-            Color(0xFFE4EDF5), // Biru sangat muda di atas
-            Color(0xFFFFFFFF)  // Putih di bawah
+            Color(0xFFE4EDF5),
+            Color(0xFFFFFFFF)
         )
     )
 
@@ -152,20 +113,9 @@ fun SignUpScreen(
         ) {
             Spacer(modifier = Modifier.height(64.dp))
 
-            // --- Header & Logo ---
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "SEWA",
-                    fontSize = 38.sp,
-                    fontFamily = FontFamily.Serif,
-                    color = Color(0xFF2A2A2A)
-                )
-                Text(
-                    text = "IN",
-                    fontSize = 38.sp,
-                    fontFamily = FontFamily.Serif,
-                    color = Color(0xFF5D8AA8) // Warna biru pudar untuk "IN"
-                )
+                Text(text = "SEWA", fontSize = 38.sp, fontFamily = FontFamily.Serif, color = Color(0xFF2A2A2A))
+                Text(text = "IN", fontSize = 38.sp, fontFamily = FontFamily.Serif, color = Color(0xFF5D8AA8))
             }
             Text(
                 text = "Sign UP To SEWAIN",
@@ -175,118 +125,72 @@ fun SignUpScreen(
                 modifier = Modifier.padding(top = 4.dp)
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(48.dp))
 
-            // --- Tombol Sign up with Google ---
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp)
-                    .clickable {
-                        launcher.launch(googleSignInClient.signInIntent)
-                    },
-                shape = RoundedCornerShape(12.dp),
-                color = Color.White,
-                border = BorderStroke(1.dp, darkBlueBorder)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Text("G", color = Color(0xFF4285F4), fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = "Sign up with Google",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.Black
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // --- Form Input Grid ---
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                CustomTextField(
-                    label = "FIRST NAME",
-                    value = firstName,
-                    onValueChange = { firstName = it },
-                    placeholder = "Tes",
-                    modifier = Modifier.weight(1f)
-                )
-                CustomTextField(
-                    label = "LAST NAME",
-                    value = lastName,
-                    onValueChange = { lastName = it },
-                    placeholder = "Tes",
-                    modifier = Modifier.weight(1f)
-                )
-            }
+            CustomTextField(
+                label = "FULL NAME",
+                value = name,
+                onValueChange = { name = it },
+                placeholder = "Enter your full name"
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                CustomTextField(
-                    label = "EMAIL",
-                    value = email,
-                    onValueChange = { email = it },
-                    placeholder = "ayu.saniatus@gmail.com",
-                    modifier = Modifier.weight(1f)
-                )
-                CustomTextField(
-                    label = "PHONE",
-                    value = phone,
-                    onValueChange = { phone = it },
-                    placeholder = "09957042947XX",
-                    modifier = Modifier.weight(1f)
-                )
-            }
+            CustomTextField(
+                label = "EMAIL",
+                value = email,
+                onValueChange = { email = it },
+                placeholder = "yourname@email.com"
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                CustomTextField(
-                    label = "PASSWORD",
-                    value = password,
-                    onValueChange = { password = it },
-                    placeholder = "••••••••",
-                    isPassword = true,
-                    modifier = Modifier.weight(1f)
-                )
-                CustomTextField(
-                    label = "CONFIRM PASSWORD",
-                    value = confirmPassword,
-                    onValueChange = { confirmPassword = it },
-                    placeholder = "••••••••",
-                    isPassword = true,
-                    modifier = Modifier.weight(1f)
-                )
-            }
+            CustomTextField(
+                label = "PHONE NUMBER",
+                value = phone,
+                onValueChange = { phone = it },
+                placeholder = "08123456789"
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            CustomTextField(
+                label = "PASSWORD",
+                value = password,
+                onValueChange = { password = it },
+                placeholder = "••••••••",
+                isPassword = true
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            CustomTextField(
+                label = "CONFIRM PASSWORD",
+                value = confirmPassword,
+                onValueChange = { confirmPassword = it },
+                placeholder = "••••••••",
+                isPassword = true
+            )
 
             Spacer(modifier = Modifier.height(48.dp))
 
-            // --- Tombol Sign Up (Gradient) ---
             val buttonGradient = Brush.verticalGradient(
                 colors = listOf(
-                    Color(0xFFD3DCE3), // Abu-abu terang atas
-                    Color(0xFF6B8B9E)  // Biru keabu-abuan bawah
+                    Color(0xFFD3DCE3),
+                    Color(0xFF6B8B9E)
                 )
             )
             Button(
                 onClick = {
                     if (password != confirmPassword) {
                         Toast.makeText(context, "Password tidak cocok!", Toast.LENGTH_SHORT).show()
-                    } else if (firstName.isNotEmpty() && lastName.isNotEmpty() && email.isNotEmpty() && phone.isNotEmpty() && password.isNotEmpty()) {
+                    } else if (name.isNotEmpty() && email.isNotEmpty() && phone.isNotEmpty() && password.isNotEmpty()) {
                         viewModel.register(
                             RegisterRequest(
-                                first_name = firstName,
-                                last_name = lastName,
+                                name = name,
                                 email = email,
-                                phone = phone,
-                                password = password,
-                                password_confirmation = confirmPassword
+                                nomor_telepon = phone,
+                                password = password
                             )
                         )
                     } else {
@@ -299,7 +203,7 @@ fun SignUpScreen(
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
                 contentPadding = PaddingValues(),
-                enabled = registerState !is Resource.Loading<*> && loginState !is Resource.Loading<*>
+                enabled = registerState !is Resource.Loading<*>
             ) {
                 Box(
                     modifier = Modifier
@@ -307,7 +211,7 @@ fun SignUpScreen(
                         .background(buttonGradient, RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (registerState is Resource.Loading<*> || loginState is Resource.Loading<*>) {
+                    if (registerState is Resource.Loading<*>) {
                         CircularProgressIndicator(color = Color.Black, modifier = Modifier.size(24.dp))
                     } else {
                         Text(
@@ -322,7 +226,6 @@ fun SignUpScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // --- Teks Login ---
             Text(
                 text = buildAnnotatedString {
                     withStyle(style = SpanStyle(color = Color.Black)) {
@@ -336,9 +239,8 @@ fun SignUpScreen(
                 modifier = Modifier.clickable { onNavigateToLogin() }
             )
 
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(32.dp))
 
-            // --- Teks Syarat & Ketentuan ---
             Text(
                 text = "SEWAIN Terms & Conditions",
                 color = textGray,
@@ -346,8 +248,8 @@ fun SignUpScreen(
                 textDecoration = TextDecoration.Underline,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier
-                    .padding(bottom = 32.dp, top = 24.dp)
-                    .clickable { /* Handle buka T&C */ }
+                    .padding(bottom = 32.dp)
+                    .clickable { /* Handle T&C */ }
             )
         }
     }

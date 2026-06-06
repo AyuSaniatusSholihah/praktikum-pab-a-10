@@ -1,19 +1,17 @@
 package com.l0124005.sewain_rpl.repository
 
-import com.l0124005.sewain_rpl.network.ApiClient
-import com.l0124005.sewain_rpl.network.CatalogResponse
-import com.l0124005.sewain_rpl.network.KatalogListResponse
+import com.l0124005.sewain_rpl.network.*
 import com.l0124005.sewain_rpl.utils.Resource
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
-class KatalogRepository {
+class ProfileRepository {
     private val apiService = ApiClient.instance
 
-    fun getKatalogPublik(): Flow<Resource<KatalogListResponse>> = flow {
+    fun getProfile(token: String): Flow<Resource<ProfileResponse>> = flow {
         emit(Resource.Loading())
         try {
-            val response = apiService.getKatalogPublik()
+            val response = apiService.getProfile("Bearer $token")
             if (response.isSuccessful && response.body() != null) {
                 emit(Resource.Success(response.body()!!))
             } else {
@@ -24,10 +22,10 @@ class KatalogRepository {
         }
     }
 
-    fun getKatalogDetail(token: String, id: Int): Flow<Resource<CatalogResponse>> = flow {
+    fun updateProfile(token: String, request: UpdateProfileRequest): Flow<Resource<ProfileResponse>> = flow {
         emit(Resource.Loading())
         try {
-            val response = apiService.getKatalogDetail("Bearer $token", id)
+            val response = apiService.updateProfile("Bearer $token", request)
             if (response.isSuccessful && response.body() != null) {
                 emit(Resource.Success(response.body()!!))
             } else {
