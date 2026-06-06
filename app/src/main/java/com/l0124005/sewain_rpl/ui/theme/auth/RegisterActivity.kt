@@ -52,8 +52,8 @@ class RegisterActivity : ComponentActivity() {
                         finish()
                     },
                     onRegisterSuccess = {
-                        startActivity(Intent(this, MainActivity::class.java))
-                        finishAffinity()
+                        // Arahkan ke Login setelah sukses daftar karena kita tidak pakai OTP
+                        finish()
                     }
                 )
             }
@@ -67,7 +67,8 @@ fun SignUpScreen(
     onNavigateToLogin: () -> Unit,
     onRegisterSuccess: () -> Unit
 ) {
-    var name by remember { mutableStateOf("") }
+    var firstName by remember { mutableStateOf("") }
+    var lastName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -125,14 +126,25 @@ fun SignUpScreen(
                 modifier = Modifier.padding(top = 4.dp)
             )
 
-            Spacer(modifier = Modifier.height(48.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
-            CustomTextField(
-                label = "FULL NAME",
-                value = name,
-                onValueChange = { name = it },
-                placeholder = "Enter your full name"
-            )
+            Row(modifier = Modifier.fillMaxWidth()) {
+                CustomTextField(
+                    label = "FIRST NAME",
+                    value = firstName,
+                    onValueChange = { firstName = it },
+                    placeholder = "First",
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                CustomTextField(
+                    label = "LAST NAME",
+                    value = lastName,
+                    onValueChange = { lastName = it },
+                    placeholder = "Last",
+                    modifier = Modifier.weight(1f)
+                )
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -184,13 +196,15 @@ fun SignUpScreen(
                 onClick = {
                     if (password != confirmPassword) {
                         Toast.makeText(context, "Password tidak cocok!", Toast.LENGTH_SHORT).show()
-                    } else if (name.isNotEmpty() && email.isNotEmpty() && phone.isNotEmpty() && password.isNotEmpty()) {
+                    } else if (firstName.isNotEmpty() && lastName.isNotEmpty() && email.isNotEmpty() && phone.isNotEmpty() && password.isNotEmpty()) {
                         viewModel.register(
                             RegisterRequest(
-                                name = name,
+                                first_name = firstName,
+                                last_name = lastName,
                                 email = email,
-                                nomor_telepon = phone,
-                                password = password
+                                phone = phone,
+                                password = password,
+                                password_confirmation = confirmPassword
                             )
                         )
                     } else {

@@ -15,8 +15,8 @@ class AuthRepository(private val session: SessionManager) {
             val response = api.login(LoginRequest(email, password))
             if (response.isSuccessful) {
                 val body = response.body()!!
-                if (body.success && body.token != null) {
-                    session.saveToken(body.token)
+                if (body.success && body.accessToken != null) {
+                    session.saveToken(body.accessToken)
                     // Jika role tidak ada di model baru, kita default ke "user"
                     session.saveRole("user") 
                     Resource.Success(body.message)
