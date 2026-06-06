@@ -3,14 +3,16 @@ package com.l0124005.sewain_rpl.network
 import com.google.gson.annotations.SerializedName
 
 // ═══════════════════════════════════════════
-// REQUEST MODELS
+// REQUEST MODELS (DTO)
 // ═══════════════════════════════════════════
 
 data class RegisterRequest(
-    val name: String,
+    val first_name: String,
+    val last_name: String,
     val email: String,
-    val nomor_telepon: String,
-    val password: String? = null // Menambahkan password jika diperlukan backend
+    val phone: String?,
+    val password: String,
+    val password_confirmation: String
 )
 
 data class LoginRequest(
@@ -44,18 +46,22 @@ data class BayarMassalRequest(
 )
 
 // ═══════════════════════════════════════════
-// RESPONSE MODELS
+// RESPONSE MODELS (DTO)
 // ═══════════════════════════════════════════
 
 data class RegisterResponse(
     val success: Boolean,
-    val message: String
+    val message: String,
+    val email: String?
 )
 
 data class LoginResponse(
     val success: Boolean,
     val message: String,
-    val token: String?,
+    @SerializedName("access_token")
+    val accessToken: String?,
+    @SerializedName("token_type")
+    val tokenType: String?,
     val user: UserData?
 )
 
@@ -68,7 +74,10 @@ data class UserData(
     val id: Int,
     val name: String,
     val email: String,
-    val nomor_telepon: String
+    @SerializedName("phone_number")
+    val phoneNumber: String?,
+    @SerializedName("email_verified_at")
+    val emailVerifiedAt: String?
 )
 
 data class ProfileResponse(
@@ -82,6 +91,11 @@ data class CatalogData(
     val nama_barang: String,
     val deskripsi: String?,
     val harga_sewa: Double,
+    val harga_jaminan: Double,
+    val harga_denda_perjam: Double,
+    val stok: Int,
+    val lokasi: String,
+    val foto_barang: String?,
     val status: String
 )
 
@@ -150,10 +164,5 @@ data class BayarMassalResponse(
 
 data class KembalikanResponse(
     val status: String,
-    val message: String
-)
-
-data class ApiResponse(
-    val success: Boolean,
     val message: String
 )

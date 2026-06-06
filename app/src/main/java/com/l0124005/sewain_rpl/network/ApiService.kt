@@ -67,6 +67,11 @@ interface ApiService {
         @Path("id") id: Int
     ): Response<KeranjangResponse>
 
+    @DELETE("keranjang")
+    suspend fun clearKeranjang(
+        @Header("Authorization") token: String
+    ): Response<KeranjangResponse>
+
 
     // ═══════════════════════════════════════
     // TRANSAKSI & PEMBAYARAN
