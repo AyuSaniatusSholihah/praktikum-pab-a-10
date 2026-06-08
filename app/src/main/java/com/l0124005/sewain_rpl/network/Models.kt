@@ -33,13 +33,7 @@ data class AddToKeranjangRequest(
     val jumlah: Int
 )
 
-data class UpdateKeranjangItemRequest(
-    val tanggal_mulai: String?,
-    val tanggal_selesai: String?,
-    val jumlah: Int?
-)
-
-data class BayarMassalRequest(
+data class BayarRequest(
     val transaksi_ids: List<Int>,
     val jumlah_bayar: Double,
     val metode_pembayaran: String
@@ -99,11 +93,6 @@ data class CatalogData(
     val status: String
 )
 
-data class CatalogResponse(
-    val status: String,
-    val data: CatalogData
-)
-
 data class KatalogListResponse(
     val status: String,
     val data: List<CatalogData>
@@ -141,28 +130,13 @@ data class TransaksiData(
     val total_harga: Double
 )
 
-data class TransaksiListResponse(
-    val status: String,
-    val data: List<TransaksiData>
-)
-
-data class TransaksiDetailResponse(
-    val status: String,
-    val data: TransaksiData
-)
-
 data class CheckoutResponse(
     val status: String,
     val message: String,
     val transactions: List<TransaksiData>
 )
 
-data class BayarMassalResponse(
-    val status: String,
-    val message: String
-)
-
-data class KembalikanResponse(
+data class BayarResponse(
     val status: String,
     val message: String
 )

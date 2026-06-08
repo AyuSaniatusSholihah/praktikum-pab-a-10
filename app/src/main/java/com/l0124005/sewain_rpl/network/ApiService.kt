@@ -26,17 +26,14 @@ interface ApiService {
 
 
     // ═══════════════════════════════════════
-    // PRODUK
+    // PRODUK / KATALOG
     // ═══════════════════════════════════════
 
     @GET("katalog-publik")
-    suspend fun getKatalogPublik(): Response<KatalogListResponse>
-
-    @GET("katalog/{id}")
-    suspend fun getKatalogDetail(
-        @Header("Authorization") token: String,
-        @Path("id") id: Int
-    ): Response<CatalogResponse>
+    suspend fun getKatalogPublik(
+        @Query("search") search: String? = null,
+        @Query("kategori") kategori: String? = null
+    ): Response<KatalogListResponse>
 
 
     // ═══════════════════════════════════════
@@ -54,22 +51,10 @@ interface ApiService {
         @Body request: AddToKeranjangRequest
     ): Response<KeranjangResponse>
 
-    @PATCH("keranjang/items/{id}")
-    suspend fun updateKeranjangItem(
-        @Header("Authorization") token: String,
-        @Path("id") id: Int,
-        @Body request: UpdateKeranjangItemRequest
-    ): Response<KeranjangResponse>
-
     @DELETE("keranjang/items/{id}")
     suspend fun removeKeranjangItem(
         @Header("Authorization") token: String,
         @Path("id") id: Int
-    ): Response<KeranjangResponse>
-
-    @DELETE("keranjang")
-    suspend fun clearKeranjang(
-        @Header("Authorization") token: String
     ): Response<KeranjangResponse>
 
 
@@ -83,27 +68,10 @@ interface ApiService {
     ): Response<CheckoutResponse>
 
     @POST("transaksi/bayar")
-    suspend fun bayarMassal(
+    suspend fun bayar(
         @Header("Authorization") token: String,
-        @Body request: BayarMassalRequest
-    ): Response<BayarMassalResponse>
-
-    @GET("transaksi")
-    suspend fun getTransaksi(
-        @Header("Authorization") token: String
-    ): Response<TransaksiListResponse>
-
-    @GET("transaksi/{id}")
-    suspend fun getTransaksiDetail(
-        @Header("Authorization") token: String,
-        @Path("id") id: Int
-    ): Response<TransaksiDetailResponse>
-
-    @POST("transaksi/{id}/kembalikan")
-    suspend fun kembalikanBarang(
-        @Header("Authorization") token: String,
-        @Path("id") id: Int
-    ): Response<KembalikanResponse>
+        @Body request: BayarRequest
+    ): Response<BayarResponse>
 
 
     // ═══════════════════════════════════════
