@@ -19,6 +19,16 @@ interface ApiService {
         @Body request: LoginRequest
     ): Response<LoginResponse>
 
+    @POST("verify-otp")
+    suspend fun verifyOtp(
+        @Body request: VerifyOtpRequest
+    ): Response<LoginResponse>
+
+    @POST("resend-otp")
+    suspend fun resendOtp(
+        @Body request: ResendOtpRequest
+    ): Response<LogoutResponse>
+
     @POST("logout")
     suspend fun logout(
         @Header("Authorization") token: String
@@ -35,6 +45,12 @@ interface ApiService {
         @Query("kategori") kategori: String? = null
     ): Response<KatalogListResponse>
 
+    @GET("katalog/{id}")
+    suspend fun getKatalogDetail(
+        @Header("Authorization") token: String,
+        @Path("id") id: Int
+    ): Response<CatalogResponse>
+
 
     // ═══════════════════════════════════════
     // KERANJANG
@@ -49,6 +65,13 @@ interface ApiService {
     suspend fun addToKeranjang(
         @Header("Authorization") token: String,
         @Body request: AddToKeranjangRequest
+    ): Response<KeranjangResponse>
+
+    @PUT("keranjang/items/{id}")
+    suspend fun updateKeranjangItem(
+        @Header("Authorization") token: String,
+        @Path("id") id: Int,
+        @Body request: UpdateKeranjangItemRequest
     ): Response<KeranjangResponse>
 
     @DELETE("keranjang/items/{id}")
@@ -72,6 +95,29 @@ interface ApiService {
         @Header("Authorization") token: String,
         @Body request: BayarRequest
     ): Response<BayarResponse>
+
+    @POST("transaksi/bayar-massal")
+    suspend fun bayarMassal(
+        @Header("Authorization") token: String,
+        @Body request: BayarMassalRequest
+    ): Response<BayarMassalResponse>
+
+    @GET("transaksi")
+    suspend fun getTransaksi(
+        @Header("Authorization") token: String
+    ): Response<TransaksiListResponse>
+
+    @GET("transaksi/{id}")
+    suspend fun getTransaksiDetail(
+        @Header("Authorization") token: String,
+        @Path("id") id: Int
+    ): Response<TransaksiDetailResponse>
+
+    @POST("transaksi/{id}/kembalikan")
+    suspend fun kembalikanBarang(
+        @Header("Authorization") token: String,
+        @Path("id") id: Int
+    ): Response<KembalikanResponse>
 
 
     // ═══════════════════════════════════════

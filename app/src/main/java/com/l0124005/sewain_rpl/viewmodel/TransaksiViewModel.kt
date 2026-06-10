@@ -14,8 +14,8 @@ class TransaksiViewModel(private val repository: TransaksiRepository) : ViewMode
     private val _checkoutState = MutableLiveData<Resource<CheckoutResponse>>()
     val checkoutState: LiveData<Resource<CheckoutResponse>> = _checkoutState
 
-    private val _pembayaranState = MutableLiveData<Resource<BayarMassalResponse>>()
-    val pembayaranState: LiveData<Resource<BayarMassalResponse>> = _pembayaranState
+    private val _pembayaranState = MutableLiveData<Resource<BayarResponse>>()
+    val pembayaranState: LiveData<Resource<BayarResponse>> = _pembayaranState
 
     private val _transaksiList = MutableLiveData<Resource<TransaksiListResponse>>()
     val transaksiList: LiveData<Resource<TransaksiListResponse>> = _transaksiList
@@ -36,7 +36,7 @@ class TransaksiViewModel(private val repository: TransaksiRepository) : ViewMode
 
     fun bayarMassal(token: String, ids: List<Int>, total: Double, method: String) {
         viewModelScope.launch {
-            repository.bayarMassal(token, BayarMassalRequest(ids, total, method)).collect {
+            repository.bayar(token, BayarRequest(ids, total, method)).collect {
                 _pembayaranState.value = it
             }
         }

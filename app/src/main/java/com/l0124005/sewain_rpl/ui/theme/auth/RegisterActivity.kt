@@ -51,8 +51,10 @@ class RegisterActivity : ComponentActivity() {
                     onNavigateToLogin = {
                         finish()
                     },
-                    onRegisterSuccess = {
-                        // Arahkan ke Login setelah sukses daftar karena kita tidak pakai OTP
+                    onRegisterSuccess = { email ->
+                        val intent = Intent(this, OtpActivity::class.java)
+                        intent.putExtra("EXTRA_EMAIL", email)
+                        startActivity(intent)
                         finish()
                     }
                 )
@@ -65,7 +67,7 @@ class RegisterActivity : ComponentActivity() {
 fun SignUpScreen(
     viewModel: AuthViewModel,
     onNavigateToLogin: () -> Unit,
-    onRegisterSuccess: () -> Unit
+    onRegisterSuccess: (String) -> Unit
 ) {
     var firstName by remember { mutableStateOf("") }
     var lastName by remember { mutableStateOf("") }
@@ -81,7 +83,7 @@ fun SignUpScreen(
         when (registerState) {
             is Resource.Success -> {
                 Toast.makeText(context, registerState?.data ?: "Akun berhasil terdaftar!", Toast.LENGTH_LONG).show()
-                onRegisterSuccess()
+                onRegisterSuccess(email)
             }
             is Resource.Error -> {
                 Toast.makeText(context, registerState?.message ?: "Terjadi kesalahan", Toast.LENGTH_LONG).show()

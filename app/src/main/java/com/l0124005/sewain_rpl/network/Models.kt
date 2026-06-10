@@ -20,6 +20,15 @@ data class LoginRequest(
     val password: String
 )
 
+data class VerifyOtpRequest(
+    val email: String,
+    val otp: String
+)
+
+data class ResendOtpRequest(
+    val email: String
+)
+
 data class UpdateProfileRequest(
     val name: String?,
     val nomor_telepon: String?,
@@ -33,7 +42,19 @@ data class AddToKeranjangRequest(
     val jumlah: Int
 )
 
+data class UpdateKeranjangItemRequest(
+    val tanggal_mulai: String?,
+    val tanggal_selesai: String?,
+    val jumlah: Int?
+)
+
 data class BayarRequest(
+    val transaksi_ids: List<Int>,
+    val jumlah_bayar: Double,
+    val metode_pembayaran: String
+)
+
+data class BayarMassalRequest(
     val transaksi_ids: List<Int>,
     val jumlah_bayar: Double,
     val metode_pembayaran: String
@@ -98,6 +119,11 @@ data class KatalogListResponse(
     val data: List<CatalogData>
 )
 
+data class CatalogResponse(
+    val status: String,
+    val data: CatalogData
+)
+
 data class KeranjangResponse(
     val status: String,
     val message: String?,
@@ -136,7 +162,27 @@ data class CheckoutResponse(
     val transactions: List<TransaksiData>
 )
 
+data class TransaksiListResponse(
+    val status: String,
+    val data: List<TransaksiData>
+)
+
+data class TransaksiDetailResponse(
+    val status: String,
+    val data: TransaksiData
+)
+
+data class KembalikanResponse(
+    val status: String,
+    val message: String
+)
+
 data class BayarResponse(
+    val status: String,
+    val message: String
+)
+
+data class BayarMassalResponse(
     val status: String,
     val message: String
 )
