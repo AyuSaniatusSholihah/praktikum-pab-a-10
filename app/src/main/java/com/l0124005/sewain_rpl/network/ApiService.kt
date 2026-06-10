@@ -19,6 +19,16 @@ interface ApiService {
         @Body request: LoginRequest
     ): Response<LoginResponse>
 
+    @POST("verify-otp")
+    suspend fun verifyOtp(
+        @Body request: VerifyOtpRequest
+    ): Response<LoginResponse>
+
+    @POST("resend-otp")
+    suspend fun resendOtp(
+        @Body request: ResendOtpRequest
+    ): Response<LogoutResponse>
+
     @POST("logout")
     suspend fun logout(
         @Header("Authorization") token: String
@@ -26,11 +36,14 @@ interface ApiService {
 
 
     // ═══════════════════════════════════════
-    // PRODUK
+    // PRODUK / KATALOG
     // ═══════════════════════════════════════
 
     @GET("katalog-publik")
-    suspend fun getKatalogPublik(): Response<KatalogListResponse>
+    suspend fun getKatalogPublik(
+        @Query("search") search: String? = null,
+        @Query("kategori") kategori: String? = null
+    ): Response<KatalogListResponse>
 
     @GET("katalog/{id}")
     suspend fun getKatalogDetail(
@@ -54,7 +67,7 @@ interface ApiService {
         @Body request: AddToKeranjangRequest
     ): Response<KeranjangResponse>
 
-    @PATCH("keranjang/items/{id}")
+    @PUT("keranjang/items/{id}")
     suspend fun updateKeranjangItem(
         @Header("Authorization") token: String,
         @Path("id") id: Int,
@@ -65,11 +78,6 @@ interface ApiService {
     suspend fun removeKeranjangItem(
         @Header("Authorization") token: String,
         @Path("id") id: Int
-    ): Response<KeranjangResponse>
-
-    @DELETE("keranjang")
-    suspend fun clearKeranjang(
-        @Header("Authorization") token: String
     ): Response<KeranjangResponse>
 
 
@@ -83,6 +91,12 @@ interface ApiService {
     ): Response<CheckoutResponse>
 
     @POST("transaksi/bayar")
+    suspend fun bayar(
+        @Header("Authorization") token: String,
+        @Body request: BayarRequest
+    ): Response<BayarResponse>
+
+    @POST("transaksi/bayar-massal")
     suspend fun bayarMassal(
         @Header("Authorization") token: String,
         @Body request: BayarMassalRequest

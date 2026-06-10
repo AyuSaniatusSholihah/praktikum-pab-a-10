@@ -5,7 +5,7 @@ import com.l0124005.sewain_rpl.utils.Resource
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
-class ProfileRepository {
+class   ProfileRepository {
     private val apiService = ApiClient.instance
 
     fun getProfile(token: String): Flow<Resource<ProfileResponse>> = flow {

@@ -22,6 +22,20 @@ class TransaksiRepository {
         }
     }
 
+    fun bayar(token: String, request: BayarRequest): Flow<Resource<BayarResponse>> = flow {
+        emit(Resource.Loading())
+        try {
+            val response = apiService.bayar("Bearer $token", request)
+            if (response.isSuccessful && response.body() != null) {
+                emit(Resource.Success(response.body()!!))
+            } else {
+                emit(Resource.Error(response.message()))
+            }
+        } catch (e: Exception) {
+            emit(Resource.Error(e.message ?: "An error occurred"))
+        }
+    }
+
     fun bayarMassal(token: String, request: BayarMassalRequest): Flow<Resource<BayarMassalResponse>> = flow {
         emit(Resource.Loading())
         try {

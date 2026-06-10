@@ -8,17 +8,14 @@ import java.util.concurrent.TimeUnit
 
 object ApiClient {
 
-    // ⚠️ Ganti sesuai environment:
-    // Emulator : "http://10.0.2.2:8000/api/"
-    // HP Fisik : "http://192.168.x.x:8000/api/"
-    // Production: "https://api.domainmu.com/api/"
-    private const val BASE_URL = "http://10.40.196.248:8000/api/"
+    // ⚠️ Ganti sesuai IP Laptop kamu jika menggunakan HP Fisik
+    private const val BASE_URL = "http://10.39.247.248:8000/api/"
 
     // URL tanpa /api/ — untuk load gambar
-    const val IMAGE_BASE_URL = "http://10.40.196.248:8000/storage/"
+    const val IMAGE_BASE_URL = "http://10.39.247.248:8000/storage/"
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
-        level = HttpLoggingInterceptor.Level.BODY  // Ganti ke NONE saat production
+        level = HttpLoggingInterceptor.Level.BODY
     }
 
     private val okHttpClient = OkHttpClient.Builder()
@@ -36,4 +33,3 @@ object ApiClient {
             .create(ApiService::class.java)
     }
 }
-

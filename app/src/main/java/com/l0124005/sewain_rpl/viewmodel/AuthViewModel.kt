@@ -17,6 +17,9 @@ class AuthViewModel(private val repo: AuthRepository) : ViewModel() {
     private val _registerState = MutableLiveData<Resource<String>>()
     val registerState: LiveData<Resource<String>> = _registerState
 
+    private val _otpState = MutableLiveData<Resource<String>>()
+    val otpState: LiveData<Resource<String>> = _otpState
+
     fun login(email: String, password: String) {
         _loginState.value = Resource.Loading()
         viewModelScope.launch {
@@ -28,6 +31,19 @@ class AuthViewModel(private val repo: AuthRepository) : ViewModel() {
         _registerState.value = Resource.Loading()
         viewModelScope.launch {
             _registerState.value = repo.register(req)
+        }
+    }
+
+    fun verifyOtp(email: String, otp: String) {
+        _otpState.value = Resource.Loading()
+        viewModelScope.launch {
+            _otpState.value = repo.verifyOtp(email, otp)
+        }
+    }
+
+    fun resendOtp(email: String) {
+        viewModelScope.launch {
+            repo.resendOtp(email)
         }
     }
 

@@ -10,10 +10,10 @@ import kotlinx.coroutines.flow.flow
 class KatalogRepository {
     private val apiService = ApiClient.instance
 
-    fun getKatalogPublik(): Flow<Resource<KatalogListResponse>> = flow {
+    fun getKatalogPublik(search: String? = null, kategori: String? = null): Flow<Resource<KatalogListResponse>> = flow {
         emit(Resource.Loading())
         try {
-            val response = apiService.getKatalogPublik()
+            val response = apiService.getKatalogPublik(search, kategori)
             if (response.isSuccessful && response.body() != null) {
                 emit(Resource.Success(response.body()!!))
             } else {

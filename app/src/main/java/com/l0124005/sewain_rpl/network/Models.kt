@@ -20,6 +20,15 @@ data class LoginRequest(
     val password: String
 )
 
+data class VerifyOtpRequest(
+    val email: String,
+    val otp: String
+)
+
+data class ResendOtpRequest(
+    val email: String
+)
+
 data class UpdateProfileRequest(
     val name: String?,
     val nomor_telepon: String?,
@@ -37,6 +46,12 @@ data class UpdateKeranjangItemRequest(
     val tanggal_mulai: String?,
     val tanggal_selesai: String?,
     val jumlah: Int?
+)
+
+data class BayarRequest(
+    val transaksi_ids: List<Int>,
+    val jumlah_bayar: Double,
+    val metode_pembayaran: String
 )
 
 data class BayarMassalRequest(
@@ -99,14 +114,14 @@ data class CatalogData(
     val status: String
 )
 
-data class CatalogResponse(
-    val status: String,
-    val data: CatalogData
-)
-
 data class KatalogListResponse(
     val status: String,
     val data: List<CatalogData>
+)
+
+data class CatalogResponse(
+    val status: String,
+    val data: CatalogData
 )
 
 data class KeranjangResponse(
@@ -141,6 +156,12 @@ data class TransaksiData(
     val total_harga: Double
 )
 
+data class CheckoutResponse(
+    val status: String,
+    val message: String,
+    val transactions: List<TransaksiData>
+)
+
 data class TransaksiListResponse(
     val status: String,
     val data: List<TransaksiData>
@@ -151,18 +172,17 @@ data class TransaksiDetailResponse(
     val data: TransaksiData
 )
 
-data class CheckoutResponse(
-    val status: String,
-    val message: String,
-    val transactions: List<TransaksiData>
-)
-
-data class BayarMassalResponse(
+data class KembalikanResponse(
     val status: String,
     val message: String
 )
 
-data class KembalikanResponse(
+data class BayarResponse(
+    val status: String,
+    val message: String
+)
+
+data class BayarMassalResponse(
     val status: String,
     val message: String
 )
