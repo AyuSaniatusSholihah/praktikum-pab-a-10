@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.l0124005.sewain_rpl.ui.theme.Sewain_rplTheme
 import com.l0124005.sewain_rpl.ui.theme.auth.LoginActivity
+import com.l0124005.sewain_rpl.ui.theme.landing.LandingActivity
 import com.l0124005.sewain_rpl.utils.SessionManager
 
 class MainActivity : ComponentActivity() {
@@ -20,9 +21,9 @@ class MainActivity : ComponentActivity() {
         
         val sessionManager = SessionManager(this)
 
-        // 1. Cek Sesi: Jika belum login, arahkan ke LoginActivity
+        // 1. Cek Sesi: Jika belum login, arahkan ke LandingActivity
         if (!sessionManager.isLoggedIn()) {
-            val intent = Intent(this, LoginActivity::class.java)
+            val intent = Intent(this, LandingActivity::class.java)
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             startActivity(intent)
             finish()
