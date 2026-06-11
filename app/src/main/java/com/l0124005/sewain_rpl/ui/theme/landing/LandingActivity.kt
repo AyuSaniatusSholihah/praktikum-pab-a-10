@@ -6,12 +6,13 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -44,27 +45,39 @@ fun LandingScreen(onTimeout: () -> Unit) {
         onTimeout()
     }
 
+    val backgroundGradient = Brush.verticalGradient(
+        colors = listOf(
+            Color(0xFFFFFFFF),
+            Color(0xFFE4EDF5),
+            Color(0xFF9FB5C4)
+        )
+    )
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White),
+            .background(backgroundGradient),
         contentAlignment = Alignment.Center
     ) {
         Box(
-            modifier = Modifier
-                .size(width = 220.dp, height = 110.dp)
-                .background(
-                    color = Color(0xFFB0B0B0),
-                    shape = RoundedCornerShape(8.dp)
-                ),
             contentAlignment = Alignment.Center
         ) {
+            // Diamond (rhombus) di belakang teks
+            Box(
+                modifier = Modifier
+                    .size(72.dp)
+                    .rotate(45f)
+                    .background(Color(0xFF8AA9BD))
+            )
+
+            // Teks SEWAIN di atas diamond
             Text(
-                text = "Logo",
-                fontSize = 36.sp,
+                text = "SEWAIN",
+                fontSize = 40.sp,
                 fontFamily = FontFamily.Serif,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = Color(0xFF1F2A33),
+                letterSpacing = 2.sp
             )
         }
     }
