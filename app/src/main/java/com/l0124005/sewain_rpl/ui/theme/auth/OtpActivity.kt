@@ -21,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.l0124005.sewain_rpl.MainActivity
 import com.l0124005.sewain_rpl.repository.AuthRepository
@@ -60,7 +61,6 @@ fun OtpScreen(
     viewModel: AuthViewModel,
     onVerificationSuccess: () -> Unit
 ) {
-    var otpCode by remember { mutableStateOf("") }
     val otpState by viewModel.otpState.observeAsState()
     val context = LocalContext.current
 
@@ -76,6 +76,24 @@ fun OtpScreen(
             else -> {}
         }
     }
+
+    OtpScreenContent(
+        email = email,
+        otpState = otpState,
+        onVerify = { code -> viewModel.verifyOtp(email, code) },
+        onResendOtp = { viewModel.resendOtp(email) }
+    )
+}
+
+@Composable
+fun OtpScreenContent(
+    email: String,
+    otpState: Resource<String>?,
+    onVerify: (String) -> Unit,
+    onResendOtp: () -> Unit
+) {
+    var otpCode by remember { mutableStateOf("") }
+    val context = LocalContext.current
 
     val backgroundGradient = Brush.verticalGradient(
         colors = listOf(Color(0xFFE4EDF5), Color(0xFFFFFFFF))
@@ -147,7 +165,7 @@ fun OtpScreen(
             Button(
                 onClick = { 
                     if (otpCode.length >= 4) {
-                        viewModel.verifyOtp(email, otpCode)
+                        onVerify(otpCode)
                     } else {
                         Toast.makeText(context, "Masukkan kode OTP dengan lengkap!", Toast.LENGTH_SHORT).show()
                     }
@@ -172,9 +190,22 @@ fun OtpScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            TextButton(onClick = { viewModel.resendOtp(email) }) {
+            TextButton(onClick = onResendOtp) {
                 Text(text = "Kirim Ulang OTP", color = Color(0xFF1E5276), fontWeight = FontWeight.Bold)
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun OtpScreenPreview() {
+    Sewain_rplTheme {
+        OtpScreenContent(
+            email = "user@example.com",
+            otpState = null,
+            onVerify = {},
+            onResendOtp = {}
+        )
     }
 }
