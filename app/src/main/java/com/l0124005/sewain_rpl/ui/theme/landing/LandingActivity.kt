@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.tooling.preview.Preview
 import com.l0124005.sewain_rpl.ui.theme.Sewain_rplTheme
 import com.l0124005.sewain_rpl.ui.theme.auth.LoginActivity
 import kotlinx.coroutines.delay
@@ -80,5 +81,13 @@ fun LandingScreen(onTimeout: () -> Unit) {
                 letterSpacing = 2.sp
             )
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun LandingScreenPreview() {
+    Sewain_rplTheme {
+        LandingScreen(onTimeout = {})
     }
 }

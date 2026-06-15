@@ -29,6 +29,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.l0124005.sewain_rpl.MainActivity
 import com.l0124005.sewain_rpl.network.RegisterRequest
@@ -69,13 +70,6 @@ fun SignUpScreen(
     onNavigateToLogin: () -> Unit,
     onRegisterSuccess: (String) -> Unit
 ) {
-    var firstName by remember { mutableStateOf("") }
-    var lastName by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
-    var phone by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var confirmPassword by remember { mutableStateOf("") }
-
     val registerState by viewModel.registerState.observeAsState()
     val context = LocalContext.current
 
@@ -83,12 +77,44 @@ fun SignUpScreen(
         when (registerState) {
             is Resource.Success -> {
                 Toast.makeText(context, registerState?.data ?: "Akun berhasil terdaftar!", Toast.LENGTH_LONG).show()
-                onRegisterSuccess(email)
+                // Kita asumsikan email diambil dari input lokal di content, 
+                // atau idealnya dilempar balik dari ViewModel.
             }
             is Resource.Error -> {
                 Toast.makeText(context, registerState?.message ?: "Terjadi kesalahan", Toast.LENGTH_LONG).show()
             }
             else -> {}
+        }
+    }
+
+    SignUpScreenContent(
+        registerState = registerState,
+        onRegister = { req -> viewModel.register(req) },
+        onNavigateToLogin = onNavigateToLogin,
+        onSuccessRedirect = { email -> onRegisterSuccess(email) }
+    )
+}
+
+@Composable
+fun SignUpScreenContent(
+    registerState: Resource<String>?,
+    onRegister: (RegisterRequest) -> Unit,
+    onNavigateToLogin: () -> Unit,
+    onSuccessRedirect: (String) -> Unit
+) {
+    var firstName by remember { mutableStateOf("") }
+    var lastName by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+
+    val context = LocalContext.current
+    
+    // Side effect untuk navigasi sukses di level content (opsional, tapi memudahkan preview)
+    LaunchedEffect(registerState) {
+        if (registerState is Resource.Success) {
+            onSuccessRedirect(email)
         }
     }
 
@@ -199,7 +225,7 @@ fun SignUpScreen(
                     if (password != confirmPassword) {
                         Toast.makeText(context, "Password tidak cocok!", Toast.LENGTH_SHORT).show()
                     } else if (firstName.isNotEmpty() && lastName.isNotEmpty() && email.isNotEmpty() && phone.isNotEmpty() && password.isNotEmpty()) {
-                        viewModel.register(
+                        onRegister(
                             RegisterRequest(
                                 first_name = firstName,
                                 last_name = lastName,
@@ -268,6 +294,19 @@ fun SignUpScreen(
                     .clickable { /* Handle T&C */ }
             )
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun SignUpScreenPreview() {
+    Sewain_rplTheme {
+        SignUpScreenContent(
+            registerState = null,
+            onRegister = {},
+            onNavigateToLogin = {},
+            onSuccessRedirect = {}
+        )
     }
 }
 

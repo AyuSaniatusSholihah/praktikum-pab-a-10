@@ -26,6 +26,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.l0124005.sewain_rpl.MainActivity
 import com.l0124005.sewain_rpl.repository.AuthRepository
@@ -64,9 +65,6 @@ fun LoginScreen(
     onNavigateToRegister: () -> Unit,
     onLoginSuccess: () -> Unit
 ) {
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    
     val loginState by viewModel.loginState.observeAsState()
     val context = LocalContext.current
 
@@ -83,8 +81,24 @@ fun LoginScreen(
         }
     }
 
+    LoginScreenContent(
+        loginState = loginState,
+        onLogin = { email, password -> viewModel.login(email, password) },
+        onNavigateToRegister = onNavigateToRegister
+    )
+}
+
+@Composable
+fun LoginScreenContent(
+    loginState: Resource<String>?,
+    onLogin: (String, String) -> Unit,
+    onNavigateToRegister: () -> Unit
+) {
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    val context = LocalContext.current
+
     val linkBlue = Color(0xFF1E5276)
-    
     val backgroundGradient = Brush.verticalGradient(
         colors = listOf(Color(0xFFE4EDF5), Color(0xFFFFFFFF))
     )
@@ -102,7 +116,6 @@ fun LoginScreen(
         ) {
             Spacer(modifier = Modifier.height(80.dp))
 
-            // --- Header & Logo ---
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(text = "SEWA", fontSize = 38.sp, fontFamily = FontFamily.Serif, color = Color(0xFF2A2A2A))
                 Text(text = "IN", fontSize = 38.sp, fontFamily = FontFamily.Serif, color = Color(0xFF5D8AA8))
@@ -137,7 +150,7 @@ fun LoginScreen(
             Button(
                 onClick = { 
                     if (email.isNotEmpty() && password.isNotEmpty()) {
-                        viewModel.login(email, password)
+                        onLogin(email, password)
                     } else {
                         Toast.makeText(context, "Isi semua field!", Toast.LENGTH_SHORT).show()
                     }
@@ -173,6 +186,18 @@ fun LoginScreen(
                 modifier = Modifier.clickable { onNavigateToRegister() }
             )
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun LoginScreenPreview() {
+    Sewain_rplTheme {
+        LoginScreenContent(
+            loginState = null,
+            onLogin = { _, _ -> },
+            onNavigateToRegister = {}
+        )
     }
 }
 
