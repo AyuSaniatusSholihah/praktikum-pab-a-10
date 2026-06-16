@@ -18,9 +18,9 @@ class KatalogViewModel(private val repository: KatalogRepository) : ViewModel() 
     private val _katalogDetail = MutableLiveData<Resource<CatalogResponse>>()
     val katalogDetail: LiveData<Resource<CatalogResponse>> = _katalogDetail
 
-    fun getKatalogPublik() {
+    fun getKatalogPublik(search: String? = null, kategori: String? = null) {
         viewModelScope.launch {
-            repository.getKatalogPublik().collect {
+            repository.getKatalogPublik(search, kategori).collect {
                 _katalogPublik.value = it
             }
         }
