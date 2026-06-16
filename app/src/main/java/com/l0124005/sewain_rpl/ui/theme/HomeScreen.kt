@@ -36,6 +36,14 @@ import com.l0124005.sewain_rpl.repository.KatalogRepository
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.viewmodel.KatalogViewModel
 import com.l0124005.sewain_rpl.viewmodel.KatalogViewModelFactory
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
+import com.l0124005.sewain_rpl.repository.KeranjangRepository
+import com.l0124005.sewain_rpl.utils.SessionManager
+import com.l0124005.sewain_rpl.viewmodel.KeranjangViewModel
+import com.l0124005.sewain_rpl.viewmodel.KeranjangViewModelFactory
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 
 // ═══════════════════════════════════════
@@ -45,13 +53,18 @@ import java.util.Locale
 class RentalsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val sessionManager = SessionManager(this)
+        val token = sessionManager.getToken()
+
         setContent {
             Sewain_rplTheme {
-                val factory = KatalogViewModelFactory(KatalogRepository())
-                val viewModel: KatalogViewModel = viewModel(factory = factory)
+                val katalogViewModel: KatalogViewModel = viewModel(factory = KatalogViewModelFactory(KatalogRepository()))
+                val keranjangViewModel: KeranjangViewModel = viewModel(factory = KeranjangViewModelFactory(KeranjangRepository()))
 
                 RentalsScreen(
-                    viewModel = viewModel,
+                    viewModel = katalogViewModel,
+                    keranjangViewModel = keranjangViewModel,
+                    token = token,
                     onItemClick = { _ ->
                         // TODO: navigasi ke detail
                     }
@@ -90,8 +103,21 @@ private val kategoriList = listOf(
 @Composable
 fun RentalsScreen(
     viewModel: KatalogViewModel,
+    keranjangViewModel: KeranjangViewModel,
+    token: String,
     onItemClick: (CatalogData) -> Unit
 ) {
+    val context = LocalContext.current
+    val keranjangState by keranjangViewModel.keranjang.observeAsState()
+
+    LaunchedEffect(keranjangState) {
+        if (keranjangState is Resource.Success) {
+            Toast.makeText(context, "Berhasil ditambahkan ke keranjang!", Toast.LENGTH_SHORT).show()
+        } else if (keranjangState is Resource.Error) {
+            Toast.makeText(context, "Gagal: ${keranjangState?.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     var searchQuery    by remember { mutableStateOf("") }
     var activeKategori by remember { mutableStateOf("Semua") }
 
@@ -99,9 +125,17 @@ fun RentalsScreen(
 
     // Fetch ulang setiap kali filter berubah
     LaunchedEffect(searchQuery, activeKategori) {
-        val kat = if (activeKategori == "Semua") null else activeKategori.lowercase()
-        val q   = searchQuery.ifBlank { null }
-        viewModel.getKatalogPublik(search = q, kategori = kat)
+        val katId = when (activeKategori) {
+            "Kamera" -> 1
+            "Outdoor" -> 2
+            "Elektronik" -> 3
+            "Olahraga" -> 4
+            "Fashion" -> 5
+            "Lainnya" -> 6
+            else -> null
+        }
+        val q = searchQuery.ifBlank { null }
+        viewModel.getKatalogPublik(search = q, kategoriId = katId)
     }
 
     Column(
@@ -153,8 +187,16 @@ fun RentalsScreen(
                         Spacer(modifier = Modifier.height(12.dp))
                         OutlinedButton(
                             onClick = {
-                                val kat = if (activeKategori == "Semua") null else activeKategori.lowercase()
-                                viewModel.getKatalogPublik(kategori = kat)
+                                val katId = when (activeKategori) {
+                                    "Kamera" -> 1
+                                    "Outdoor" -> 2
+                                    "Elektronik" -> 3
+                                    "Olahraga" -> 4
+                                    "Fashion" -> 5
+                                    "Lainnya" -> 6
+                                    else -> null
+                                }
+                                viewModel.getKatalogPublik(kategoriId = katId)
                             },
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = TealPrimary),
                             border = androidx.compose.foundation.BorderStroke(1.dp, TealPrimary)
@@ -171,7 +213,13 @@ fun RentalsScreen(
                     } else {
                         RentalsGrid(
                             items       = list,
-                            onItemClick = onItemClick
+                            onItemClick = onItemClick,
+                            onAddToCart = { barang ->
+                                val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                                val today = sdf.format(Date())
+                                val tomorrow = sdf.format(Date(System.currentTimeMillis() + 86400000))
+                                keranjangViewModel.addToKeranjang(token, barang.id, 1, today, tomorrow)
+                            }
                         )
                     }
                 }
@@ -333,7 +381,8 @@ private fun KategoriFilterRow(
 @Composable
 private fun RentalsGrid(
     items: List<CatalogData>,
-    onItemClick: (CatalogData) -> Unit
+    onItemClick: (CatalogData) -> Unit,
+    onAddToCart: (CatalogData) -> Unit
 ) {
     LazyVerticalGrid(
         columns             = GridCells.Fixed(2),
@@ -345,7 +394,8 @@ private fun RentalsGrid(
         items(items) { barang ->
             RentalCard(
                 barang  = barang,
-                onClick = { onItemClick(barang) }
+                onClick = { onItemClick(barang) },
+                onAddToCart = { onAddToCart(barang) }
             )
         }
     }
@@ -358,7 +408,8 @@ private fun RentalsGrid(
 @Composable
 private fun RentalCard(
     barang: CatalogData,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onAddToCart: () -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -452,18 +503,41 @@ private fun RentalCard(
 
                 Spacer(modifier = Modifier.height(6.dp))
 
-                // Harga
-                Text(
-                    text       = "Rp ${formatHarga(barang.harga_sewa)}",
-                    fontSize   = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color      = TealPrimary
-                )
-                Text(
-                    text     = "/hari",
-                    fontSize = 9.sp,
-                    color    = TextMuted
-                )
+                // Harga & Action
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    Column {
+                        Text(
+                            text       = "Rp ${formatHarga(barang.harga_sewa)}",
+                            fontSize   = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color      = TealPrimary
+                        )
+                        Text(
+                            text     = "/hari",
+                            fontSize = 9.sp,
+                            color    = TextMuted
+                        )
+                    }
+
+                    IconButton(
+                        onClick = onAddToCart,
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(TealPrimary)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AddShoppingCart,
+                            contentDescription = "Tambah ke Keranjang",
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
             }
         }
     }

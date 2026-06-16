@@ -41,6 +41,14 @@
         <activity
             android:name=".ui.theme.auth.OtpActivity"
             android:exported="false" />
+
+        <activity
+            android:name=".ui.theme.katalog.DetailProdukActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.theme.keranjang.KeranjangActivity"
+            android:exported="false" />
     </application>
 
 </manifest>

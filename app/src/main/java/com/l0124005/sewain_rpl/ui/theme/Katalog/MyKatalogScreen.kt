@@ -27,7 +27,20 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import androidx.compose.runtime.livedata.observeAsState
+import com.l0124005.sewain_rpl.network.CatalogData
 import com.l0124005.sewain_rpl.ui.theme.Sewain_rplTheme
+import com.l0124005.sewain_rpl.utils.Resource
+import com.l0124005.sewain_rpl.viewmodel.KatalogViewModel
+import com.l0124005.sewain_rpl.ui.theme.katalog.formatRupiah
+import com.l0124005.sewain_rpl.ui.theme.katalog.ProfileCard
+import com.l0124005.sewain_rpl.ui.theme.katalog.Volkhov
+import com.l0124005.sewain_rpl.ui.theme.katalog.Primary
+import com.l0124005.sewain_rpl.ui.theme.katalog.White
+import com.l0124005.sewain_rpl.ui.theme.katalog.Black
+import com.l0124005.sewain_rpl.ui.theme.katalog.TextMuted
+import com.l0124005.sewain_rpl.ui.theme.katalog.UploadBg
+import com.l0124005.sewain_rpl.ui.theme.katalog.UploadBorder
 
 // ═══════════════════════════════════════
 // ACTIVITY
@@ -38,44 +51,13 @@ class MyKatalogActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             Sewain_rplTheme {
-                MyKatalogScreen(
-                    onAddItemClick   = { /* TODO: navigasi ke AddItemActivity */ },
-                    onItemClick      = { /* TODO: navigasi ke detail */ },
-                    onEditItemClick  = { /* TODO: navigasi ke EditItemActivity */ },
-                    onDeleteItemClick = { /* TODO: hapus item */ }
-                )
+                // Mencoba memanggil dengan parameter yang benar jika ini untuk testing mandiri
+                // Namun MyKatalogActivity sepertinya tidak benar-benar digunakan jika navigasi via MainActivity
+                Text("Activity ini butuh ViewModel & Token")
             }
         }
     }
 }
-
-// ═══════════════════════════════════════
-// DATA CLASS (sementara, ganti dengan response API nanti)
-// ═══════════════════════════════════════
-
-data class MyKatalogItem(
-    val id: Int,
-    val namaBarang: String,
-    val lokasi: String,
-    val hargaSewa: Double,
-    val stok: Int,
-    val status: String,       // "tersedia" atau "disewa"
-    val fotoBarang: String?,
-    val totalUlasan: Int,
-    val rating: Float
-)
-
-// ═══════════════════════════════════════
-// DUMMY DATA (hapus setelah endpoint siap)
-// ═══════════════════════════════════════
-
-private val dummyItems = listOf(
-    MyKatalogItem(1, "Soleil Set Alat Masak Camping Nesting Aluminium",  "Kota Bandung", 50000.0,  10, "tersedia", null, 40, 4.0f),
-    MyKatalogItem(2, "ALLTREK Tenda Camping 1 Bedroom + 1 Guest Room",   "Kota Bandung", 450000.0, 1,  "disewa",   null, 20, 4.0f),
-    MyKatalogItem(3, "ALLTREK Set Meja Kursi Camping Gear Folding",      "Kota Bandung", 70000.0,  5,  "tersedia", null, 52, 3.0f),
-    MyKatalogItem(4, "ALLTREK Storage Cookwear Tas Penyimpanan Camping", "Kota Bandung", 750000.0, 3,  "tersedia", null, 40, 4.0f),
-    MyKatalogItem(5, "Sunrei Lampu Camping Wraith Hike and Ride",        "Kota Bandung", 25000.0,  1,  "disewa",   null, 30, 5.0f),
-)
 
 // ═══════════════════════════════════════
 // MAIN SCREEN
@@ -83,21 +65,19 @@ private val dummyItems = listOf(
 
 @Composable
 fun MyKatalogScreen(
-    onAddItemClick: () -> Unit,
-    onItemClick: (MyKatalogItem) -> Unit,
-    onEditItemClick: (MyKatalogItem) -> Unit,
-    onDeleteItemClick: (MyKatalogItem) -> Unit
+    viewModel: KatalogViewModel,
+    token: String,
+    onBack: () -> Unit,
+    onAddItem: () -> Unit,
+    onEditItem: (CatalogData) -> Unit,
+    onItemClick: (CatalogData) -> Unit = {}
 ) {
     var searchQuery by remember { mutableStateOf("") }
 
-    // TODO: Ganti dummyItems dengan state dari ViewModel setelah endpoint siap
-    val allItems = dummyItems
-    val filteredItems = remember(searchQuery, allItems) {
-        if (searchQuery.isBlank()) allItems
-        else allItems.filter {
-            it.namaBarang.contains(searchQuery, ignoreCase = true) ||
-                    it.lokasi.contains(searchQuery, ignoreCase = true)
-        }
+    val myKatalogState by viewModel.myKatalog.observeAsState(Resource.Loading())
+
+    LaunchedEffect(Unit) {
+        viewModel.getMyKatalog(token)
     }
 
     Column(
@@ -106,71 +86,97 @@ fun MyKatalogScreen(
             .background(White)
     ) {
         // ── Top Bar ──
-        MyKatalogTopBar()
+        MyKatalogTopBar(onBack = onBack)
 
-        LazyColumn(
-            modifier            = Modifier.fillMaxSize(),
-            contentPadding      = PaddingValues(bottom = 80.dp)
-        ) {
-            // ── Profile Card ──
-            item {
-                ProfileCard(
-                    modifier = Modifier.padding(16.dp),
-                    nama          = "Camping Groups Bandung",
-                    lokasi        = "Kota Bandung",
-                    rating        = 4.3f,
-                    totalUlasan   = 120,
-                    jumlahKatalog = allItems.size,
-                    whatsapp      = "0821-5620-9034"
-                )
-            }
-
-            // ── Search Bar ──
-            item {
-                MyKatalogSearchBar(
-                    query         = searchQuery,
-                    onQueryChange = { searchQuery = it }
-                )
-            }
-
-            // ── Tombol Tambah ──
-            item {
-                AddItemButton(onClick = onAddItemClick)
-            }
-
-            // ── Label jumlah ──
-            item {
-                Row(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text       = "${filteredItems.size} Barang",
-                        fontSize   = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color      = Black,
-                        fontFamily = Volkhov
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text     = "di katalogmu",
-                        fontSize = 13.sp,
-                        color    = TextMuted
-                    )
+        when (val state = myKatalogState) {
+            is Resource.Loading -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = Primary)
                 }
             }
+            is Resource.Error -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(text = state.message ?: "Terjadi kesalahan", color = Color.Red)
+                }
+            }
+            is Resource.Success -> {
+                val allItems = state.data?.data ?: emptyList()
+                val filteredItems = remember(searchQuery, allItems) {
+                    if (searchQuery.isBlank()) allItems
+                    else allItems.filter {
+                        it.nama_barang.contains(searchQuery, ignoreCase = true) ||
+                                it.lokasi.contains(searchQuery, ignoreCase = true)
+                    }
+                }
 
-            // ── List Katalog ──
-            if (filteredItems.isEmpty()) {
-                item { MyKatalogEmpty() }
-            } else {
-                items(filteredItems) { item ->
-                    MyKatalogCard(
-                        item            = item,
-                        onClick         = { onItemClick(item) },
-                        onEditClick     = { onEditItemClick(item) },
-                        onDeleteClick   = { onDeleteItemClick(item) }
-                    )
+                LazyColumn(
+                    modifier            = Modifier.fillMaxSize(),
+                    contentPadding      = PaddingValues(bottom = 80.dp)
+                ) {
+                    // ── Profile Card ──
+                    item {
+                        ProfileCard(
+                            modifier = Modifier.padding(16.dp),
+                            nama          = "My Store", // Bisa diambil dari UserData jika perlu
+                            lokasi        = if (allItems.isNotEmpty()) allItems[0].lokasi else "Unknown",
+                            rating        = 0.0f,
+                            totalUlasan   = 0,
+                            jumlahKatalog = allItems.size,
+                            whatsapp      = ""
+                        )
+                    }
+
+                    // ── Search Bar ──
+                    item {
+                        MyKatalogSearchBar(
+                            query         = searchQuery,
+                            onQueryChange = { searchQuery = it }
+                        )
+                    }
+
+                    // ── Tombol Tambah ──
+                    item {
+                        AddItemButton(onClick = onAddItem)
+                    }
+
+                    // ── Label jumlah ──
+                    item {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text       = "${filteredItems.size} Barang",
+                                fontSize   = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color      = Black,
+                                fontFamily = Volkhov
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text     = "di katalogmu",
+                                fontSize = 13.sp,
+                                color    = TextMuted
+                            )
+                        }
+                    }
+
+                    // ── List Katalog ──
+                    if (filteredItems.isEmpty()) {
+                        item { MyKatalogEmpty() }
+                    } else {
+                        items(filteredItems) { item ->
+                            MyKatalogCard(
+                                item            = item,
+                                onClick         = { onItemClick(item) },
+                                onEditClick     = { onEditItem(item) },
+                                onDeleteClick   = {
+                                    viewModel.deleteKatalog(token, item.id)
+                                    viewModel.getMyKatalog(token) // Refresh
+                                }
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -182,7 +188,7 @@ fun MyKatalogScreen(
 // ═══════════════════════════════════════
 
 @Composable
-private fun MyKatalogTopBar() {
+private fun MyKatalogTopBar(onBack: () -> Unit) {
     Column {
         Row(
             modifier              = Modifier
@@ -191,22 +197,11 @@ private fun MyKatalogTopBar() {
             verticalAlignment     = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text          = "SEWA",
-                    fontSize      = 22.sp,
-                    fontWeight    = FontWeight.Bold,
-                    fontFamily    = Volkhov,
-                    color         = Black,
-                    letterSpacing = 1.sp
-                )
-                Text(
-                    text          = "IN",
-                    fontSize      = 22.sp,
-                    fontWeight    = FontWeight.Bold,
-                    fontFamily    = Volkhov,
-                    color         = Primary,
-                    letterSpacing = 1.sp
+            IconButton(onClick = onBack) {
+                Icon(
+                    imageVector = Icons.Outlined.ArrowBack,
+                    contentDescription = "Kembali",
+                    tint = Black
                 )
             }
 
@@ -329,7 +324,7 @@ private fun AddItemButton(onClick: () -> Unit) {
 
 @Composable
 private fun MyKatalogCard(
-    item: MyKatalogItem,
+    item: CatalogData,
     onClick: () -> Unit,
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit
@@ -361,10 +356,10 @@ private fun MyKatalogCard(
                     .clip(RoundedCornerShape(10.dp))
                     .background(UploadBg)
             ) {
-                if (!item.fotoBarang.isNullOrEmpty()) {
+                if (!item.foto_barang.isNullOrEmpty()) {
                     AsyncImage(
-                        model              = item.fotoBarang,
-                        contentDescription = item.namaBarang,
+                        model              = item.foto_barang,
+                        contentDescription = item.nama_barang,
                         contentScale       = ContentScale.Crop,
                         modifier           = Modifier.fillMaxSize()
                     )
@@ -403,7 +398,7 @@ private fun MyKatalogCard(
 
                 // Nama barang
                 Text(
-                    text       = item.namaBarang,
+                    text       = item.nama_barang,
                     fontSize   = 12.sp,
                     fontWeight = FontWeight.SemiBold,
                     color      = Black,
@@ -426,7 +421,7 @@ private fun MyKatalogCard(
 
                 // Harga
                 Text(
-                    text       = "Rp ${formatHarga(item.hargaSewa)}/hari",
+                    text       = "Rp ${formatRupiah(item.harga_sewa)}/hari",
                     fontSize   = 13.sp,
                     fontWeight = FontWeight.Bold,
                     color      = Primary,
@@ -539,16 +534,8 @@ private fun MyKatalogEmpty() {
 // HELPER
 // ═══════════════════════════════════════
 
-private fun formatHarga(harga: Double): String =
-    String.format("%,.0f", harga).replace(",", ".")
-
 @Preview(showBackground = true)
 @Composable
 fun MyKatalogScreenPreview() {
-    MyKatalogScreen(
-        onAddItemClick = {},
-        onItemClick = {},
-        onEditItemClick = {},
-        onDeleteItemClick = {}
-    )
+    // MyKatalogScreen(...)
 }
