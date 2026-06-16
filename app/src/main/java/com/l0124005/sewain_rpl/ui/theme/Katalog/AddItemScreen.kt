@@ -23,8 +23,16 @@ import androidx.compose.ui.text.input.*
 import androidx.compose.ui.text.style.*
 import androidx.compose.ui.unit.*
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
-import com.l0124005.sewain_rpl.R
+import com.l0124005.sewain_rpl.utils.Resource
+import com.l0124005.sewain_rpl.viewmodel.KatalogViewModel
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.File
 
 // ============================================================
 // ADD ITEM SCREEN
@@ -32,13 +40,24 @@ import com.l0124005.sewain_rpl.R
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddItemScreen(
+    viewModel: KatalogViewModel,
+    token: String,
     onBack: () -> Unit = {},
-    onPublish: (AddItemFormState) -> Unit = {}
+    onSuccess: () -> Unit = {}
 ) {
+    val context = LocalContext.current
     var form by remember { mutableStateOf(AddItemFormState()) }
     var showDateStartPicker by remember { mutableStateOf(false) }
     var showDateEndPicker   by remember { mutableStateOf(false) }
     var showCategorySheet   by remember { mutableStateOf(false) }
+
+    val crudResult by viewModel.crudResult.observeAsState()
+
+    LaunchedEffect(crudResult) {
+        if (crudResult is Resource.Success) {
+            onSuccess()
+        }
+    }
 
     // Image pickers
     val mainImageLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) {
@@ -61,7 +80,29 @@ fun AddItemScreen(
         topBar = { AddItemTopBar(onBack = onBack) },
         bottomBar = {
             PublishBottomBar(
-                onPublish = { onPublish(form) }
+                onPublish = {
+                    val namePart = form.itemName.toRequestBody("text/plain".toMediaTypeOrNull())
+                    val catPart = "1".toRequestBody("text/plain".toMediaTypeOrNull()) // TODO: Map category name to ID
+                    val sewaPart = form.price.toRequestBody("text/plain".toMediaTypeOrNull())
+                    val jaminanPart = form.jaminan.toRequestBody("text/plain".toMediaTypeOrNull())
+                    val dendaPart = form.denda.toRequestBody("text/plain".toMediaTypeOrNull())
+                    val stokPart = form.stockQty.toString().toRequestBody("text/plain".toMediaTypeOrNull())
+                    val locPart = form.lokasi.toRequestBody("text/plain".toMediaTypeOrNull())
+                    val descPart = form.description.toRequestBody("text/plain".toMediaTypeOrNull())
+
+                    var imagePart: MultipartBody.Part? = null
+                    form.mainImageUri?.let { uri ->
+                        val file = File(context.cacheDir, "temp_image_add.jpg")
+                        context.contentResolver.openInputStream(uri)?.use { input ->
+                            file.outputStream().use { output -> input.copyTo(output) }
+                        }
+                        val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
+                        imagePart = MultipartBody.Part.createFormData("foto_barang", file.name, requestFile)
+                    }
+
+                    viewModel.createKatalog(token, catPart, namePart, descPart, sewaPart, jaminanPart, dendaPart, stokPart, locPart, imagePart)
+                },
+                isLoading = crudResult is Resource.Loading
             )
         },
         containerColor = White
@@ -587,7 +628,7 @@ fun ItemDetailsForm(
 // PUBLISH BOTTOM BAR
 // ============================================================
 @Composable
-fun PublishBottomBar(onPublish: () -> Unit) {
+fun PublishBottomBar(onPublish: () -> Unit, isLoading: Boolean) {
     Surface(
         shadowElevation = 8.dp,
         color = White
@@ -606,21 +647,26 @@ fun PublishBottomBar(onPublish: () -> Unit) {
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Primary,
                     contentColor   = White
-                )
+                ),
+                enabled = !isLoading
             ) {
-                Icon(
-                    Icons.Outlined.Publish,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = "PUBLISH ITEM",
-                    fontFamily = FontFamily.Default,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    letterSpacing = 1.sp
-                )
+                if (isLoading) {
+                    CircularProgressIndicator(color = White, modifier = Modifier.size(24.dp))
+                } else {
+                    Icon(
+                        Icons.Outlined.Publish,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = "PUBLISH ITEM",
+                        fontFamily = FontFamily.Default,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        letterSpacing = 1.sp
+                    )
+                }
             }
         }
     }
@@ -629,5 +675,5 @@ fun PublishBottomBar(onPublish: () -> Unit) {
 @Preview(showBackground = true)
 @Composable
 fun AddItemScreenPreview() {
-    AddItemScreen()
+    // AddItemScreen()
 }

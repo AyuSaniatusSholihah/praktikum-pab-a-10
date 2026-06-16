@@ -5,10 +5,11 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.l0124005.sewain_rpl.network.ProfileResponse
-import com.l0124005.sewain_rpl.network.UpdateProfileRequest
 import com.l0124005.sewain_rpl.repository.ProfileRepository
 import com.l0124005.sewain_rpl.utils.Resource
 import kotlinx.coroutines.launch
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
 
 class ProfileViewModel(private val repository: ProfileRepository) : ViewModel() {
 
@@ -23,9 +24,16 @@ class ProfileViewModel(private val repository: ProfileRepository) : ViewModel() 
         }
     }
 
-    fun updateProfile(token: String, name: String?, phone: String?, address: String?) {
+    fun updateProfile(
+        token: String,
+        name: RequestBody? = null,
+        username: RequestBody? = null,
+        phoneNumber: RequestBody? = null,
+        alamat: RequestBody? = null,
+        fotoProfil: MultipartBody.Part? = null
+    ) {
         viewModelScope.launch {
-            repository.updateProfile(token, UpdateProfileRequest(name, phone, address)).collect {
+            repository.updateProfile(token, name, username, phoneNumber, alamat, fotoProfil).collect {
                 _profile.value = it
             }
         }

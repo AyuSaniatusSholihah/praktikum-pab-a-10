@@ -4,32 +4,111 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.l0124005.sewain_rpl.network.CatalogResponse
-import com.l0124005.sewain_rpl.network.KatalogListResponse
+import com.l0124005.sewain_rpl.network.*
 import com.l0124005.sewain_rpl.repository.KatalogRepository
 import com.l0124005.sewain_rpl.utils.Resource
 import kotlinx.coroutines.launch
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
 
 class KatalogViewModel(private val repository: KatalogRepository) : ViewModel() {
 
     private val _katalogPublik = MutableLiveData<Resource<KatalogListResponse>>()
     val katalogPublik: LiveData<Resource<KatalogListResponse>> = _katalogPublik
 
-    private val _katalogDetail = MutableLiveData<Resource<CatalogResponse>>()
-    val katalogDetail: LiveData<Resource<CatalogResponse>> = _katalogDetail
+    private val _myKatalog = MutableLiveData<Resource<KatalogListResponse>>()
+    val myKatalog: LiveData<Resource<KatalogListResponse>> = _myKatalog
 
-    fun getKatalogPublik(search: String? = null, kategori: String? = null) {
+    private val _myKatalogDetail = MutableLiveData<Resource<KatalogDetailResponse>>()
+    val myKatalogDetail: LiveData<Resource<KatalogDetailResponse>> = _myKatalogDetail
+
+    private val _crudResult = MutableLiveData<Resource<KatalogCrudResponse>>()
+    val crudResult: LiveData<Resource<KatalogCrudResponse>> = _crudResult
+
+    private val _deleteResult = MutableLiveData<Resource<GenericResponse>>()
+    val deleteResult: LiveData<Resource<GenericResponse>> = _deleteResult
+
+    fun getKatalogPublik(
+        search: String? = null,
+        kategoriId: Int? = null,
+        lokasi: String? = null,
+        minHarga: Double? = null,
+        maxHarga: Double? = null
+    ) {
         viewModelScope.launch {
-            repository.getKatalogPublik(search, kategori).collect {
+            repository.getKatalogPublik(search, kategoriId, lokasi, minHarga, maxHarga).collect {
                 _katalogPublik.value = it
             }
         }
     }
 
-    fun getKatalogDetail(token: String, id: Int) {
+    fun getMyKatalog(token: String) {
         viewModelScope.launch {
-            repository.getKatalogDetail(token, id).collect {
-                _katalogDetail.value = it
+            repository.getMyKatalog(token).collect {
+                _myKatalog.value = it
+            }
+        }
+    }
+
+    fun getMyKatalogDetail(token: String, id: Int) {
+        viewModelScope.launch {
+            repository.getMyKatalogDetail(token, id).collect {
+                _myKatalogDetail.value = it
+            }
+        }
+    }
+
+    fun createKatalog(
+        token: String,
+        kategoriId: RequestBody,
+        namaBarang: RequestBody,
+        deskripsi: RequestBody?,
+        hargaSewa: RequestBody,
+        hargaJaminan: RequestBody,
+        hargaDendaPerjam: RequestBody,
+        stok: RequestBody,
+        lokasi: RequestBody,
+        fotoBarang: MultipartBody.Part?,
+        status: RequestBody? = null
+    ) {
+        viewModelScope.launch {
+            repository.createKatalog(
+                token, kategoriId, namaBarang, deskripsi, hargaSewa,
+                hargaJaminan, hargaDendaPerjam, stok, lokasi, fotoBarang, status
+            ).collect {
+                _crudResult.value = it
+            }
+        }
+    }
+
+    fun updateKatalog(
+        token: String,
+        id: Int,
+        kategoriId: RequestBody? = null,
+        namaBarang: RequestBody? = null,
+        deskripsi: RequestBody? = null,
+        hargaSewa: RequestBody? = null,
+        hargaJaminan: RequestBody? = null,
+        hargaDendaPerjam: RequestBody? = null,
+        stok: RequestBody? = null,
+        lokasi: RequestBody? = null,
+        fotoBarang: MultipartBody.Part? = null,
+        status: RequestBody? = null
+    ) {
+        viewModelScope.launch {
+            repository.updateKatalog(
+                token, id, kategoriId, namaBarang, deskripsi, hargaSewa,
+                hargaJaminan, hargaDendaPerjam, stok, lokasi, fotoBarang, status
+            ).collect {
+                _crudResult.value = it
+            }
+        }
+    }
+
+    fun deleteKatalog(token: String, id: Int) {
+        viewModelScope.launch {
+            repository.deleteKatalog(token, id).collect {
+                _deleteResult.value = it
             }
         }
     }
