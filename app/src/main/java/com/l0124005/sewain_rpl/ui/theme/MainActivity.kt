@@ -1,4 +1,4 @@
-package com.l0124005.sewain_rpl.ui.theme
+package com.l0124005.sewain_rpl
 
 import android.content.Intent
 import android.os.Bundle
@@ -30,6 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.l0124005.sewain_rpl.ui.theme.Sewain_rplTheme
 import com.l0124005.sewain_rpl.ui.theme.auth.LoginActivity
 import com.l0124005.sewain_rpl.ui.theme.landing.LandingActivity
 import com.l0124005.sewain_rpl.utils.SessionManager

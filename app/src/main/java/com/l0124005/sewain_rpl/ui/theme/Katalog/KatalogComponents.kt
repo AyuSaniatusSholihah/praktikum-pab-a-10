@@ -48,6 +48,11 @@ val Volkhov = FontFamily.Default
 
 val categories = listOf("Semua", "Kamera", "Outdoor", "Elektronik", "Olahraga", "Fashion", "Lainnya")
 
+fun formatRupiah(number: Double): String {
+    val format = java.text.NumberFormat.getCurrencyInstance(java.util.Locale("id", "ID"))
+    return format.format(number).replace("Rp", "").trim()
+}
+
 // ============================================================
 // PROFILE CARD
 // ============================================================

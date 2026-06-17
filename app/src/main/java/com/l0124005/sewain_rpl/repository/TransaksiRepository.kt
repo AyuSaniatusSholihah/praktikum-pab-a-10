@@ -1,13 +1,42 @@
 package com.l0124005.sewain_rpl.repository
 
 import com.l0124005.sewain_rpl.network.*
-import com.l0124005.sewain_rpl.ui.theme.auth.LoginActivity
 import com.l0124005.sewain_rpl.utils.Resource
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
 
 class TransaksiRepository {
     private val apiService = ApiClient.instance
+
+    fun getRiwayatTransaksi(token: String): Flow<Resource<TransaksiListResponse>> = flow {
+        emit(Resource.Loading())
+        try {
+            val response = apiService.getRiwayatTransaksi("Bearer $token")
+            if (response.isSuccessful && response.body() != null) {
+                emit(Resource.Success(response.body()!!))
+            } else {
+                emit(Resource.Error(response.message()))
+            }
+        } catch (e: Exception) {
+            emit(Resource.Error(e.message ?: "An error occurred"))
+        }
+    }
+
+    fun getDetailTransaksi(token: String, id: Int): Flow<Resource<TransaksiDetailResponse>> = flow {
+        emit(Resource.Loading())
+        try {
+            val response = apiService.getDetailTransaksi("Bearer $token", id)
+            if (response.isSuccessful && response.body() != null) {
+                emit(Resource.Success(response.body()!!))
+            } else {
+                emit(Resource.Error(response.message()))
+            }
+        } catch (e: Exception) {
+            emit(Resource.Error(e.message ?: "An error occurred"))
+        }
+    }
 
     fun checkout(token: String): Flow<Resource<CheckoutResponse>> = flow {
         emit(Resource.Loading())
@@ -37,10 +66,16 @@ class TransaksiRepository {
         }
     }
 
-    fun bayarMassal(token: String, request: BayarMassalRequest): Flow<Resource<BayarMassalResponse>> = flow {
+    fun kembalikanBarang(
+        token: String,
+        id: Int,
+        fotoBukti: MultipartBody.Part,
+        rating: RequestBody,
+        komentar: RequestBody? = null
+    ): Flow<Resource<KembalikanResponse>> = flow {
         emit(Resource.Loading())
         try {
-            val response = apiService.bayarMassal("Bearer $token", request)
+            val response = apiService.kembalikanBarang("Bearer $token", id, fotoBukti, rating, komentar)
             if (response.isSuccessful && response.body() != null) {
                 emit(Resource.Success(response.body()!!))
             } else {
@@ -51,10 +86,11 @@ class TransaksiRepository {
         }
     }
 
-    fun getTransaksi(token: String): Flow<Resource<TransaksiListResponse>> = flow {
+    // Owner Side
+    fun getOwnerDashboard(token: String): Flow<Resource<OwnerDashboardResponse>> = flow {
         emit(Resource.Loading())
         try {
-            val response = apiService.getTransaksi("Bearer $token")
+            val response = apiService.getOwnerDashboard("Bearer $token")
             if (response.isSuccessful && response.body() != null) {
                 emit(Resource.Success(response.body()!!))
             } else {
@@ -65,24 +101,14 @@ class TransaksiRepository {
         }
     }
 
-    fun getTransaksiDetail(token: String, id: Int): Flow<Resource<TransaksiDetailResponse>> = flow {
+    fun verifikasiPengembalian(
+        token: String,
+        id: Int,
+        request: VerifikasiPengembalianRequest
+    ): Flow<Resource<VerifikasiPengembalianResponse>> = flow {
         emit(Resource.Loading())
         try {
-            val response = apiService.getTransaksiDetail("Bearer $token", id)
-            if (response.isSuccessful && response.body() != null) {
-                emit(Resource.Success(response.body()!!))
-            } else {
-                emit(Resource.Error(response.message()))
-            }
-        } catch (e: Exception) {
-            emit(Resource.Error(e.message ?: "An error occurred"))
-        }
-    }
-
-    fun kembalikanBarang(token: String, id: Int): Flow<Resource<KembalikanResponse>> = flow {
-        emit(Resource.Loading())
-        try {
-            val response = apiService.kembalikanBarang("Bearer $token", id)
+            val response = apiService.verifikasiPengembalian("Bearer $token", id, request)
             if (response.isSuccessful && response.body() != null) {
                 emit(Resource.Success(response.body()!!))
             } else {
