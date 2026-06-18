@@ -202,8 +202,7 @@ fun MainContainer(
                 Screen.Profile -> ProfileScreen(
                     viewModel = profileViewModel,
                     token = token,
-                    onLogout = onLogout,
-                    onEditProfile = { /* TODO */ }
+                    onLogout = onLogout
                 )
                 Screen.RiwayatTransaksi -> RiwayatTransaksiScreen(
                     viewModel = transaksiViewModel,
