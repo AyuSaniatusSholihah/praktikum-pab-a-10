@@ -16,6 +16,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
+import com.l0124005.sewain_rpl.network.ApiClient
 import com.l0124005.sewain_rpl.network.TransaksiData
 import com.l0124005.sewain_rpl.ui.theme.katalog.formatRupiah
 import com.l0124005.sewain_rpl.utils.Resource
@@ -91,14 +95,27 @@ fun TransaksiDetailContent(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = getStatusColor(transaksi.status).copy(alpha = 0.1f))
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Status", fontSize = 14.sp, color = Color.Gray)
-                Text(
-                    transaksi.status.uppercase(),
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    color = getStatusColor(transaksi.status)
-                )
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Status", fontSize = 14.sp, color = Color.Gray)
+                    Text(
+                        transaksi.status.uppercase(),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = getStatusColor(transaksi.status)
+                    )
+                }
+                if (!transaksi.barang?.foto_barang.isNullOrEmpty()) {
+                    AsyncImage(
+                        model = "${ApiClient.IMAGE_BASE_URL}${transaksi.barang?.foto_barang}",
+                        contentDescription = null,
+                        modifier = Modifier.size(60.dp).clip(RoundedCornerShape(8.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                }
             }
         }
 
