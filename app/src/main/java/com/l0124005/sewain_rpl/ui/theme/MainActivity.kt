@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import com.l0124005.sewain_rpl.ui.theme.Sewain_rplTheme
 import com.l0124005.sewain_rpl.ui.theme.auth.LoginActivity
 import com.l0124005.sewain_rpl.ui.theme.landing.LandingActivity
+import com.l0124005.sewain_rpl.ui.theme.keranjang.KeranjangActivity
 import com.l0124005.sewain_rpl.utils.SessionManager
 
 class MainActivity : ComponentActivity() {
@@ -59,6 +60,10 @@ class MainActivity : ComponentActivity() {
                         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                         startActivity(intent)
                         finish()
+                    },
+                    onNavigateToCart = {
+                        val intent = Intent(this@MainActivity, KeranjangActivity::class.java)
+                        startActivity(intent)
                     }
                 )
             }
@@ -72,7 +77,7 @@ private val BorderGray = Color(0xFFE0E0E0)
 private val ButtonGray = Color(0xFF6B8B9E)
 
 @Composable
-fun HomeScreen(onLogout: () -> Unit) {
+fun HomeScreen(onLogout: () -> Unit, onNavigateToCart: () -> Unit) {
     Scaffold(
         containerColor = Color.White,
         topBar = { HomeTopBar(onLogout = onLogout) },
@@ -80,7 +85,7 @@ fun HomeScreen(onLogout: () -> Unit) {
         floatingActionButton = {
             Column(horizontalAlignment = Alignment.End) {
                 FloatingActionButton(
-                    onClick = { /* TODO */ },
+                    onClick = onNavigateToCart,
                     containerColor = PrimaryBlue,
                     contentColor = Color.White,
                     shape = CircleShape,
