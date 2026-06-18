@@ -9,11 +9,11 @@ import java.util.concurrent.TimeUnit
 object ApiClient {
 
     // ⚠️ Untuk emulator Android Studio: gunakan 10.0.2.2 (alias localhost host)
-    //    Untuk HP fisik: ganti dengan IP laptop di Wi-Fi yang sama (cek dengan `ifconfig`)
-    private const val BASE_URL = "http://10.0.2.2:8000/api/"
+    //    Untuk HP fisik: ganti dengan IP lapt di Wi-Fi yang sama (cek dengan `ifconfig`)
+    private const val BASE_URL = "http://10.39.247.248:8000/api/"
 
     // URL tanpa /api/ — untuk load gambar
-    const val IMAGE_BASE_URL = "http://10.0.2.2:8000/storage/"
+    const val IMAGE_BASE_URL = "http://10.39.247.248/storage/"
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY
