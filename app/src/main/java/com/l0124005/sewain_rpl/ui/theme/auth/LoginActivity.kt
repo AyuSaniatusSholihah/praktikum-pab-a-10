@@ -7,34 +7,75 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.l0124005.sewain_rpl.ui.theme.MainActivity
 import com.l0124005.sewain_rpl.repository.AuthRepository
+import com.l0124005.sewain_rpl.ui.theme.MainActivity
 import com.l0124005.sewain_rpl.ui.theme.Sewain_rplTheme
+import com.l0124005.sewain_rpl.ui.theme.landing.VidalokaFont
+import com.l0124005.sewain_rpl.ui.theme.landing.VolkhovFont
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.utils.SessionManager
 import com.l0124005.sewain_rpl.viewmodel.AuthViewModel
 import com.l0124005.sewain_rpl.viewmodel.AuthViewModelFactory
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import com.l0124005.sewain_rpl.R
+
+val MonsterratFont = FontFamily(Font(R.font.montserrat))
+
+
+// Warna diambil dari auth.css ( --blue: #6A87A1; --black: #000000; --bg: #f4f4f4; )
+private val AuthBlue = Color(0xFF6A87A1)
+private val AuthBlack = Color(0xFF000000)
+private val AuthBackgroundGradient = Brush.verticalGradient(
+    colors = listOf(
+        Color(0xFFE0E0E0), // abu muda di paling atas
+        Color(0xFF6A87A1), // abu-biru medium di tengah
+        Color(0xFF21394F)  // biru tua di paling bawah
+    )
+)
+private val AuthTextMuted = Color(0xFF838383)
+private val AuthInputBorder = Color(0xFF9D9D9D)
+private val AuthLogoDark = Color(0xFF484848) // warna "SEWA" di .nav-logo / .auth-logo
 
 class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -43,7 +84,7 @@ class LoginActivity : ComponentActivity() {
             Sewain_rplTheme {
                 val factory = AuthViewModelFactory(AuthRepository(SessionManager(this)))
                 val viewModel: AuthViewModel = viewModel(factory = factory)
-                
+
                 LoginScreen(
                     viewModel = viewModel,
                     onNavigateToRegister = {
@@ -98,31 +139,52 @@ fun LoginScreenContent(
     var password by remember { mutableStateOf("") }
     val context = LocalContext.current
 
-    val linkBlue = Color(0xFF1E5276)
-    val backgroundGradient = Brush.verticalGradient(
-        colors = listOf(Color(0xFFE4EDF5), Color(0xFFFFFFFF))
-    )
-
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(backgroundGradient)
+            .background(AuthBackgroundGradient),
+        contentAlignment = Alignment.Center
     ) {
+        // Card putih di tengah, meniru .auth-card pada versi mobile (sidebar foto disembunyikan)
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 24.dp),
+                .fillMaxWidth(0.92f)
+                .background(Color.White, RoundedCornerShape(14.dp))
+                .padding(horizontal = 28.dp, vertical = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(80.dp))
+            // Logo "SEWAIN" — sama seperti landing page (font Vidaloka, "SEWA" abu gelap + "IN" aksen biru)
+            Text(
+                text = buildAnnotatedString {
+                    withStyle(style = SpanStyle(color = AuthLogoDark)) { append("SEWA") }
+                    withStyle(style = SpanStyle(color = AuthBlue)) { append("IN") }
+                },
+                fontSize = 30.sp,
+                fontFamily = VidalokaFont,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.sp
+            )
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(text = "SEWA", fontSize = 38.sp, fontFamily = FontFamily.Serif, color = Color(0xFF2A2A2A))
-                Text(text = "IN", fontSize = 38.sp, fontFamily = FontFamily.Serif, color = Color(0xFF5D8AA8))
-            }
-            Text(text = "Login to SEWAIN", fontSize = 14.sp, color = Color.Gray)
+            Spacer(modifier = Modifier.height(6.dp))
 
-            Spacer(modifier = Modifier.height(48.dp))
+            // Judul "Sign In To SEWAIN" — meniru .auth-title (font Volkhov)
+            Text(
+                text = buildAnnotatedString {
+                    withStyle(style = SpanStyle(fontFamily = VolkhovFont, color = AuthBlack)) {
+                        append("Sign In To ")
+                    }
+                    withStyle(style = SpanStyle(fontFamily = VidalokaFont, color = AuthLogoDark)) {
+                        append("SEWA")
+                    }
+                    withStyle(style = SpanStyle(fontFamily = VidalokaFont, color = AuthBlue)) {
+                        append("IN")
+                    }
+                },
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(modifier = Modifier.height(28.dp))
 
             CustomTextField(
                 label = "EMAIL",
@@ -131,7 +193,7 @@ fun LoginScreenContent(
                 placeholder = "yourname@email.com"
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             CustomTextField(
                 label = "PASSWORD",
@@ -141,49 +203,67 @@ fun LoginScreenContent(
                 isPassword = true
             )
 
-            Spacer(modifier = Modifier.height(48.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            val buttonGradient = Brush.verticalGradient(
-                colors = listOf(Color(0xFFD3DCE3), Color(0xFF6B8B9E))
-            )
-            
+            // Tombol Sign In — meniru .btn-auth (solid biru, pill-ish radius 7px di web -> 10dp di sini)
             Button(
-                onClick = { 
+                onClick = {
                     if (email.isNotEmpty() && password.isNotEmpty()) {
                         onLogin(email, password)
                     } else {
                         Toast.makeText(context, "Isi semua field!", Toast.LENGTH_SHORT).show()
                     }
                 },
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                contentPadding = PaddingValues(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = AuthBlue),
                 enabled = loginState !is Resource.Loading<*>
             ) {
-                Box(
-                    modifier = Modifier.fillMaxSize().background(buttonGradient, RoundedCornerShape(12.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (loginState is Resource.Loading<*>) {
-                        CircularProgressIndicator(color = Color.Black, modifier = Modifier.size(24.dp))
-                    } else {
-                        Text(text = "Login", color = Color.Black, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                    }
+                if (loginState is Resource.Loading<*>) {
+                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(22.dp))
+                } else {
+                    Text(
+                        text = "Sign In",
+                        color = Color.White,
+                        fontSize = 14.sp,
+                        fontFamily = MonsterratFont,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
+            // Register Now — meniru .btn-auth-outline (outline biru)
+            OutlinedButton(
+                onClick = onNavigateToRegister,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(46.dp),
+                shape = RoundedCornerShape(10.dp),
+                border = androidx.compose.foundation.BorderStroke(1.5.dp, AuthBlue),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = AuthBlue)
+            ) {
+                Text(
+                    text = "Register Now",
+                    fontSize = 14.sp,
+                    fontFamily = MonsterratFont,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Footer kecil — meniru .auth-footer
             Text(
-                text = buildAnnotatedString {
-                    append("Don't have an account? ")
-                    withStyle(style = SpanStyle(color = linkBlue, fontWeight = FontWeight.Bold)) {
-                        append("Sign Up")
-                    }
-                },
-                fontSize = 14.sp,
-                modifier = Modifier.clickable { onNavigateToRegister() }
+                text = "SEWAIN Terms & Conditions",
+                fontSize = 10.sp,
+                fontFamily = MonsterratFont,
+                fontWeight = FontWeight.SemiBold,
+                color = AuthBlack,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
         }
     }
@@ -211,14 +291,15 @@ private fun CustomTextField(
     modifier: Modifier = Modifier,
     isPassword: Boolean = false
 ) {
-    Column(modifier = modifier) {
+    Column(modifier = modifier.fillMaxWidth()) {
         Text(
             text = label,
-            fontSize = 10.sp,
+            fontSize = 12.sp,
+            fontFamily = MonsterratFont,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF8C8C8C),
+            color = AuthTextMuted,
             letterSpacing = 1.sp,
-            modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
+            modifier = Modifier.padding(start = 2.dp, bottom = 4.dp)
         )
         OutlinedTextField(
             value = value,
@@ -226,24 +307,36 @@ private fun CustomTextField(
             placeholder = {
                 Text(
                     text = placeholder,
-                    color = Color.LightGray,
+                    color = Color(0xFF6B6B6B),
+                    fontWeight = FontWeight.SemiBold,
+                    fontFamily = MonsterratFont,
                     fontSize = 12.sp
                 )
             },
             singleLine = true,
             visualTransformation = if (isPassword) PasswordVisualTransformation() else VisualTransformation.None,
-            shape = RoundedCornerShape(8.dp),
+            shape = RoundedCornerShape(0.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(52.dp),
+                .height(50.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = Color.White,
-                unfocusedContainerColor = Color.White,
-                focusedBorderColor = Color(0xFF285473),
-                unfocusedBorderColor = Color(0xFF285473),
-                cursorColor = Color.Black
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                focusedBorderColor = Color.Transparent,
+                unfocusedBorderColor = Color.Transparent,
+                cursorColor = Color(0xFF21394F)
             ),
-            textStyle = LocalTextStyle.current.copy(fontSize = 14.sp)
+            textStyle = LocalTextStyle.current.copy(
+                fontSize = 13.sp,
+                fontFamily = MonsterratFont,
+                color = Color(0xFF21394F) // teks yang diketik jadi biru tua
+            )
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.5.dp)
+                .background(AuthInputBorder)
         )
     }
 }

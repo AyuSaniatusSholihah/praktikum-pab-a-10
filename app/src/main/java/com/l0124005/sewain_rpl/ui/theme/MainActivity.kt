@@ -70,7 +70,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             Sewain_rplTheme {
                 val token = sessionManager.getToken()
-                
+
                 // ViewModels
                 val katalogViewModel: KatalogViewModel = viewModel(factory = KatalogViewModelFactory(KatalogRepository()))
                 val profileViewModel: ProfileViewModel = viewModel(factory = ProfileViewModelFactory(ProfileRepository()))
@@ -138,8 +138,10 @@ fun MainContainer(
                 )
                 Screen.Rental -> RentalsScreen(
                     viewModel = katalogViewModel,
-                    onItemClick = { id ->
-                        selectedProductId = id
+                    keranjangViewModel = keranjangViewModel,
+                    token = token,
+                    onItemClick = { barang ->
+                        selectedProductId = barang.id
                         currentScreen = Screen.ProductDetail
                     }
                 )
@@ -201,11 +203,7 @@ fun MainContainer(
                     viewModel = profileViewModel,
                     token = token,
                     onLogout = onLogout,
-                    onEditProfile = { /* TODO */ },
-                    onMyRentalClick = { /* TODO */ },
-                    onRentalOwnerClick = { /* TODO */ },
-                    onTransaksiClick = { currentScreen = Screen.RiwayatTransaksi },
-                    onRiwayatTransaksiClick = { currentScreen = Screen.RiwayatTransaksi }
+                    onEditProfile = { /* TODO */ }
                 )
                 Screen.RiwayatTransaksi -> RiwayatTransaksiScreen(
                     viewModel = transaksiViewModel,
@@ -253,7 +251,7 @@ fun HomeScreenContent(
     onProductClick: (Int) -> Unit
 ) {
     val katalogState by katalogViewModel.katalogPublik.observeAsState(Resource.Loading())
-    
+
     LaunchedEffect(Unit) {
         katalogViewModel.getKatalogPublik(kategoriId = null)
     }
@@ -475,7 +473,7 @@ private fun RentItemsSection(katalogState: Resource<KatalogListResponse>, onProd
         Spacer(modifier = Modifier.height(12.dp))
         Text("Temukan berbagai barang pilihan yang siap mendukung aktivitasmu.", fontSize = 13.sp, color = Color.Gray, textAlign = TextAlign.Center)
         Spacer(modifier = Modifier.height(32.dp))
-        
+
         when (katalogState) {
             is Resource.Loading -> {
                 CircularProgressIndicator(color = PrimaryBlue)
