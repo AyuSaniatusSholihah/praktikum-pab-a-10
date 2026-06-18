@@ -66,16 +66,31 @@ val MonsterratFont = FontFamily(Font(R.font.montserrat))
 // Warna diambil dari auth.css ( --blue: #6A87A1; --black: #000000; --bg: #f4f4f4; )
 private val AuthBlue = Color(0xFF6A87A1)
 private val AuthBlack = Color(0xFF000000)
-private val AuthBackgroundGradient = Brush.verticalGradient(
+
+// Layer 1: vignette biru tua dari sisi kiri & kanan
+private fun sideVignetteBrush(): Brush {
+    return Brush.horizontalGradient(
+        colors = listOf(
+            Color(0xFF21394F).copy(alpha = 0.35f),
+            Color(0xFFFFFFFF).copy(alpha = 0f),
+            Color(0xFF21394F).copy(alpha = 0.35f)
+        )
+    )
+}
+
+// Layer 2: fade vertical kompleks sesuai rbranch auth
+private val AuthVerticalFadeBrush = Brush.verticalGradient(
     colors = listOf(
-        Color(0xFFE0E0E0), // abu muda di paling atas
-        Color(0xFF6A87A1), // abu-biru medium di tengah
-        Color(0xFF21394F)  // biru tua di paling bawah
+        Color(0xFFFFFFFF),
+        Color(0xFFE0E0E0),
+        Color(0xFF6A87A1),
+        Color(0xFF21394F)
     )
 )
+
 private val AuthTextMuted = Color(0xFF838383)
 private val AuthInputBorder = Color(0xFF9D9D9D)
-private val AuthLogoDark = Color(0xFF484848) // warna "SEWA" di .nav-logo / .auth-logo
+private val AuthLogoDark = Color(0xFF484848) 
 
 class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -142,7 +157,9 @@ fun LoginScreenContent(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(AuthBackgroundGradient),
+            .background(Color.White)
+            .background(sideVignetteBrush())
+            .background(AuthVerticalFadeBrush),
         contentAlignment = Alignment.Center
     ) {
         // Card putih di tengah, meniru .auth-card pada versi mobile (sidebar foto disembunyikan)
@@ -301,37 +318,34 @@ private fun CustomTextField(
             letterSpacing = 1.sp,
             modifier = Modifier.padding(start = 2.dp, bottom = 4.dp)
         )
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            placeholder = {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(40.dp),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            if (value.isEmpty()) {
                 Text(
                     text = placeholder,
                     color = Color(0xFF6B6B6B),
-                    fontWeight = FontWeight.SemiBold,
                     fontFamily = MonsterratFont,
-                    fontSize = 12.sp
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold
                 )
-            },
-            singleLine = true,
-            visualTransformation = if (isPassword) PasswordVisualTransformation() else VisualTransformation.None,
-            shape = RoundedCornerShape(0.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = Color.Transparent,
-                unfocusedContainerColor = Color.Transparent,
-                focusedBorderColor = Color.Transparent,
-                unfocusedBorderColor = Color.Transparent,
-                cursorColor = Color(0xFF21394F)
-            ),
-            textStyle = LocalTextStyle.current.copy(
-                fontSize = 13.sp,
-                fontFamily = MonsterratFont,
-                color = Color(0xFF21394F) // teks yang diketik jadi biru tua
+            }
+            androidx.compose.foundation.text.BasicTextField(
+                value = value,
+                onValueChange = onValueChange,
+                singleLine = true,
+                visualTransformation = if (isPassword) PasswordVisualTransformation() else VisualTransformation.None,
+                textStyle = androidx.compose.ui.text.TextStyle(
+                    fontSize = 14.sp,
+                    fontFamily = MonsterratFont,
+                    color = Color(0xFF21394F)
+                ),
+                modifier = Modifier.fillMaxWidth()
             )
-        )
+        }
         Box(
             modifier = Modifier
                 .fillMaxWidth()

@@ -49,13 +49,28 @@ private val LocalMonsterratFont = FontFamily(Font(R.font.montserrat))
 // Warna sama seperti Login/Register, diambil dari auth.css
 private val AuthBlue = Color(0xFF6A87A1)
 private val AuthBlack = Color(0xFF000000)
-private val AuthBackgroundGradientOtp = Brush.verticalGradient(
+
+// Layer 1: vignette biru tua dari sisi kiri & kanan
+private fun sideVignetteBrush(): Brush {
+    return Brush.horizontalGradient(
+        colors = listOf(
+            Color(0xFF21394F).copy(alpha = 0.35f),
+            Color(0xFFFFFFFF).copy(alpha = 0f),
+            Color(0xFF21394F).copy(alpha = 0.35f)
+        )
+    )
+}
+
+// Layer 2: fade vertical kompleks sesuai rbranch auth
+private val AuthVerticalFadeBrush = Brush.verticalGradient(
     colors = listOf(
+        Color(0xFFFFFFFF),
         Color(0xFFE0E0E0),
         Color(0xFF6A87A1),
         Color(0xFF21394F)
     )
 )
+
 private val AuthTextMutedOtp = Color(0xFF838383)
 private val AuthLogoDark = Color(0xFF484848)
 
@@ -135,7 +150,9 @@ fun OtpScreenContent(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(AuthBackgroundGradientOtp),
+            .background(Color.White)
+            .background(sideVignetteBrush())
+            .background(AuthVerticalFadeBrush),
         contentAlignment = Alignment.Center
     ) {
         Column(
