@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.l0124005.sewain_rpl.ui.theme.Sewain_rplTheme
 import com.l0124005.sewain_rpl.ui.theme.auth.LoginActivity
+import com.l0124005.sewain_rpl.ui.theme.auth.RegisterActivity
 import com.l0124005.sewain_rpl.ui.theme.landing.LandingActivity
 import com.l0124005.sewain_rpl.utils.SessionManager
 
@@ -41,6 +42,8 @@ class MainActivity : ComponentActivity() {
 
         val sessionManager = SessionManager(this)
 
+        // Hapus atau beri komentar pada bagian ini jika ingin Home bisa diakses tanpa login
+        /*
         if (!sessionManager.isLoggedIn()) {
             val intent = Intent(this, LandingActivity::class.java)
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -48,17 +51,19 @@ class MainActivity : ComponentActivity() {
             finish()
             return
         }
+        */
 
         enableEdgeToEdge()
         setContent {
             Sewain_rplTheme {
                 HomeScreen(
-                    onLogout = {
-                        sessionManager.clearSession()
+                    onSignIn = {
                         val intent = Intent(this@MainActivity, LoginActivity::class.java)
-                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                         startActivity(intent)
-                        finish()
+                    },
+                    onSignUp = {
+                        val intent = Intent(this@MainActivity, RegisterActivity::class.java)
+                        startActivity(intent)
                     }
                 )
             }
@@ -72,10 +77,10 @@ private val BorderGray = Color(0xFFE0E0E0)
 private val ButtonGray = Color(0xFF6B8B9E)
 
 @Composable
-fun HomeScreen(onLogout: () -> Unit) {
+fun HomeScreen(onSignIn: () -> Unit, onSignUp: () -> Unit) {
     Scaffold(
         containerColor = Color.White,
-        topBar = { HomeTopBar(onLogout = onLogout) },
+        topBar = { HomeTopBar(onSignIn = onSignIn, onSignUp = onSignUp) },
         bottomBar = { HomeBottomNavigation() },
         floatingActionButton = {
             Column(horizontalAlignment = Alignment.End) {
@@ -128,7 +133,7 @@ fun HomeScreen(onLogout: () -> Unit) {
 }
 
 @Composable
-private fun HomeTopBar(onLogout: () -> Unit) {
+private fun HomeTopBar(onSignIn: () -> Unit, onSignUp: () -> Unit) {
     Surface(color = Color.White, shadowElevation = 1.dp) {
         Row(
             modifier = Modifier
@@ -150,10 +155,14 @@ private fun HomeTopBar(onLogout: () -> Unit) {
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium,
                 color = Color.Gray,
-                modifier = Modifier.clickable { onLogout() }.padding(end = 12.dp)
+                modifier = Modifier
+                    .padding(end = 4.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .clickable { onSignIn() }
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
             )
             Button(
-                onClick = { onLogout() },
+                onClick = { onSignUp() },
                 colors = ButtonDefaults.buttonColors(containerColor = ButtonGray),
                 shape = RoundedCornerShape(8.dp),
                 contentPadding = PaddingValues(horizontal = 16.dp),
