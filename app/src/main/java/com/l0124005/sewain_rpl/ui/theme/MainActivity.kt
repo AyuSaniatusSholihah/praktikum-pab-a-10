@@ -13,7 +13,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.filled.PhoneCallback
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -26,7 +25,6 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -42,13 +40,13 @@ import com.l0124005.sewain_rpl.repository.KatalogRepository
 import com.l0124005.sewain_rpl.repository.KeranjangRepository
 import com.l0124005.sewain_rpl.repository.ProfileRepository
 import com.l0124005.sewain_rpl.repository.TransaksiRepository
-import com.l0124005.sewain_rpl.ui.theme.Sewain_rplTheme
 import com.l0124005.sewain_rpl.ui.theme.auth.LoginActivity
 import com.l0124005.sewain_rpl.ui.theme.katalog.*
 import com.l0124005.sewain_rpl.ui.theme.landing.LandingActivity
 import com.l0124005.sewain_rpl.ui.theme.profil.ProfileScreen
 import com.l0124005.sewain_rpl.ui.theme.transaksi.RiwayatTransaksiScreen
 import com.l0124005.sewain_rpl.ui.theme.transaksi.DetailTransaksiScreen
+import com.l0124005.sewain_rpl.ui.theme.keranjang.KeranjangScreen
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.utils.SessionManager
 import com.l0124005.sewain_rpl.utils.CurrencyUtils
@@ -99,7 +97,7 @@ class MainActivity : ComponentActivity() {
 }
 
 enum class Screen {
-    Home, Rental, MyKatalog, Profile, RiwayatTransaksi, AddItem, EditItem, DetailTransaksi, Pembayaran, MyRental, ProductDetail
+    Home, Rental, Keranjang, MyKatalog, Profile, RiwayatTransaksi, AddItem, EditItem, DetailTransaksi, Pembayaran, MyRental, ProductDetail
 }
 
 @Composable
@@ -119,7 +117,7 @@ fun MainContainer(
 
     Scaffold(
         bottomBar = {
-            if (currentScreen in listOf(Screen.Home, Screen.Rental, Screen.MyKatalog, Screen.Profile)) {
+            if (currentScreen in listOf(Screen.Home, Screen.Rental, Screen.Keranjang, Screen.MyKatalog, Screen.Profile)) {
                 HomeBottomNavigation(
                     currentScreen = currentScreen,
                     onScreenSelected = { currentScreen = it }
@@ -145,11 +143,21 @@ fun MainContainer(
                         currentScreen = Screen.ProductDetail
                     }
                 )
+                Screen.Keranjang -> KeranjangScreen(
+                    token = token,
+                    viewModel = keranjangViewModel,
+                    onBack = { currentScreen = Screen.Home },
+                    onCheckout = {
+                        // Logika checkout bisa diarahkan ke pembayaran jika perlu
+                        // Untuk sekarang tetap di keranjang atau ke riwayat
+                        currentScreen = Screen.RiwayatTransaksi
+                    }
+                )
                 Screen.ProductDetail -> selectedProductId?.let { id ->
-                    ProductRentScreen(
+                    DetailProdukScreen(
                         productId = id,
                         token = token,
-                        viewModel = katalogViewModel,
+                        katalogViewModel = katalogViewModel,
                         keranjangViewModel = keranjangViewModel,
                         onBack = { currentScreen = Screen.Rental }
                     )
@@ -179,6 +187,59 @@ fun MainContainer(
                         onSuccess = { currentScreen = Screen.MyKatalog }
                     )
                 }
+                Screen.MyKatalog -> MyKatalogScreen(
+                    viewModel = katalogViewModel,
+                    token = token,
+                    onBack = { currentScreen = Screen.Home },
+                    onAddItem = { currentScreen = Screen.AddItem },
+                    onEditItem = { barang ->
+                        selectedBarangForEdit = barang
+                        currentScreen = Screen.EditItem
+                    }
+                )
+                Screen.Profile -> ProfileScreen(
+                    viewModel = profileViewModel,
+                    token = token,
+                    onLogout = onLogout,
+                    onEditProfile = { /* TODO */ },
+                    onMyRentalClick = { /* TODO */ },
+                    onRentalOwnerClick = { /* TODO */ },
+                    onTransaksiClick = { currentScreen = Screen.RiwayatTransaksi },
+                    onRiwayatTransaksiClick = { currentScreen = Screen.RiwayatTransaksi }
+                )
+                Screen.RiwayatTransaksi -> RiwayatTransaksiScreen(
+                    viewModel = transaksiViewModel,
+                    token = token,
+                    onBack = { currentScreen = Screen.Profile },
+                    onDetailClick = { id ->
+                        selectedTransaksiId = id
+                        currentScreen = Screen.DetailTransaksi
+                    }
+                )
+                Screen.DetailTransaksi -> selectedTransaksiId?.let { id ->
+                    DetailTransaksiScreen(
+                        transaksiId = id,
+                        token = token,
+                        viewModel = transaksiViewModel,
+                        onBack = { currentScreen = Screen.RiwayatTransaksi },
+                        onPayClick = { ids ->
+                            selectedTransaksiIdsForPayment = ids
+                            currentScreen = Screen.Pembayaran
+                        }
+                    )
+                }
+                Screen.MyRental -> {
+                    // Fallback sementara jika MyRental dipilih
+                    HomeScreenContent(
+                        katalogViewModel = katalogViewModel,
+                        onLogout = onLogout,
+                        onSeeAllRentals = { currentScreen = Screen.Rental },
+                        onProductClick = { id ->
+                            selectedProductId = id
+                            currentScreen = Screen.ProductDetail
+                        }
+                    )
+                }
             }
         }
     }
@@ -188,7 +249,8 @@ fun MainContainer(
 fun HomeScreenContent(
     katalogViewModel: KatalogViewModel,
     onLogout: () -> Unit,
-    onSeeAllRentals: () -> Unit
+    onSeeAllRentals: () -> Unit,
+    onProductClick: (Int) -> Unit
 ) {
     val katalogState by katalogViewModel.katalogPublik.observeAsState(Resource.Loading())
     
@@ -213,7 +275,7 @@ fun HomeScreenContent(
         Spacer(modifier = Modifier.height(48.dp))
         CategoriesSection()
         Spacer(modifier = Modifier.height(48.dp))
-        RentItemsSection(katalogState)
+        RentItemsSection(katalogState, onProductClick)
         Spacer(modifier = Modifier.height(48.dp))
         TestimonialsSection()
         Spacer(modifier = Modifier.height(100.dp))
@@ -407,7 +469,7 @@ private fun CategoryCard(name: String, modifier: Modifier) {
 }
 
 @Composable
-private fun RentItemsSection(katalogState: Resource<KatalogListResponse>) {
+private fun RentItemsSection(katalogState: Resource<KatalogListResponse>, onProductClick: (Int) -> Unit) {
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Text("Rent Items", fontSize = 32.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Serif)
         Spacer(modifier = Modifier.height(12.dp))
@@ -425,7 +487,7 @@ private fun RentItemsSection(katalogState: Resource<KatalogListResponse>) {
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items.forEach { barang ->
-                        HomeRentalCard(barang, Modifier.weight(1f))
+                        HomeRentalCard(barang, onProductClick, Modifier.weight(1f))
                     }
                 }
             }
@@ -437,9 +499,9 @@ private fun RentItemsSection(katalogState: Resource<KatalogListResponse>) {
 }
 
 @Composable
-private fun HomeRentalCard(barang: CatalogData, modifier: Modifier = Modifier) {
+private fun HomeRentalCard(barang: CatalogData, onProductClick: (Int) -> Unit, modifier: Modifier = Modifier) {
     Card(
-        modifier = modifier,
+        modifier = modifier.clickable { onProductClick(barang.id) },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(2.dp)
@@ -506,7 +568,10 @@ private fun HomeBottomNavigation(
 ) {
     NavigationBar(
         containerColor = Color(0xFF4A4A4A),
-        modifier = Modifier.height(65.dp).clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+        modifier = Modifier
+            .navigationBarsPadding() // Memberikan jarak dari navigasi sistem HP
+            .height(80.dp)
+            .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
     ) {
         NavigationBarItem(
             selected = currentScreen == Screen.Home,
@@ -523,6 +588,13 @@ private fun HomeBottomNavigation(
             colors = NavigationBarItemDefaults.colors(selectedIconColor = Color.White, unselectedIconColor = Color.Gray, selectedTextColor = Color.White, unselectedTextColor = Color.Gray, indicatorColor = Color.Transparent)
         )
         NavigationBarItem(
+            selected = currentScreen == Screen.Keranjang,
+            onClick = { onScreenSelected(Screen.Keranjang) },
+            icon = { Icon(Icons.Default.ShoppingCart, null) },
+            label = { Text("Keranjang", fontSize = 10.sp) },
+            colors = NavigationBarItemDefaults.colors(selectedIconColor = Color.White, unselectedIconColor = Color.Gray, selectedTextColor = Color.White, unselectedTextColor = Color.Gray, indicatorColor = Color.Transparent)
+        )
+        NavigationBarItem(
             selected = currentScreen == Screen.MyKatalog,
             onClick = { onScreenSelected(Screen.MyKatalog) },
             icon = { Icon(Icons.Default.Store, null) },
@@ -530,7 +602,7 @@ private fun HomeBottomNavigation(
             colors = NavigationBarItemDefaults.colors(selectedIconColor = Color.White, unselectedIconColor = Color.Gray, selectedTextColor = Color.White, unselectedTextColor = Color.Gray, indicatorColor = Color.Transparent)
         )
         NavigationBarItem(
-            selected = currentScreen == Screen.Profile || currentScreen == Screen.RiwayatTransaksi,
+            selected = currentScreen == Screen.Profile || currentScreen == Screen.RiwayatTransaksi || currentScreen == Screen.DetailTransaksi || currentScreen == Screen.Pembayaran,
             onClick = { onScreenSelected(Screen.Profile) },
             icon = { Icon(Icons.Default.Person, null) },
             label = { Text("Me", fontSize = 10.sp) },

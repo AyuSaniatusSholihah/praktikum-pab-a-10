@@ -38,7 +38,8 @@ fun ProfileScreen(
     onEditProfile: () -> Unit,
     onMyRentalClick: () -> Unit,
     onRentalOwnerClick: () -> Unit,
-    onTransaksiClick: () -> Unit
+    onTransaksiClick: () -> Unit,
+    onRiwayatTransaksiClick: () -> Unit
 ) {
     val profileState by viewModel.profile.observeAsState()
 
