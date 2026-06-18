@@ -13,52 +13,44 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.tooling.preview.Preview
 import coil.compose.AsyncImage
+import com.l0124005.sewain_rpl.network.ApiClient
+import com.l0124005.sewain_rpl.network.CatalogData
+import com.l0124005.sewain_rpl.utils.Resource
+import com.l0124005.sewain_rpl.viewmodel.KatalogViewModel
 
-// Reuse colors and fonts from KatalogComponents
 private val BackgroundPage = Color(0xFFF8FAFB)
 private val CardWhite      = Color(0xFFFFFFFF)
 private val BorderColor    = Color(0xFFE8E8E8)
-// removed local TealPrimary and TealLight to use Primary from KatalogComponents
 
 private val kategoriList = listOf(
     "Semua", "Kamera", "Outdoor", "Elektronik", "Olahraga", "Fashion", "Lainnya"
 )
 
-// Mock Data Model to keep it frontend-only and independent for now
-data class MockCatalogItem(
-    val id: Int,
-    val name: String,
-    val price: Double,
-    val location: String,
-    val imageRes: String = "",
-    val status: String = "tersedia"
-)
-
 @Composable
 fun RentalsScreen(
-    onItemClick: (MockCatalogItem) -> Unit = {}
+    viewModel: KatalogViewModel,
+    onItemClick: (Int) -> Unit
 ) {
     var searchQuery    by remember { mutableStateOf("") }
     var activeKategori by remember { mutableStateOf("Semua") }
+    
+    val katalogState by viewModel.katalogPublik.observeAsState()
 
-    val mockItems = listOf(
-        MockCatalogItem(1, "Tas Carrier 60L", 50000.0, "Bandung"),
-        MockCatalogItem(2, "Tenda Dome 4P", 75000.0, "Jakarta"),
-        MockCatalogItem(3, "Kamera Sony A6400", 150000.0, "Surabaya"),
-        MockCatalogItem(4, "Sepeda Gunung", 100000.0, "Bandung"),
-    )
+    LaunchedEffect(activeKategori, searchQuery) {
+        val kategoriId = if (activeKategori == "Semua") null else categories.indexOf(activeKategori)
+        viewModel.getKatalogPublik(search = if (searchQuery.isEmpty()) null else searchQuery, kategoriId = kategoriId)
+    }
 
     Column(
         modifier = Modifier
@@ -77,10 +69,34 @@ fun RentalsScreen(
             onKategoriSelected = { activeKategori = it }
         )
 
-        RentalsGrid(
-            items = mockItems,
-            onItemClick = onItemClick
-        )
+        Box(modifier = Modifier.weight(1f)) {
+            when (katalogState) {
+                is Resource.Loading -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = Primary)
+                    }
+                }
+                is Resource.Success -> {
+                    val products = katalogState?.data?.data ?: emptyList()
+                    if (products.isEmpty()) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("Tidak ada barang ditemukan")
+                        }
+                    } else {
+                        RentalsGrid(
+                            items = products,
+                            onItemClick = onItemClick
+                        )
+                    }
+                }
+                is Resource.Error -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("Gagal memuat data: ${katalogState?.message}", color = Color.Red)
+                    }
+                }
+                else -> {}
+            }
+        }
     }
 }
 
@@ -170,10 +186,6 @@ private fun RentalsSearchBar(
             unfocusedContainerColor = CardWhite,
             focusedBorderColor = Primary,
             unfocusedBorderColor = BorderColor,
-        ),
-        textStyle = androidx.compose.ui.text.TextStyle(
-            fontSize = 13.sp,
-            color = TextDark
         )
     )
 }
@@ -215,8 +227,8 @@ private fun KategoriFilterRow(
 
 @Composable
 private fun RentalsGrid(
-    items: List<MockCatalogItem>,
-    onItemClick: (MockCatalogItem) -> Unit
+    items: List<CatalogData>,
+    onItemClick: (Int) -> Unit
 ) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
@@ -228,7 +240,7 @@ private fun RentalsGrid(
         items(items) { item ->
             RentalCard(
                 item = item,
-                onClick = { onItemClick(item) }
+                onClick = { onItemClick(item.id) }
             )
         }
     }
@@ -236,7 +248,7 @@ private fun RentalsGrid(
 
 @Composable
 private fun RentalCard(
-    item: MockCatalogItem,
+    item: CatalogData,
     onClick: () -> Unit
 ) {
     Card(
@@ -255,14 +267,23 @@ private fun RentalCard(
                     .height(110.dp)
                     .background(UploadBg)
             ) {
-                Icon(
-                    imageVector = Icons.Default.Inventory2,
-                    contentDescription = null,
-                    tint = Primary,
-                    modifier = Modifier.size(36.dp).align(Alignment.Center)
-                )
+                if (!item.foto_barang.isNullOrEmpty()) {
+                    AsyncImage(
+                        model = "${ApiClient.IMAGE_BASE_URL}${item.foto_barang}",
+                        contentDescription = item.nama_barang,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Inventory2,
+                        contentDescription = null,
+                        tint = Primary,
+                        modifier = Modifier.size(36.dp).align(Alignment.Center)
+                    )
+                }
 
-                if (item.status == "tersedia") {
+                if (item.stok > 0) {
                     Box(
                         modifier = Modifier
                             .align(Alignment.TopEnd)
@@ -283,7 +304,7 @@ private fun RentalCard(
 
             Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
                 Text(
-                    text = item.name,
+                    text = item.nama_barang,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = Black,
@@ -302,7 +323,7 @@ private fun RentalCard(
                     )
                     Spacer(modifier = Modifier.width(2.dp))
                     Text(
-                        text = item.location,
+                        text = item.lokasi,
                         fontSize = 10.sp,
                         color = TextMuted,
                         maxLines = 1,
@@ -313,7 +334,7 @@ private fun RentalCard(
                 Spacer(modifier = Modifier.height(6.dp))
 
                 Text(
-                    text = "Rp ${String.format("%,.0f", item.price).replace(",", ".")}",
+                    text = "Rp ${formatRupiah(item.harga_sewa)}",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                     color = Primary
@@ -326,10 +347,4 @@ private fun RentalCard(
             }
         }
     }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun RentalsScreenPreview() {
-    RentalsScreen()
 }
