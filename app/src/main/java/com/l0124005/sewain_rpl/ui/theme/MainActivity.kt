@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -31,7 +32,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.l0124005.sewain_rpl.network.ApiClient
 import com.l0124005.sewain_rpl.network.CatalogData
@@ -44,6 +44,8 @@ import com.l0124005.sewain_rpl.ui.theme.auth.LoginActivity
 import com.l0124005.sewain_rpl.ui.theme.katalog.*
 import com.l0124005.sewain_rpl.ui.theme.landing.LandingActivity
 import com.l0124005.sewain_rpl.ui.theme.profil.ProfileScreen
+import com.l0124005.sewain_rpl.ui.theme.profil.EditProfileScreen
+import com.l0124005.sewain_rpl.ui.theme.profil.MyRentalScreen
 import com.l0124005.sewain_rpl.ui.theme.transaksi.RiwayatTransaksiScreen
 import com.l0124005.sewain_rpl.ui.theme.transaksi.DetailTransaksiScreen
 import com.l0124005.sewain_rpl.ui.theme.keranjang.KeranjangScreen
@@ -97,7 +99,7 @@ class MainActivity : ComponentActivity() {
 }
 
 enum class Screen {
-    Home, Rental, Keranjang, MyKatalog, Profile, RiwayatTransaksi, AddItem, EditItem, DetailTransaksi, Pembayaran, MyRental, ProductDetail
+    Home, Rental, Keranjang, MyKatalog, Profile, EditProfile, RiwayatTransaksi, AddItem, EditItem, DetailTransaksi, Pembayaran, MyRental, ProductDetail
 }
 
 @Composable
@@ -176,7 +178,8 @@ fun MainContainer(
                 Screen.AddItem -> AddItemScreen(
                     viewModel = katalogViewModel,
                     token = token,
-                    onBack = { currentScreen = Screen.MyKatalog }
+                    onBack = { currentScreen = Screen.MyKatalog },
+                    onSuccess = { currentScreen = Screen.MyKatalog }
                 )
                 Screen.EditItem -> selectedBarangForEdit?.let {
                     EditItemScreen(
@@ -201,11 +204,17 @@ fun MainContainer(
                     viewModel = profileViewModel,
                     token = token,
                     onLogout = onLogout,
-                    onEditProfile = { /* TODO */ },
-                    onMyRentalClick = { /* TODO */ },
-                    onRentalOwnerClick = { /* TODO */ },
+                    onEditProfile = { currentScreen = Screen.EditProfile },
+                    onMyRentalClick = { currentScreen = Screen.MyRental },
+                    onRentalOwnerClick = { currentScreen = Screen.MyKatalog },
                     onTransaksiClick = { currentScreen = Screen.RiwayatTransaksi },
                     onRiwayatTransaksiClick = { currentScreen = Screen.RiwayatTransaksi }
+                )
+                Screen.EditProfile -> EditProfileScreen(
+                    viewModel = profileViewModel,
+                    token = token,
+                    onBack = { currentScreen = Screen.Profile },
+                    onSuccess = { currentScreen = Screen.Profile }
                 )
                 Screen.RiwayatTransaksi -> RiwayatTransaksiScreen(
                     viewModel = transaksiViewModel,
@@ -228,18 +237,15 @@ fun MainContainer(
                         }
                     )
                 }
-                Screen.MyRental -> {
-                    // Fallback sementara jika MyRental dipilih
-                    HomeScreenContent(
-                        katalogViewModel = katalogViewModel,
-                        onLogout = onLogout,
-                        onSeeAllRentals = { currentScreen = Screen.Rental },
-                        onProductClick = { id ->
-                            selectedProductId = id
-                            currentScreen = Screen.ProductDetail
-                        }
-                    )
-                }
+                Screen.MyRental -> MyRentalScreen(
+                    viewModel = transaksiViewModel,
+                    token = token,
+                    onBack = { currentScreen = Screen.Profile },
+                    onDetailClick = { id ->
+                        selectedTransaksiId = id
+                        currentScreen = Screen.DetailTransaksi
+                    }
+                )
             }
         }
     }

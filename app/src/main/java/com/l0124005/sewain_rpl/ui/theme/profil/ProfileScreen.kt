@@ -28,7 +28,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.l0124005.sewain_rpl.network.ApiClient
 import com.l0124005.sewain_rpl.network.UserData
-import com.l0124005.sewain_rpl.ui.theme.katalog.formatRupiah
+import com.l0124005.sewain_rpl.utils.CurrencyUtils
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.viewmodel.ProfileViewModel
 
@@ -39,7 +39,12 @@ private val InputBlue = Color(0xFF8AA9BD)
 fun ProfileScreen(
     viewModel: ProfileViewModel,
     token: String,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onEditProfile: () -> Unit,
+    onMyRentalClick: () -> Unit,
+    onRentalOwnerClick: () -> Unit,
+    onTransaksiClick: () -> Unit,
+    onRiwayatTransaksiClick: () -> Unit
 ) {
     val profileState by viewModel.profile.observeAsState()
 
@@ -65,9 +70,19 @@ fun ProfileScreen(
                     val user = profileState?.data?.data
                     if (user != null) {
                         Column(modifier = Modifier.fillMaxSize()) {
-                            ProfileHeaderSection(user.name, user.foto_profil)
+                            ProfileHeaderSection(
+                                name = user.name,
+                                foto = user.foto_profil,
+                                onMyRentalClick = onMyRentalClick,
+                                onRentalOwnerClick = onRentalOwnerClick
+                            )
                             Spacer(modifier = Modifier.height(16.dp))
-                            ProfileFormSection(user, onLogout)
+                            ProfileFormSection(
+                                user = user,
+                                onLogout = onLogout,
+                                onEditProfile = onEditProfile,
+                                onRiwayatTransaksiClick = onRiwayatTransaksiClick
+                            )
                         }
                     }
                 }
@@ -85,7 +100,12 @@ fun ProfileScreen(
 }
 
 @Composable
-private fun ProfileHeaderSection(name: String, foto: String?) {
+private fun ProfileHeaderSection(
+    name: String,
+    foto: String?,
+    onMyRentalClick: () -> Unit,
+    onRentalOwnerClick: () -> Unit
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -110,20 +130,22 @@ private fun ProfileHeaderSection(name: String, foto: String?) {
             
             // Sidebar Menu Mockup
             Column(horizontalAlignment = Alignment.End) {
-                HeaderMenuItem(Icons.Default.GridView, "Profile", true)
-                HeaderMenuItem(Icons.AutoMirrored.Filled.ListAlt, "My Rentals")
-                HeaderMenuItem(Icons.Default.Storefront, "Rentals Owner")
-                HeaderMenuItem(Icons.Default.AccountBalanceWallet, "My Wallet")
+                HeaderMenuItem(Icons.Default.GridView, "Profile", true, {})
+                HeaderMenuItem(Icons.AutoMirrored.Filled.ListAlt, "My Rentals", false, onMyRentalClick)
+                HeaderMenuItem(Icons.Default.Storefront, "Rentals Owner", false, onRentalOwnerClick)
+                HeaderMenuItem(Icons.Default.AccountBalanceWallet, "My Wallet", false, {})
             }
         }
     }
 }
 
 @Composable
-private fun HeaderMenuItem(icon: ImageVector, label: String, isSelected: Boolean = false) {
+private fun HeaderMenuItem(icon: ImageVector, label: String, isSelected: Boolean = false, onClick: () -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.padding(vertical = 2.dp)
+        modifier = Modifier
+            .padding(vertical = 2.dp)
+            .clickable { onClick() }
     ) {
         Icon(icon, null, Modifier.size(12.dp), tint = if (isSelected) Color.White else Color.Gray)
         Spacer(Modifier.width(6.dp))
@@ -132,7 +154,12 @@ private fun HeaderMenuItem(icon: ImageVector, label: String, isSelected: Boolean
 }
 
 @Composable
-private fun ProfileFormSection(user: UserData, onLogout: () -> Unit) {
+private fun ProfileFormSection(
+    user: UserData,
+    onLogout: () -> Unit,
+    onEditProfile: () -> Unit,
+    onRiwayatTransaksiClick: () -> Unit
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -190,7 +217,7 @@ private fun ProfileFormSection(user: UserData, onLogout: () -> Unit) {
                 Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Saldo", color = Color.White, fontSize = 12.sp)
-                        Text("Rp ${formatRupiah(user.saldo)}", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Black)
+                        Text("Rp ${CurrencyUtils.formatRupiah(user.saldo)}", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Black)
                     }
                     Box(modifier = Modifier.size(32.dp).background(Color.White.copy(alpha = 0.1f), CircleShape), contentAlignment = Alignment.Center) {
                         Icon(Icons.Default.AttachMoney, null, tint = Color.White, modifier = Modifier.size(20.dp))
@@ -206,12 +233,12 @@ private fun ProfileFormSection(user: UserData, onLogout: () -> Unit) {
             Spacer(modifier = Modifier.height(40.dp))
             
             Button(
-                onClick = { /* TODO: Update Profile */ },
+                onClick = { onEditProfile() },
                 modifier = Modifier.fillMaxWidth().height(48.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = InputBlue),
                 shape = RoundedCornerShape(24.dp)
             ) {
-                Text("SAVE", fontWeight = FontWeight.Bold, color = DarkNavy)
+                Text("EDIT PROFILE", fontWeight = FontWeight.Bold, color = DarkNavy)
             }
             
             Spacer(modifier = Modifier.height(16.dp))
