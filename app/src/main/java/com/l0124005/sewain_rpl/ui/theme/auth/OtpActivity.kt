@@ -6,57 +6,59 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
-import androidx.compose.ui.*
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.*
-import androidx.compose.ui.graphics.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.text.*
-import androidx.compose.ui.text.font.*
-import androidx.compose.ui.text.input.*
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.l0124005.sewain_rpl.repository.AuthRepository
 import com.l0124005.sewain_rpl.ui.theme.Sewain_rplTheme
 import com.l0124005.sewain_rpl.ui.theme.landing.VidalokaFont
 import com.l0124005.sewain_rpl.ui.theme.landing.VolkhovFont
+import com.l0124005.sewain_rpl.R
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.utils.SessionManager
 import com.l0124005.sewain_rpl.viewmodel.AuthViewModel
 import com.l0124005.sewain_rpl.viewmodel.AuthViewModelFactory
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 
-// ── Warna konsisten dengan LoginActivity ──────────────────────
-private val AuthBlue          = Color(0xFF6A87A1)
-private val AuthBlack         = Color(0xFF000000)
-private val AuthLogoDark      = Color(0xFF484848)
-private val AuthTextMuted     = Color(0xFF838383)
-private val AuthInputBorder   = Color(0xFF9D9D9D)
-private val OtpBoxBg          = Color(0xFFE8E8E8)
-private val OtpBoxFocusBg     = Color(0xFFD8E4ED)
+// Deklarasi font lokal agar tidak konflik
+private val LocalMonsterratFont = FontFamily(Font(R.font.montserrat))
 
-// Gradient sama persis dengan LoginActivity
-private val AuthBackgroundGradient = Brush.verticalGradient(
+// Warna sama seperti Login/Register, diambil dari auth.css
+private val AuthBlue = Color(0xFF6A87A1)
+private val AuthBlack = Color(0xFF000000)
+private val AuthBackgroundGradientOtp = Brush.verticalGradient(
     colors = listOf(
         Color(0xFFE0E0E0),
         Color(0xFF6A87A1),
         Color(0xFF21394F)
     )
 )
+private val AuthTextMutedOtp = Color(0xFF838383)
+private val AuthLogoDark = Color(0xFF484848)
 
-// ============================================================
-// ACTIVITY
-// ============================================================
 class OtpActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -64,11 +66,11 @@ class OtpActivity : ComponentActivity() {
 
         setContent {
             Sewain_rplTheme {
-                val factory   = AuthViewModelFactory(AuthRepository(SessionManager(this)))
-                val viewModel : AuthViewModel = viewModel(factory = factory)
+                val factory = AuthViewModelFactory(AuthRepository(SessionManager(this)))
+                val viewModel: AuthViewModel = viewModel(factory = factory)
 
                 OtpScreen(
-                    email     = email,
+                    email = email,
                     viewModel = viewModel,
                     onVerificationSuccess = {
                         val intent = Intent(this, LoginActivity::class.java)
@@ -81,9 +83,6 @@ class OtpActivity : ComponentActivity() {
     }
 }
 
-// ============================================================
-// STATEFUL WRAPPER
-// ============================================================
 @Composable
 fun OtpScreen(
     email: String,
@@ -91,7 +90,7 @@ fun OtpScreen(
     onVerificationSuccess: () -> Unit
 ) {
     val otpState by viewModel.otpState.observeAsState()
-    val context  = LocalContext.current
+    val context = LocalContext.current
 
     LaunchedEffect(otpState) {
         when (otpState) {
@@ -107,16 +106,13 @@ fun OtpScreen(
     }
 
     OtpScreenContent(
-        email       = email,
-        otpState    = otpState,
-        onVerify    = { code -> viewModel.verifyOtp(email, code) },
+        email = email,
+        otpState = otpState,
+        onVerify = { code -> viewModel.verifyOtp(email, code) },
         onResendOtp = { viewModel.resendOtp(email) }
     )
 }
 
-// ============================================================
-// STATELESS UI — tema sesuai LoginActivity
-// ============================================================
 @Composable
 fun OtpScreenContent(
     email: String,
@@ -124,20 +120,24 @@ fun OtpScreenContent(
     onVerify: (String) -> Unit,
     onResendOtp: () -> Unit
 ) {
-    // 4 kotak OTP terpisah, sama seperti HTML (id otp1–otp4)
-    val digits       = remember { mutableStateListOf("", "", "", "") }
-    val focusRequests = remember { List(4) { FocusRequester() } }
-    val focusManager  = LocalFocusManager.current
-    val context       = LocalContext.current
+    // 4 digit OTP terpisah, sama seperti .otp-row di web
+    var otp1 by remember { mutableStateOf("") }
+    var otp2 by remember { mutableStateOf("") }
+    var otp3 by remember { mutableStateOf("") }
+    var otp4 by remember { mutableStateOf("") }
+    val context = LocalContext.current
 
-    // Gradient background — sama dengan Login
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    val focusRequester2 = remember { androidx.compose.ui.focus.FocusRequester() }
+    val focusRequester3 = remember { androidx.compose.ui.focus.FocusRequester() }
+    val focusRequester4 = remember { androidx.compose.ui.focus.FocusRequester() }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(AuthBackgroundGradient),
+            .background(AuthBackgroundGradientOtp),
         contentAlignment = Alignment.Center
     ) {
-        // Card putih di tengah — sama struktur dengan Login
         Column(
             modifier = Modifier
                 .fillMaxWidth(0.92f)
@@ -145,253 +145,211 @@ fun OtpScreenContent(
                 .padding(horizontal = 28.dp, vertical = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
-            // ── Logo "SEWAIN" ─────────────────────────────────────
+            // Logo "SEWAIN" — sama seperti landing page, login, register
             Text(
                 text = buildAnnotatedString {
-                    withStyle(SpanStyle(color = AuthLogoDark)) { append("SEWA") }
-                    withStyle(SpanStyle(color = AuthBlue))     { append("IN")   }
+                    withStyle(style = SpanStyle(color = AuthLogoDark)) { append("SEWA") }
+                    withStyle(style = SpanStyle(color = AuthBlue)) { append("IN") }
                 },
-                fontSize   = 30.sp,
+                fontSize = 30.sp,
                 fontFamily = VidalokaFont,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp
             )
 
-            Spacer(Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            // ── Subtitle "Sign In To SEWAIN" — sama dengan Login ──
-            Text(
-                text = buildAnnotatedString {
-                    withStyle(SpanStyle(fontFamily = VolkhovFont, color = AuthBlack)) {
-                        append("Sign In To ")
-                    }
-                    withStyle(SpanStyle(fontFamily = VidalokaFont, color = AuthLogoDark)) {
-                        append("SEWA")
-                    }
-                    withStyle(SpanStyle(fontFamily = VidalokaFont, color = AuthBlue)) {
-                        append("IN")
-                    }
-                },
-                fontSize   = 15.sp,
-                fontWeight = FontWeight.Bold
-            )
-
-            Spacer(Modifier.height(24.dp))
-
-            // ── Ikon email (circle biru) ──────────────────────────
+            // Ikon email bulat — meniru .email-icon-wrap .icon-circle
             Box(
                 modifier = Modifier
                     .size(52.dp)
-                    .clip(androidx.compose.foundation.shape.CircleShape)
-                    .background(AuthBlue),
+                    .background(AuthBlue, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = androidx.compose.material.icons.Icons.Outlined.MarkEmailUnread,
-                    contentDescription = "Email",
-                    tint     = Color.White,
+                    imageVector = Icons.Filled.Email,
+                    contentDescription = null,
+                    tint = Color.White,
                     modifier = Modifier.size(26.dp)
                 )
             }
 
-            Spacer(Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // ── Judul ─────────────────────────────────────────────
+            // Judul — meniru .auth-title, font Volkhov
             Text(
-                text       = "Enter The Confirmation Code",
+                text = "Enter The Confirmation Code",
+                fontSize = 15.sp,
                 fontFamily = VolkhovFont,
                 fontWeight = FontWeight.Bold,
-                fontSize   = 15.sp,
-                color      = AuthBlack,
-                textAlign  = TextAlign.Center
+                color = AuthBlack,
+                textAlign = TextAlign.Center
             )
 
-            Spacer(Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
-            // ── Email hint ────────────────────────────────────────
+            // Subtitle — meniru .auth-subtitle
             Text(
-                text       = "We sent a 4-digit code to",
-                fontFamily = MonsterratFont,
-                fontSize   = 10.sp,
-                color      = AuthTextMuted,
-                textAlign  = TextAlign.Center
-            )
-            Text(
-                text       = email,
-                fontFamily = MonsterratFont,
-                fontWeight = FontWeight.Bold,
-                fontSize   = 11.sp,
-                color      = AuthBlue,
-                textAlign  = TextAlign.Center
+                text = "We sent a 4-digit code to\n$email",
+                fontSize = 11.sp,
+                fontFamily = LocalMonsterratFont,
+                fontWeight = FontWeight.SemiBold,
+                color = AuthTextMutedOtp,
+                textAlign = TextAlign.Center,
+                lineHeight = 16.sp
             )
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-            // ── 4 kotak OTP ───────────────────────────────────────
+            // 4 kotak OTP — meniru .otp-row .otp-input
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment     = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                digits.forEachIndexed { i, value ->
-                    OtpBox(
-                        value          = value,
-                        focusRequester = focusRequests[i],
-                        onValueChange  = { newVal ->
-                            // Hanya terima 1 digit angka
-                            val clean = newVal.filter { it.isDigit() }.take(1)
-                            digits[i] = clean
-                            // Auto-jump ke kotak berikutnya
-                            if (clean.isNotEmpty() && i < 3) {
-                                focusRequests[i + 1].requestFocus()
-                            }
-                            // Bila semua terisi, tutup keyboard
-                            if (digits.all { it.isNotEmpty() }) {
-                                focusManager.clearFocus()
-                            }
-                        },
-                        onBackspace = {
-                            // Mundur ke kotak sebelumnya saat backspace di kotak kosong
-                            if (digits[i].isEmpty() && i > 0) {
-                                digits[i - 1] = ""
-                                focusRequests[i - 1].requestFocus()
-                            }
+                OtpDigitBox(
+                    value = otp1,
+                    onValueChange = {
+                        if (it.length <= 1) {
+                            otp1 = it
+                            if (it.isNotEmpty()) focusRequester2.requestFocus()
                         }
-                    )
-                }
+                    }
+                )
+                OtpDigitBox(
+                    value = otp2,
+                    onValueChange = {
+                        if (it.length <= 1) {
+                            otp2 = it
+                            if (it.isNotEmpty()) focusRequester3.requestFocus()
+                        }
+                    },
+                    focusRequester = focusRequester2
+                )
+                OtpDigitBox(
+                    value = otp3,
+                    onValueChange = {
+                        if (it.length <= 1) {
+                            otp3 = it
+                            if (it.isNotEmpty()) focusRequester4.requestFocus()
+                        }
+                    },
+                    focusRequester = focusRequester3
+                )
+                OtpDigitBox(
+                    value = otp4,
+                    onValueChange = { if (it.length <= 1) otp4 = it },
+                    focusRequester = focusRequester4
+                )
             }
 
-            Spacer(Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-            // ── Tombol "Verify Now" — gaya sama dengan "Sign In" ──
+            // Tombol Verify Now — solid biru, sama seperti Sign In / Create Account
             Button(
                 onClick = {
-                    val code = digits.joinToString("")
-                    if (code.length < 4) {
-                        Toast.makeText(context, "Masukkan 4 digit kode OTP!", Toast.LENGTH_SHORT).show()
-                    } else {
+                    val code = otp1 + otp2 + otp3 + otp4
+                    if (code.length == 4) {
                         onVerify(code)
+                    } else {
+                        Toast.makeText(context, "Masukkan kode OTP dengan lengkap!", Toast.LENGTH_SHORT).show()
                     }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),
-                shape  = RoundedCornerShape(10.dp),
+                shape = RoundedCornerShape(10.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = AuthBlue),
                 enabled = otpState !is Resource.Loading
             ) {
                 if (otpState is Resource.Loading) {
-                    CircularProgressIndicator(
-                        color    = Color.White,
-                        modifier = Modifier.size(22.dp)
-                    )
+                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(22.dp))
                 } else {
                     Text(
-                        text       = "Verify Now",
-                        color      = Color.White,
-                        fontSize   = 14.sp,
-                        fontFamily = MonsterratFont,
+                        text = "Verify Now",
+                        color = Color.White,
+                        fontSize = 14.sp,
+                        fontFamily = LocalMonsterratFont,
                         fontWeight = FontWeight.Bold
                     )
                 }
             }
 
-            Spacer(Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // ── Resend link ───────────────────────────────────────
-            Row(
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment     = Alignment.CenterVertically
-            ) {
-                Text(
-                    text       = "Didn't receive a code? ",
-                    fontFamily = MonsterratFont,
-                    fontSize   = 10.sp,
-                    color      = AuthBlack
-                )
-                Text(
-                    text       = "Resend Now",
-                    fontFamily = MonsterratFont,
-                    fontWeight = FontWeight.ExtraBold,
-                    fontSize   = 11.sp,
-                    color      = AuthBlue,
-                    modifier   = Modifier.clickable(onClick = onResendOtp)
-                )
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            // ── Footer ────────────────────────────────────────────
+            // "Didn't receive a code? Resend Now" — meniru .auth-links
             Text(
-                text      = "SEWAIN Terms & Conditions",
-                fontSize  = 10.sp,
-                fontFamily = MonsterratFont,
+                text = buildAnnotatedString {
+                    withStyle(style = SpanStyle(color = AuthBlack)) {
+                        append("Didn't receive a code? ")
+                    }
+                    withStyle(style = SpanStyle(color = AuthBlue, fontWeight = FontWeight.Bold)) {
+                        append("Resend Now")
+                    }
+                },
+                fontSize = 13.sp,
+                fontFamily = LocalMonsterratFont,
+                modifier = Modifier.clickable { onResendOtp() }
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Footer kecil — meniru .auth-footer
+            Text(
+                text = "SEWAIN Terms & Conditions",
+                color = AuthBlack,
                 fontWeight = FontWeight.SemiBold,
-                color     = AuthBlack,
-                textAlign = TextAlign.Center
+                fontSize = 10.5.sp,
+                fontFamily = LocalMonsterratFont
             )
         }
     }
 }
 
-// ============================================================
-// COMPOSABLE: SATU KOTAK OTP
-// Desain sama dengan CSS .otp-input (bg #E8E8E8, focus #D8E4ED + border biru)
-// ============================================================
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun OtpBox(
+private fun OtpDigitBox(
     value: String,
-    focusRequester: FocusRequester,
     onValueChange: (String) -> Unit,
-    onBackspace: () -> Unit
+    focusRequester: FocusRequester? = null
 ) {
-    val isFocused = remember { mutableStateOf(false) }
-
-    BasicTextField(
-        value     = value,
-        onValueChange = onValueChange,
-        modifier  = Modifier
-            .size(52.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(if (isFocused.value) OtpBoxFocusBg else OtpBoxBg)
-            .border(
-                width = if (isFocused.value) 2.dp else 0.dp,
-                color = if (isFocused.value) AuthBlue else Color.Transparent,
-                shape = RoundedCornerShape(8.dp)
+    Box(
+        modifier = if (focusRequester != null) {
+            Modifier.size(48.dp).focusRequester(focusRequester)
+        } else {
+            Modifier.size(48.dp)
+        },
+        contentAlignment = Alignment.Center
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier.fillMaxSize(),
+            singleLine = true,
+            shape = RoundedCornerShape(6.dp),
+            textStyle = LocalTextStyle.current.copy(
+                textAlign = TextAlign.Center,
+                fontSize = 18.sp,
+                fontFamily = LocalMonsterratFont,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF21394F)
+            ),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = Color(0xFFD8E4ED),
+                unfocusedContainerColor = Color(0xFFE8E8E8),
+                focusedBorderColor = AuthBlue,
+                unfocusedBorderColor = Color.Transparent
             )
-            .focusRequester(focusRequester)
-            .onFocusChanged { isFocused.value = it.isFocused },
-        singleLine   = true,
-        keyboardOptions = KeyboardOptions(
-            keyboardType = KeyboardType.NumberPassword,
-            imeAction    = ImeAction.Next
-        ),
-        textStyle = TextStyle(
-            fontFamily  = MonsterratFont,
-            fontWeight  = FontWeight.Bold,
-            fontSize    = 20.sp,
-            color       = Color(0xFF333333),
-            textAlign   = TextAlign.Center
-        ),
-        decorationBox = { innerTextField ->
-            Box(contentAlignment = Alignment.Center) {
-                innerTextField()
-            }
-        }
-    )
+        )
+    }
 }
 
-// ============================================================
-// PREVIEW
-// ============================================================
 @Preview(showBackground = true)
 @Composable
 fun OtpScreenPreview() {
     Sewain_rplTheme {
         OtpScreenContent(
-            email       = "user@example.com",
-            otpState    = null,
-            onVerify    = {},
+            email = "user@example.com",
+            otpState = null,
+            onVerify = {},
             onResendOtp = {}
         )
     }
