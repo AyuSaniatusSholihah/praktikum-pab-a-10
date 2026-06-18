@@ -8,6 +8,8 @@ import com.l0124005.sewain_rpl.network.*
 import com.l0124005.sewain_rpl.repository.TransaksiRepository
 import com.l0124005.sewain_rpl.utils.Resource
 import kotlinx.coroutines.launch
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
 
 class TransaksiViewModel(private val repository: TransaksiRepository) : ViewModel() {
 
@@ -26,6 +28,29 @@ class TransaksiViewModel(private val repository: TransaksiRepository) : ViewMode
     private val _kembalikanState = MutableLiveData<Resource<KembalikanResponse>>()
     val kembalikanState: LiveData<Resource<KembalikanResponse>> = _kembalikanState
 
+    // Owner Side
+    private val _ownerDashboard = MutableLiveData<Resource<OwnerDashboardResponse>>()
+    val ownerDashboard: LiveData<Resource<OwnerDashboardResponse>> = _ownerDashboard
+
+    private val _verifikasiState = MutableLiveData<Resource<VerifikasiPengembalianResponse>>()
+    val verifikasiState: LiveData<Resource<VerifikasiPengembalianResponse>> = _verifikasiState
+
+    fun getRiwayatTransaksi(token: String) {
+        viewModelScope.launch {
+            repository.getRiwayatTransaksi(token).collect {
+                _transaksiList.value = it
+            }
+        }
+    }
+
+    fun getDetailTransaksi(token: String, id: Int) {
+        viewModelScope.launch {
+            repository.getDetailTransaksi(token, id).collect {
+                _transaksiDetail.value = it
+            }
+        }
+    }
+
     fun checkout(token: String) {
         viewModelScope.launch {
             repository.checkout(token).collect {
@@ -34,34 +59,41 @@ class TransaksiViewModel(private val repository: TransaksiRepository) : ViewMode
         }
     }
 
-    fun bayarMassal(token: String, ids: List<Int>, total: Double, method: String) {
+    fun bayar(token: String, request: BayarRequest) {
         viewModelScope.launch {
-            repository.bayar(token, BayarRequest(ids, total, method)).collect {
+            repository.bayar(token, request).collect {
                 _pembayaranState.value = it
             }
         }
     }
 
-    fun getTransaksi(token: String) {
+    fun kembalikanBarang(
+        token: String,
+        id: Int,
+        fotoBukti: MultipartBody.Part,
+        rating: RequestBody,
+        komentar: RequestBody? = null
+    ) {
         viewModelScope.launch {
-            repository.getTransaksi(token).collect {
-                _transaksiList.value = it
-            }
-        }
-    }
-
-    fun getTransaksiDetail(token: String, id: Int) {
-        viewModelScope.launch {
-            repository.getTransaksiDetail(token, id).collect {
-                _transaksiDetail.value = it
-            }
-        }
-    }
-
-    fun kembalikanBarang(token: String, id: Int) {
-        viewModelScope.launch {
-            repository.kembalikanBarang(token, id).collect {
+            repository.kembalikanBarang(token, id, fotoBukti, rating, komentar).collect {
                 _kembalikanState.value = it
+            }
+        }
+    }
+
+    // Owner Methods
+    fun getOwnerDashboard(token: String) {
+        viewModelScope.launch {
+            repository.getOwnerDashboard(token).collect {
+                _ownerDashboard.value = it
+            }
+        }
+    }
+
+    fun verifikasiPengembalian(token: String, id: Int, request: VerifikasiPengembalianRequest) {
+        viewModelScope.launch {
+            repository.verifikasiPengembalian(token, id, request).collect {
+                _verifikasiState.value = it
             }
         }
     }

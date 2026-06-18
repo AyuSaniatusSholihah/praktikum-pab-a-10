@@ -1,12 +1,14 @@
 package com.l0124005.sewain_rpl.network
 
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
 import retrofit2.Response
 import retrofit2.http.*
 
 interface ApiService {
 
     // ═══════════════════════════════════════
-    // AUTHENTIKASI
+    // AUTHENTIKASI (Tanpa Google Login)
     // ═══════════════════════════════════════
 
     @POST("register")
@@ -14,25 +16,46 @@ interface ApiService {
         @Body request: RegisterRequest
     ): Response<RegisterResponse>
 
-    @POST("login")
-    suspend fun login(
-        @Body request: LoginRequest
-    ): Response<LoginResponse>
-
     @POST("verify-otp")
     suspend fun verifyOtp(
         @Body request: VerifyOtpRequest
     ): Response<LoginResponse>
 
+    @POST("login")
+    suspend fun login(
+        @Body request: LoginRequest
+    ): Response<LoginResponse>
+
     @POST("resend-otp")
     suspend fun resendOtp(
         @Body request: ResendOtpRequest
-    ): Response<LogoutResponse>
+    ): Response<GenericResponse>
 
     @POST("logout")
     suspend fun logout(
         @Header("Authorization") token: String
     ): Response<LogoutResponse>
+
+
+    // ═══════════════════════════════════════
+    // PROFIL
+    // ═══════════════════════════════════════
+
+    @GET("profile")
+    suspend fun getProfile(
+        @Header("Authorization") token: String
+    ): Response<ProfileResponse>
+
+    @Multipart
+    @POST("profile")
+    suspend fun updateProfile(
+        @Header("Authorization") token: String,
+        @Part("name") name: RequestBody? = null,
+        @Part("username") username: RequestBody? = null,
+        @Part("phone_number") phoneNumber: RequestBody? = null,
+        @Part("alamat") alamat: RequestBody? = null,
+        @Part foto_profil: MultipartBody.Part? = null
+    ): Response<ProfileResponse>
 
 
     // ═══════════════════════════════════════
@@ -42,14 +65,62 @@ interface ApiService {
     @GET("katalog-publik")
     suspend fun getKatalogPublik(
         @Query("search") search: String? = null,
-        @Query("kategori") kategori: String? = null
+        @Query("kategori_id") kategoriId: Int? = null,
+        @Query("lokasi") lokasi: String? = null,
+        @Query("min_harga") minHarga: Double? = null,
+        @Query("max_harga") maxHarga: Double? = null
+    ): Response<KatalogListResponse>
+
+    @GET("katalog")
+    suspend fun getMyKatalog(
+        @Header("Authorization") token: String
     ): Response<KatalogListResponse>
 
     @GET("katalog/{id}")
-    suspend fun getKatalogDetail(
+    suspend fun getMyKatalogDetail(
         @Header("Authorization") token: String,
         @Path("id") id: Int
-    ): Response<CatalogResponse>
+    ): Response<KatalogDetailResponse>
+
+    @Multipart
+    @POST("katalog")
+    suspend fun createKatalog(
+        @Header("Authorization") token: String,
+        @Part("kategori_id") kategoriId: RequestBody,
+        @Part("nama_barang") namaBarang: RequestBody,
+        @Part("deskripsi") deskripsi: RequestBody?,
+        @Part("harga_sewa") hargaSewa: RequestBody,
+        @Part("harga_jaminan") hargaJaminan: RequestBody,
+        @Part("harga_denda_perjam") hargaDendaPerjam: RequestBody,
+        @Part("stok") stok: RequestBody,
+        @Part("lokasi") lokasi: RequestBody,
+        @Part foto_barang: MultipartBody.Part?,
+        @Part("status") status: RequestBody? = null
+    ): Response<KatalogCrudResponse>
+
+    @Multipart
+    @POST("katalog/{id}")
+    suspend fun updateKatalog(
+        @Header("Authorization") token: String,
+        @Path("id") id: Int,
+        @Query("_method") method: String = "PUT",
+        @Part("kategori_id") kategoriId: RequestBody? = null,
+        @Part("nama_barang") namaBarang: RequestBody? = null,
+        @Part("deskripsi") deskripsi: RequestBody? = null,
+        @Part("harga_sewa") hargaSewa: RequestBody? = null,
+        @Part("harga_jaminan") hargaJaminan: RequestBody? = null,
+        @Part("harga_denda_perjam") hargaDendaPerjam: RequestBody? = null,
+        @Part("stok") stok: RequestBody? = null,
+        @Part("lokasi") lokasi: RequestBody? = null,
+        @Part foto_barang: MultipartBody.Part? = null,
+        @Part("status") status: RequestBody? = null
+    ): Response<KatalogCrudResponse>
+
+    @DELETE("katalog/{id}")
+    suspend fun deleteKatalog(
+        @Header("Authorization") token: String,
+        @Path("id") id: Int
+    ): Response<GenericResponse>
 
 
     // ═══════════════════════════════════════
@@ -67,11 +138,11 @@ interface ApiService {
         @Body request: AddToKeranjangRequest
     ): Response<KeranjangResponse>
 
-    @PUT("keranjang/items/{id}")
+    @PATCH("keranjang/items/{id}")
     suspend fun updateKeranjangItem(
         @Header("Authorization") token: String,
         @Path("id") id: Int,
-        @Body request: UpdateKeranjangItemRequest
+        @Body request: UpdateKeranjangRequest
     ): Response<KeranjangResponse>
 
     @DELETE("keranjang/items/{id}")
@@ -80,10 +151,26 @@ interface ApiService {
         @Path("id") id: Int
     ): Response<KeranjangResponse>
 
+    @DELETE("keranjang")
+    suspend fun clearKeranjang(
+        @Header("Authorization") token: String
+    ): Response<GenericResponse>
+
 
     // ═══════════════════════════════════════
-    // TRANSAKSI & PEMBAYARAN
+    // TRANSAKSI & PEMBAYARAN (Tenant / Penyewa)
     // ═══════════════════════════════════════
+
+    @GET("transaksi")
+    suspend fun getRiwayatTransaksi(
+        @Header("Authorization") token: String
+    ): Response<TransaksiListResponse>
+
+    @GET("transaksi/{id}")
+    suspend fun getDetailTransaksi(
+        @Header("Authorization") token: String,
+        @Path("id") id: Int
+    ): Response<TransaksiDetailResponse>
 
     @POST("checkout")
     suspend fun checkout(
@@ -96,42 +183,41 @@ interface ApiService {
         @Body request: BayarRequest
     ): Response<BayarResponse>
 
-    @POST("transaksi/bayar-massal")
-    suspend fun bayarMassal(
-        @Header("Authorization") token: String,
-        @Body request: BayarMassalRequest
-    ): Response<BayarMassalResponse>
-
-    @GET("transaksi")
-    suspend fun getTransaksi(
-        @Header("Authorization") token: String
-    ): Response<TransaksiListResponse>
-
-    @GET("transaksi/{id}")
-    suspend fun getTransaksiDetail(
-        @Header("Authorization") token: String,
-        @Path("id") id: Int
-    ): Response<TransaksiDetailResponse>
-
+    @Multipart
     @POST("transaksi/{id}/kembalikan")
     suspend fun kembalikanBarang(
         @Header("Authorization") token: String,
-        @Path("id") id: Int
+        @Path("id") id: Int,
+        @Part foto_buktipengembalian: MultipartBody.Part,
+        @Part("rating") rating: RequestBody,
+        @Part("komentar") komentar: RequestBody? = null
     ): Response<KembalikanResponse>
 
 
     // ═══════════════════════════════════════
-    // PROFIL
+    // TRANSAKSI & PEMBAYARAN (Owner / Pemilik)
     // ═══════════════════════════════════════
 
-    @GET("profile")
-    suspend fun getProfile(
+    @GET("owner/dashboard")
+    suspend fun getOwnerDashboard(
         @Header("Authorization") token: String
-    ): Response<ProfileResponse>
+    ): Response<OwnerDashboardResponse>
 
-    @POST("profile")
-    suspend fun updateProfile(
+    @GET("owner/transaksi/{id}")
+    suspend fun getOwnerTransaksiDetail(
         @Header("Authorization") token: String,
-        @Body request: UpdateProfileRequest
-    ): Response<ProfileResponse>
+        @Path("id") id: Int
+    ): Response<TransaksiDetailResponse>
+
+    @GET("owner/pengembalian")
+    suspend fun getOwnerListPengembalian(
+        @Header("Authorization") token: String
+    ): Response<TransaksiListResponse>
+
+    @POST("transaksi/{id}/verifikasi-pengembalian")
+    suspend fun verifikasiPengembalian(
+        @Header("Authorization") token: String,
+        @Path("id") id: Int,
+        @Body request: VerifikasiPengembalianRequest
+    ): Response<VerifikasiPengembalianResponse>
 }
