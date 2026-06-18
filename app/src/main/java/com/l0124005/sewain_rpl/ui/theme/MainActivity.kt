@@ -1,4 +1,4 @@
-package com.l0124005.sewain_rpl
+package com.l0124005.sewain_rpl.ui.theme
 
 import android.content.Intent
 import android.os.Bundle
@@ -6,7 +6,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -17,24 +16,41 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PhoneCallback
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.l0124005.sewain_rpl.ui.theme.Sewain_rplTheme
+import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import com.l0124005.sewain_rpl.network.ApiClient
+import com.l0124005.sewain_rpl.network.CatalogData
+import com.l0124005.sewain_rpl.network.KatalogListResponse
+import com.l0124005.sewain_rpl.repository.KatalogRepository
+import com.l0124005.sewain_rpl.repository.KeranjangRepository
+import com.l0124005.sewain_rpl.repository.ProfileRepository
+import com.l0124005.sewain_rpl.repository.TransaksiRepository
 import com.l0124005.sewain_rpl.ui.theme.auth.LoginActivity
+import com.l0124005.sewain_rpl.ui.theme.katalog.*
 import com.l0124005.sewain_rpl.ui.theme.landing.LandingActivity
-import com.l0124005.sewain_rpl.ui.theme.keranjang.KeranjangActivity
+import com.l0124005.sewain_rpl.ui.theme.profil.ProfileScreen
+import com.l0124005.sewain_rpl.ui.theme.transaksi.RiwayatTransaksiScreen
+import com.l0124005.sewain_rpl.ui.theme.transaksi.DetailTransaksiScreen
+import com.l0124005.sewain_rpl.ui.theme.keranjang.KeranjangScreen
+import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.utils.SessionManager
+import com.l0124005.sewain_rpl.utils.CurrencyUtils
+import com.l0124005.sewain_rpl.viewmodel.*
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -53,17 +69,26 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             Sewain_rplTheme {
-                HomeScreen(
+                val token = sessionManager.getToken()
+
+                // ViewModels
+                val katalogViewModel: KatalogViewModel = viewModel(factory = KatalogViewModelFactory(KatalogRepository()))
+                val profileViewModel: ProfileViewModel = viewModel(factory = ProfileViewModelFactory(ProfileRepository()))
+                val keranjangViewModel: KeranjangViewModel = viewModel(factory = KeranjangViewModelFactory(KeranjangRepository()))
+                val transaksiViewModel: TransaksiViewModel = viewModel(factory = TransaksiViewModelFactory(TransaksiRepository()))
+
+                MainContainer(
+                    token = token,
+                    katalogViewModel = katalogViewModel,
+                    profileViewModel = profileViewModel,
+                    keranjangViewModel = keranjangViewModel,
+                    transaksiViewModel = transaksiViewModel,
                     onLogout = {
                         sessionManager.clearSession()
                         val intent = Intent(this@MainActivity, LoginActivity::class.java)
                         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                         startActivity(intent)
                         finish()
-                    },
-                    onNavigateToCart = {
-                        val intent = Intent(this@MainActivity, KeranjangActivity::class.java)
-                        startActivity(intent)
                     }
                 )
             }
@@ -71,66 +96,190 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private val PrimaryBlue = Color(0xFF285473)
-private val AccentBlue = Color(0xFF5D8AA8)
-private val BorderGray = Color(0xFFE0E0E0)
-private val ButtonGray = Color(0xFF6B8B9E)
+enum class Screen {
+    Home, Rental, Keranjang, MyKatalog, Profile, RiwayatTransaksi, AddItem, EditItem, DetailTransaksi, Pembayaran, MyRental, ProductDetail
+}
 
 @Composable
-fun HomeScreen(onLogout: () -> Unit, onNavigateToCart: () -> Unit) {
+fun MainContainer(
+    token: String,
+    katalogViewModel: KatalogViewModel,
+    profileViewModel: ProfileViewModel,
+    keranjangViewModel: KeranjangViewModel,
+    transaksiViewModel: TransaksiViewModel,
+    onLogout: () -> Unit
+) {
+    var currentScreen by remember { mutableStateOf(Screen.Home) }
+    var selectedBarangForEdit by remember { mutableStateOf<CatalogData?>(null) }
+    var selectedProductId by remember { mutableStateOf<Int?>(null) }
+    var selectedTransaksiId by remember { mutableStateOf<Int?>(null) }
+    var selectedTransaksiIdsForPayment by remember { mutableStateOf<List<Int>>(emptyList()) }
+
     Scaffold(
-        containerColor = Color.White,
-        topBar = { HomeTopBar(onLogout = onLogout) },
-        bottomBar = { HomeBottomNavigation() },
-        floatingActionButton = {
-            Column(horizontalAlignment = Alignment.End) {
-                FloatingActionButton(
-                    onClick = onNavigateToCart,
-                    containerColor = PrimaryBlue,
-                    contentColor = Color.White,
-                    shape = CircleShape,
-                    modifier = Modifier.size(48.dp)
-                ) {
-                    Icon(Icons.Default.ShoppingCart, contentDescription = "Cart")
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-                FloatingActionButton(
-                    onClick = { /* TODO */ },
-                    containerColor = Color.White,
-                    contentColor = PrimaryBlue,
-                    shape = CircleShape,
-                    modifier = Modifier.size(40.dp).border(1.dp, BorderGray, CircleShape)
-                ) {
-                    Icon(Icons.Default.ArrowUpward, contentDescription = "Top")
-                }
+        bottomBar = {
+            if (currentScreen in listOf(Screen.Home, Screen.Rental, Screen.Keranjang, Screen.MyKatalog, Screen.Profile)) {
+                HomeBottomNavigation(
+                    currentScreen = currentScreen,
+                    onScreenSelected = { currentScreen = it }
+                )
             }
         }
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
-        ) {
-            HeroCollage()
-            Spacer(modifier = Modifier.height(20.dp))
-            SearchCard()
-            Spacer(modifier = Modifier.height(28.dp))
-            BrandLogosSection()
-            Spacer(modifier = Modifier.height(32.dp))
-            AboutUsSection()
-            Spacer(modifier = Modifier.height(40.dp))
-            FeaturesSection()
-            Spacer(modifier = Modifier.height(48.dp))
-            CategoriesSection()
-            Spacer(modifier = Modifier.height(48.dp))
-            RentItemsSection()
-            Spacer(modifier = Modifier.height(48.dp))
-            TestimonialsSection()
-            Spacer(modifier = Modifier.height(100.dp))
+        Box(modifier = Modifier.padding(innerPadding)) {
+            when (currentScreen) {
+                Screen.Home -> HomeScreenContent(
+                    katalogViewModel = katalogViewModel,
+                    onLogout = onLogout,
+                    onSeeAllRentals = { currentScreen = Screen.Rental },
+                    onProductClick = { id ->
+                        selectedProductId = id
+                        currentScreen = Screen.ProductDetail
+                    }
+                )
+                Screen.Rental -> RentalsScreen(
+                    viewModel = katalogViewModel,
+                    keranjangViewModel = keranjangViewModel,
+                    token = token,
+                    onItemClick = { barang ->
+                        selectedProductId = barang.id
+                        currentScreen = Screen.ProductDetail
+                    }
+                )
+                Screen.Keranjang -> KeranjangScreen(
+                    token = token,
+                    viewModel = keranjangViewModel,
+                    onBack = { currentScreen = Screen.Home },
+                    onCheckout = {
+                        // Logika checkout bisa diarahkan ke pembayaran jika perlu
+                        // Untuk sekarang tetap di keranjang atau ke riwayat
+                        currentScreen = Screen.RiwayatTransaksi
+                    }
+                )
+                Screen.ProductDetail -> selectedProductId?.let { id ->
+                    DetailProdukScreen(
+                        productId = id,
+                        token = token,
+                        katalogViewModel = katalogViewModel,
+                        keranjangViewModel = keranjangViewModel,
+                        onBack = { currentScreen = Screen.Rental }
+                    )
+                }
+                Screen.Pembayaran -> {
+                    com.l0124005.sewain_rpl.ui.theme.transaksi.PembayaranScreen(
+                        viewModel = transaksiViewModel,
+                        token = token,
+                        transaksiIds = selectedTransaksiIdsForPayment,
+                        onBack = { currentScreen = Screen.DetailTransaksi },
+                        onPaymentSuccess = {
+                            currentScreen = Screen.RiwayatTransaksi
+                        }
+                    )
+                }
+                Screen.AddItem -> AddItemScreen(
+                    viewModel = katalogViewModel,
+                    token = token,
+                    onBack = { currentScreen = Screen.MyKatalog }
+                )
+                Screen.EditItem -> selectedBarangForEdit?.let {
+                    EditItemScreen(
+                        viewModel = katalogViewModel,
+                        token = token,
+                        itemId = it.id,
+                        onBack = { currentScreen = Screen.MyKatalog },
+                        onSuccess = { currentScreen = Screen.MyKatalog }
+                    )
+                }
+                Screen.MyKatalog -> MyKatalogScreen(
+                    viewModel = katalogViewModel,
+                    token = token,
+                    onBack = { currentScreen = Screen.Home },
+                    onAddItem = { currentScreen = Screen.AddItem },
+                    onEditItem = { barang ->
+                        selectedBarangForEdit = barang
+                        currentScreen = Screen.EditItem
+                    }
+                )
+                Screen.Profile -> ProfileScreen(
+                    viewModel = profileViewModel,
+                    token = token,
+                    onLogout = onLogout,
+                    onEditProfile = { /* TODO */ }
+                )
+                Screen.RiwayatTransaksi -> RiwayatTransaksiScreen(
+                    viewModel = transaksiViewModel,
+                    token = token,
+                    onBack = { currentScreen = Screen.Profile },
+                    onDetailClick = { id ->
+                        selectedTransaksiId = id
+                        currentScreen = Screen.DetailTransaksi
+                    }
+                )
+                Screen.DetailTransaksi -> selectedTransaksiId?.let { id ->
+                    DetailTransaksiScreen(
+                        transaksiId = id,
+                        token = token,
+                        viewModel = transaksiViewModel,
+                        onBack = { currentScreen = Screen.RiwayatTransaksi },
+                        onPayClick = { ids ->
+                            selectedTransaksiIdsForPayment = ids
+                            currentScreen = Screen.Pembayaran
+                        }
+                    )
+                }
+                Screen.MyRental -> {
+                    // Fallback sementara jika MyRental dipilih
+                    HomeScreenContent(
+                        katalogViewModel = katalogViewModel,
+                        onLogout = onLogout,
+                        onSeeAllRentals = { currentScreen = Screen.Rental },
+                        onProductClick = { id ->
+                            selectedProductId = id
+                            currentScreen = Screen.ProductDetail
+                        }
+                    )
+                }
+            }
         }
     }
 }
+
+@Composable
+fun HomeScreenContent(
+    katalogViewModel: KatalogViewModel,
+    onLogout: () -> Unit,
+    onSeeAllRentals: () -> Unit,
+    onProductClick: (Int) -> Unit
+) {
+    val katalogState by katalogViewModel.katalogPublik.observeAsState(Resource.Loading())
+
+    LaunchedEffect(Unit) {
+        katalogViewModel.getKatalogPublik(kategoriId = null)
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White)
+            .verticalScroll(rememberScrollState())
+    ) {
+        HomeTopBar(onLogout = onLogout)
+        HeroCollage(onSeeAllRentals)
+        Spacer(modifier = Modifier.height(20.dp))
+        SearchCard()
+        Spacer(modifier = Modifier.height(28.dp))
+        BrandLogosSection()
+        Spacer(modifier = Modifier.height(32.dp))
+        AboutUsSection()
+        Spacer(modifier = Modifier.height(48.dp))
+        CategoriesSection()
+        Spacer(modifier = Modifier.height(48.dp))
+        RentItemsSection(katalogState, onProductClick)
+        Spacer(modifier = Modifier.height(48.dp))
+        TestimonialsSection()
+        Spacer(modifier = Modifier.height(100.dp))
+    }
+}
+
 
 @Composable
 private fun HomeTopBar(onLogout: () -> Unit) {
@@ -171,7 +320,7 @@ private fun HomeTopBar(onLogout: () -> Unit) {
 }
 
 @Composable
-private fun HeroCollage() {
+private fun HeroCollage(onRentNow: () -> Unit) {
     val gray = Color(0xFFF1F1F1)
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -184,7 +333,7 @@ private fun HeroCollage() {
                 Text("RENT", fontSize = 28.sp, fontWeight = FontWeight.Black, color = Color(0xFF4A7A9B), fontFamily = FontFamily.Serif)
                 Spacer(Modifier.height(8.dp))
                 Button(
-                    onClick = {},
+                    onClick = onRentNow,
                     colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
                     shape = RoundedCornerShape(8.dp),
                     modifier = Modifier.height(30.dp),
@@ -318,35 +467,71 @@ private fun CategoryCard(name: String, modifier: Modifier) {
 }
 
 @Composable
-private fun RentItemsSection() {
+private fun RentItemsSection(katalogState: Resource<KatalogListResponse>, onProductClick: (Int) -> Unit) {
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Text("Rent Items", fontSize = 32.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Serif)
         Spacer(modifier = Modifier.height(12.dp))
         Text("Temukan berbagai barang pilihan yang siap mendukung aktivitasmu.", fontSize = 13.sp, color = Color.Gray, textAlign = TextAlign.Center)
         Spacer(modifier = Modifier.height(32.dp))
-        
-        Card(
-            modifier = Modifier.width(180.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(2.dp)
-        ) {
-            Column(modifier = Modifier.padding(12.dp)) {
-                Box(modifier = Modifier.fillMaxWidth().height(120.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
+
+        when (katalogState) {
+            is Resource.Loading -> {
+                CircularProgressIndicator(color = PrimaryBlue)
+            }
+            is Resource.Success -> {
+                val items = katalogState.data?.data?.take(4) ?: emptyList()
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items.forEach { barang ->
+                        HomeRentalCard(barang, onProductClick, Modifier.weight(1f))
+                    }
+                }
+            }
+            is Resource.Error -> {
+                Text("Gagal memuat barang", color = Color.Red, fontSize = 12.sp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeRentalCard(barang: CatalogData, onProductClick: (Int) -> Unit, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier.clickable { onProductClick(barang.id) },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFFE0E0E0)),
+                contentAlignment = Alignment.Center
+            ) {
+                if (!barang.foto_barang.isNullOrEmpty()) {
+                    AsyncImage(
+                        model = "${ApiClient.IMAGE_BASE_URL}${barang.foto_barang}",
+                        contentDescription = barang.nama_barang,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
                     Text("No Image", color = Color.Gray, fontSize = 12.sp)
                 }
-                Spacer(modifier = Modifier.height(10.dp))
-                Text("Kamera DSLR Canon", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    repeat(5) { Icon(Icons.Default.Star, null, Modifier.size(12.dp), tint = Color(0xFFFFC107)) }
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.LocationOn, null, Modifier.size(10.dp), tint = Color.Gray)
-                    Text(" Surabaya", fontSize = 10.sp, color = Color.Gray)
-                }
-                Spacer(Modifier.height(4.dp))
-                Text("Rp 50.000/hari", fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = PrimaryBlue)
             }
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(barang.nama_barang, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.LocationOn, null, Modifier.size(10.dp), tint = Color.Gray)
+                Text(" ${barang.lokasi}", fontSize = 10.sp, color = Color.Gray)
+            }
+            Spacer(Modifier.height(4.dp))
+            Text("Rp ${CurrencyUtils.formatRupiah(barang.harga_sewa)}/hari", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = PrimaryBlue)
         }
     }
 }
@@ -375,14 +560,51 @@ private fun TestimonialsSection() {
 }
 
 @Composable
-private fun HomeBottomNavigation() {
+private fun HomeBottomNavigation(
+    currentScreen: Screen,
+    onScreenSelected: (Screen) -> Unit
+) {
     NavigationBar(
         containerColor = Color(0xFF4A4A4A),
-        modifier = Modifier.height(65.dp).clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+        modifier = Modifier
+            .navigationBarsPadding() // Memberikan jarak dari navigasi sistem HP
+            .height(80.dp)
+            .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
     ) {
-        NavigationBarItem(selected = true, onClick = {}, icon = { Icon(Icons.Default.Home, null) }, label = { Text("Home", fontSize = 10.sp) }, colors = NavigationBarItemDefaults.colors(selectedIconColor = Color.White, unselectedIconColor = Color.Gray, selectedTextColor = Color.White, unselectedTextColor = Color.Gray, indicatorColor = Color.Transparent))
-        NavigationBarItem(selected = false, onClick = {}, icon = { Icon(Icons.Default.Search, null) }, label = { Text("Search", fontSize = 10.sp) }, colors = NavigationBarItemDefaults.colors(selectedIconColor = Color.White, unselectedIconColor = Color.Gray, selectedTextColor = Color.White, unselectedTextColor = Color.Gray, indicatorColor = Color.Transparent))
-        NavigationBarItem(selected = false, onClick = {}, icon = { Icon(Icons.Default.Store, null) }, label = { Text("My Katalog", fontSize = 10.sp) }, colors = NavigationBarItemDefaults.colors(selectedIconColor = Color.White, unselectedIconColor = Color.Gray, selectedTextColor = Color.White, unselectedTextColor = Color.Gray, indicatorColor = Color.Transparent))
-        NavigationBarItem(selected = false, onClick = {}, icon = { Icon(Icons.Default.Person, null) }, label = { Text("Me", fontSize = 10.sp) }, colors = NavigationBarItemDefaults.colors(selectedIconColor = Color.White, unselectedIconColor = Color.Gray, selectedTextColor = Color.White, unselectedTextColor = Color.Gray, indicatorColor = Color.Transparent))
+        NavigationBarItem(
+            selected = currentScreen == Screen.Home,
+            onClick = { onScreenSelected(Screen.Home) },
+            icon = { Icon(Icons.Default.Home, null) },
+            label = { Text("Home", fontSize = 10.sp) },
+            colors = NavigationBarItemDefaults.colors(selectedIconColor = Color.White, unselectedIconColor = Color.Gray, selectedTextColor = Color.White, unselectedTextColor = Color.Gray, indicatorColor = Color.Transparent)
+        )
+        NavigationBarItem(
+            selected = currentScreen == Screen.Rental,
+            onClick = { onScreenSelected(Screen.Rental) },
+            icon = { Icon(Icons.Default.Search, null) },
+            label = { Text("Rental", fontSize = 10.sp) },
+            colors = NavigationBarItemDefaults.colors(selectedIconColor = Color.White, unselectedIconColor = Color.Gray, selectedTextColor = Color.White, unselectedTextColor = Color.Gray, indicatorColor = Color.Transparent)
+        )
+        NavigationBarItem(
+            selected = currentScreen == Screen.Keranjang,
+            onClick = { onScreenSelected(Screen.Keranjang) },
+            icon = { Icon(Icons.Default.ShoppingCart, null) },
+            label = { Text("Keranjang", fontSize = 10.sp) },
+            colors = NavigationBarItemDefaults.colors(selectedIconColor = Color.White, unselectedIconColor = Color.Gray, selectedTextColor = Color.White, unselectedTextColor = Color.Gray, indicatorColor = Color.Transparent)
+        )
+        NavigationBarItem(
+            selected = currentScreen == Screen.MyKatalog,
+            onClick = { onScreenSelected(Screen.MyKatalog) },
+            icon = { Icon(Icons.Default.Store, null) },
+            label = { Text("My Katalog", fontSize = 10.sp) },
+            colors = NavigationBarItemDefaults.colors(selectedIconColor = Color.White, unselectedIconColor = Color.Gray, selectedTextColor = Color.White, unselectedTextColor = Color.Gray, indicatorColor = Color.Transparent)
+        )
+        NavigationBarItem(
+            selected = currentScreen == Screen.Profile || currentScreen == Screen.RiwayatTransaksi || currentScreen == Screen.DetailTransaksi || currentScreen == Screen.Pembayaran,
+            onClick = { onScreenSelected(Screen.Profile) },
+            icon = { Icon(Icons.Default.Person, null) },
+            label = { Text("Me", fontSize = 10.sp) },
+            colors = NavigationBarItemDefaults.colors(selectedIconColor = Color.White, unselectedIconColor = Color.Gray, selectedTextColor = Color.White, unselectedTextColor = Color.Gray, indicatorColor = Color.Transparent)
+        )
     }
 }

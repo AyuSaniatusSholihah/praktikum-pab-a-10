@@ -28,11 +28,45 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.RadialGradientShader
+import androidx.compose.ui.graphics.Shader
+import androidx.compose.ui.graphics.ShaderBrush
 
+// Layer 1: vignette biru tua dari sisi kiri & kanan (radial, biar "nongol sedikit" di pinggir)
+// Layer 1: vignette biru tua dari sisi kiri & kanan
+private fun sideVignetteBrush(width: Float, height: Float): Brush {
+    return Brush.horizontalGradient(
+        colors = listOf(
+            Color(0xFF21394F).copy(alpha = 0.35f), // biru tua redup di kiri
+            Color(0xFFFFFFFF).copy(alpha = 0f),    // transparan di tengah (gak nabrak teks)
+            Color(0xFF21394F).copy(alpha = 0.35f)  // biru tua redup di kanan
+        )
+    )
+}
+
+// Layer 2: fade vertical, full gradasi dari atas sampai bawah, gak ada zona kosong
+private val verticalFadeBrush = Brush.verticalGradient(
+    colors = listOf(
+        Color(0xFFFFFFFF), // putih di paling atas
+        Color(0xFFE0E0E0), // abu muda
+        Color(0xFF6A87A1), // abu-biru medium
+        Color(0xFF21394F)  // biru tua di paling bawah
+    )
+)
 // TODO: pastikan file font sudah ditaruh di res/font dengan nama "vidaloka"
 // (contoh: res/font/vidaloka.ttf), lalu uncomment baris di bawah ini
 // dan ganti FontFamily.Serif pada VidalokaFont jadi FontFamily(Font(R.font.vidaloka))
 val VidalokaFont = FontFamily(Font(R.font.vidaloka_regular))
+val MontaguSlabFont = FontFamily(
+    Font(R.font.montaguslab_regular, FontWeight.Normal),
+    Font(R.font.montaguslab_regular, FontWeight.Medium),
+    Font(R.font.montaguslab_semibold, FontWeight.SemiBold),
+    Font(R.font.montaguslab_bold, FontWeight.Bold)
+)
+val VolkhovFont = FontFamily(Font(R.font.volkhov_regular))
 
 // Warna-warna ini diambil dari home.css agar konsisten dengan tema web
 private val ColorBgSection = Color(0xFFF5F5F5)   // --color-bg-soft / --color-bg-section
@@ -60,66 +94,76 @@ class LandingActivity : ComponentActivity() {
 @Composable
 fun LandingScreen(onGetStarted: () -> Unit) {
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(ColorBgSection),
-        contentAlignment = Alignment.Center
+    BoxWithConstraints(
+        modifier = Modifier.fillMaxSize()
     ) {
-        Column(
+        val widthPx = constraints.maxWidth.toFloat()
+        val heightPx = constraints.maxHeight.toFloat()
+
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .fillMaxSize()
+                .background(Color.White) // dasar putih
+                .background(sideVignetteBrush(widthPx, heightPx)) // vignette kiri-kanan
+                .background(verticalFadeBrush) // fade biru-abu di bawah
         ) {
-
-            // Logo "SEWAIN" — font serif Vidaloka, tanpa diamond
-            Text(
-                text = buildLogoStyledText(),
-                fontSize = 44.sp,
-                fontFamily = VidalokaFont,
-                fontWeight = FontWeight.Normal,
-                letterSpacing = 1.5.sp,
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // Deskripsi singkat, mirip tagline website
-            Text(
-                text = "Website penyewaan barang yang mudah, cepat, dan terpercaya untuk semua kebutuhanmu.",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Normal,
-                color = ColorTextMuted,
-                textAlign = TextAlign.Center,
-                lineHeight = 20.sp,
-                modifier = Modifier.padding(horizontal = 12.dp)
-            )
-
-            Spacer(modifier = Modifier.height(28.dp))
-
-            // Tombol Get Started — warna sesuai .btn-rent / .nav-signup di CSS
-            Button(
-                onClick = onGetStarted,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = ColorBtn,
-                    contentColor = Color.White
-                ),
-                shape = RoundedCornerShape(8.dp),
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth(0.7f)
-                    .height(48.dp)
+                    .fillMaxSize()
+                    .padding(horizontal = 32.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                // Logo "SEWAIN" — font serif Vidaloka, tanpa diamond
                 Text(
-                    text = "Get Started",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 0.5.sp
+                    text = buildLogoStyledText(),
+                    fontSize = 44.sp,
+                    fontFamily = VidalokaFont,
+                    fontWeight = FontWeight.Normal,
+                    letterSpacing = 1.5.sp,
+                    textAlign = TextAlign.Center
                 )
-            }
-        }
-    }
-}
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Deskripsi singkat, mirip tagline website
+                Text(
+                    text = "Website penyewaan barang yang mudah, cepat, dan terpercaya untuk semua kebutuhanmu.",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Normal,
+                    fontFamily = VolkhovFont,
+                    color = ColorTextMuted,
+                    textAlign = TextAlign.Center,
+                    lineHeight = 20.sp,
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                )
+
+                Spacer(modifier = Modifier.height(28.dp))
+
+                // Tombol Get Started — warna sesuai .btn-rent / .nav-signup di CSS
+                Button(
+                    onClick = onGetStarted,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF6A87A1),
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(50),
+                    modifier = Modifier
+                        .fillMaxWidth(0.7f)
+                        .height(50.dp)
+                ) {
+                    Text(
+                        text = "Get Started",
+                        fontSize = 16.sp,
+                        fontFamily = MontaguSlabFont,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.5.sp
+                    )
+                }
+            } // tutup Column
+        } // tutup Box
+    } // tutup BoxWithConstraints
+} // tutup fun LandingScreen
 
 /**
  * "SEWA" warna gelap (--color-text), "IN" warna aksen (--color-icon-bg / span),
@@ -128,10 +172,10 @@ fun LandingScreen(onGetStarted: () -> Unit) {
 @Composable
 private fun buildLogoStyledText(): AnnotatedString {
     return buildAnnotatedString {
-        withStyle(style = SpanStyle(color = ColorTextDark)) {
+        withStyle(style = SpanStyle(color = Color(0xFF484848))) {
             append("SEWA")
         }
-        withStyle(style = SpanStyle(color = ColorAccent)) {
+        withStyle(style = SpanStyle(color = Color(0xFF6A87A1))) {
             append("IN")
         }
     }
