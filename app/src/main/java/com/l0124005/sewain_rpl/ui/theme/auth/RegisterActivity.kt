@@ -21,11 +21,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -34,10 +32,26 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.l0124005.sewain_rpl.network.RegisterRequest
 import com.l0124005.sewain_rpl.repository.AuthRepository
 import com.l0124005.sewain_rpl.ui.theme.Sewain_rplTheme
+import com.l0124005.sewain_rpl.ui.theme.landing.VidalokaFont
+import com.l0124005.sewain_rpl.ui.theme.landing.VolkhovFont
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.utils.SessionManager
 import com.l0124005.sewain_rpl.viewmodel.AuthViewModel
 import com.l0124005.sewain_rpl.viewmodel.AuthViewModelFactory
+
+// Warna sama seperti LoginActivity, diambil dari auth.css
+private val AuthBlue = Color(0xFF6A87A1)
+private val AuthBlack = Color(0xFF000000)
+private val AuthBackgroundGradientRegister = Brush.verticalGradient(
+    colors = listOf(
+        Color(0xFFE0E0E0), // abu muda di paling atas
+        Color(0xFF6A87A1), // abu-biru medium di tengah
+        Color(0xFF21394F)  // biru tua di paling bawah
+    )
+)
+private val AuthTextMutedRegister = Color(0xFF838383)
+private val AuthInputBorderRegister = Color(0xFF9D9D9D)
+private val AuthLogoDark = Color(0xFF484848)
 
 class RegisterActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -76,8 +90,6 @@ fun SignUpScreen(
         when (registerState) {
             is Resource.Success -> {
                 Toast.makeText(context, registerState?.data ?: "Akun berhasil terdaftar!", Toast.LENGTH_LONG).show()
-                // Kita asumsikan email diambil dari input lokal di content, 
-                // atau idealnya dilempar balik dari ViewModel.
             }
             is Resource.Error -> {
                 Toast.makeText(context, registerState?.message ?: "Terjadi kesalahan", Toast.LENGTH_LONG).show()
@@ -109,54 +121,62 @@ fun SignUpScreenContent(
     var confirmPassword by remember { mutableStateOf("") }
 
     val context = LocalContext.current
-    
-    // Side effect untuk navigasi sukses di level content (opsional, tapi memudahkan preview)
+
     LaunchedEffect(registerState) {
         if (registerState is Resource.Success) {
             onSuccessRedirect(email)
         }
     }
 
-    val textGray = Color(0xFF8C8C8C)
-    val linkBlue = Color(0xFF1E5276)
-
-    val backgroundGradient = Brush.verticalGradient(
-        colors = listOf(
-            Color(0xFFE4EDF5),
-            Color(0xFFFFFFFF)
-        )
-    )
-
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(backgroundGradient)
+            .background(AuthBackgroundGradientRegister),
+        contentAlignment = Alignment.Center
     ) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 24.dp)
+                .fillMaxWidth(0.92f)
+                .background(Color.White, RoundedCornerShape(14.dp))
+                .padding(horizontal = 28.dp, vertical = 32.dp)
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(64.dp))
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(text = "SEWA", fontSize = 38.sp, fontFamily = FontFamily.Serif, color = Color(0xFF2A2A2A))
-                Text(text = "IN", fontSize = 38.sp, fontFamily = FontFamily.Serif, color = Color(0xFF5D8AA8))
-            }
+            // Logo "SEWAIN" — sama seperti landing page & login
             Text(
-                text = "Sign UP To SEWAIN",
-                fontSize = 14.sp,
-                fontFamily = FontFamily.Serif,
-                color = Color.Gray,
-                modifier = Modifier.padding(top = 4.dp)
+                text = buildAnnotatedString {
+                    withStyle(style = SpanStyle(color = AuthLogoDark)) { append("SEWA") }
+                    withStyle(style = SpanStyle(color = AuthBlue)) { append("IN") }
+                },
+                fontSize = 30.sp,
+                fontFamily = VidalokaFont,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.sp
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // Judul "Sign Up To SEWAIN" — meniru pola .auth-title, "SEWAIN" pakai font logo
+            Text(
+                text = buildAnnotatedString {
+                    withStyle(style = SpanStyle(fontFamily = VolkhovFont, color = AuthBlack)) {
+                        append("Sign Up To ")
+                    }
+                    withStyle(style = SpanStyle(fontFamily = VidalokaFont, color = AuthLogoDark)) {
+                        append("SEWA")
+                    }
+                    withStyle(style = SpanStyle(fontFamily = VidalokaFont, color = AuthBlue)) {
+                        append("IN")
+                    }
+                },
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(modifier = Modifier.height(28.dp))
 
             Row(modifier = Modifier.fillMaxWidth()) {
-                CustomTextField(
+                CustomRegisterTextField(
                     label = "FIRST NAME",
                     value = firstName,
                     onValueChange = { firstName = it },
@@ -164,7 +184,7 @@ fun SignUpScreenContent(
                     modifier = Modifier.weight(1f)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                CustomTextField(
+                CustomRegisterTextField(
                     label = "LAST NAME",
                     value = lastName,
                     onValueChange = { lastName = it },
@@ -173,27 +193,27 @@ fun SignUpScreenContent(
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
-            CustomTextField(
+            CustomRegisterTextField(
                 label = "EMAIL",
                 value = email,
                 onValueChange = { email = it },
                 placeholder = "yourname@email.com"
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
-            CustomTextField(
+            CustomRegisterTextField(
                 label = "PHONE NUMBER",
                 value = phone,
                 onValueChange = { phone = it },
                 placeholder = "08123456789"
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
-            CustomTextField(
+            CustomRegisterTextField(
                 label = "PASSWORD",
                 value = password,
                 onValueChange = { password = it },
@@ -201,9 +221,9 @@ fun SignUpScreenContent(
                 isPassword = true
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
-            CustomTextField(
+            CustomRegisterTextField(
                 label = "CONFIRM PASSWORD",
                 value = confirmPassword,
                 onValueChange = { confirmPassword = it },
@@ -211,14 +231,9 @@ fun SignUpScreenContent(
                 isPassword = true
             )
 
-            Spacer(modifier = Modifier.height(48.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            val buttonGradient = Brush.verticalGradient(
-                colors = listOf(
-                    Color(0xFFD3DCE3),
-                    Color(0xFF6B8B9E)
-                )
-            )
+            // Tombol Create Account
             Button(
                 onClick = {
                     if (password != confirmPassword) {
@@ -240,57 +255,51 @@ fun SignUpScreenContent(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                contentPadding = PaddingValues(),
+                    .height(48.dp),
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = AuthBlue),
                 enabled = registerState !is Resource.Loading<*>
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(buttonGradient, RoundedCornerShape(12.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (registerState is Resource.Loading<*>) {
-                        CircularProgressIndicator(color = Color.Black, modifier = Modifier.size(24.dp))
-                    } else {
-                        Text(
-                            text = "Sign Up",
-                            color = Color.Black,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+                if (registerState is Resource.Loading<*>) {
+                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(22.dp))
+                } else {
+                    Text(
+                        text = "Create Account",
+                        color = Color.White,
+                        fontSize = 14.sp,
+                        fontFamily = MonsterratFont,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
+            // "Already have an account? Login"
             Text(
                 text = buildAnnotatedString {
-                    withStyle(style = SpanStyle(color = Color.Black)) {
+                    withStyle(style = SpanStyle(color = AuthBlack, fontWeight = FontWeight.Normal)) {
                         append("Already have an account? ")
                     }
-                    withStyle(style = SpanStyle(color = linkBlue, fontWeight = FontWeight.Bold)) {
+                    withStyle(style = SpanStyle(color = AuthBlue, fontWeight = FontWeight.Bold)) {
                         append("Login")
                     }
                 },
-                fontSize = 14.sp,
+                fontSize = 13.sp,
+                fontFamily = MonsterratFont,
                 modifier = Modifier.clickable { onNavigateToLogin() }
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
+            // Footer kecil
             Text(
                 text = "SEWAIN Terms & Conditions",
-                color = textGray,
-                fontSize = 12.sp,
-                textDecoration = TextDecoration.Underline,
+                color = AuthBlack,
                 fontWeight = FontWeight.SemiBold,
-                modifier = Modifier
-                    .padding(bottom = 32.dp)
-                    .clickable { /* Handle T&C */ }
+                fontSize = 10.5.sp,
+                fontFamily = MonsterratFont,
+                modifier = Modifier.clickable { /* Handle T&C */ }
             )
         }
     }
@@ -311,7 +320,7 @@ fun SignUpScreenPreview() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun CustomTextField(
+private fun CustomRegisterTextField(
     label: String,
     value: String,
     onValueChange: (String) -> Unit,
@@ -319,14 +328,15 @@ private fun CustomTextField(
     modifier: Modifier = Modifier,
     isPassword: Boolean = false
 ) {
-    Column(modifier = modifier) {
+    Column(modifier = modifier.fillMaxWidth()) {
         Text(
             text = label,
-            fontSize = 10.sp,
+            fontSize = 12.sp,
+            fontFamily = MonsterratFont,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF8C8C8C),
+            color = AuthTextMutedRegister,
             letterSpacing = 1.sp,
-            modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
+            modifier = Modifier.padding(start = 2.dp, bottom = 4.dp)
         )
         OutlinedTextField(
             value = value,
@@ -334,24 +344,36 @@ private fun CustomTextField(
             placeholder = {
                 Text(
                     text = placeholder,
-                    color = Color.LightGray,
-                    fontSize = 12.sp
+                    color = Color(0xFF6B6B6B),
+                    fontFamily = MonsterratFont,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold
                 )
             },
             singleLine = true,
             visualTransformation = if (isPassword) PasswordVisualTransformation() else VisualTransformation.None,
-            shape = RoundedCornerShape(8.dp),
+            shape = RoundedCornerShape(0.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(52.dp),
+                .height(50.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = Color.White,
-                unfocusedContainerColor = Color.White,
-                focusedBorderColor = Color(0xFF285473),
-                unfocusedBorderColor = Color(0xFF285473),
-                cursorColor = Color.Black
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                focusedBorderColor = Color.Transparent,
+                unfocusedBorderColor = Color.Transparent,
+                cursorColor = Color(0xFF21394F)
             ),
-            textStyle = LocalTextStyle.current.copy(fontSize = 14.sp)
+            textStyle = LocalTextStyle.current.copy(
+                fontSize = 13.sp,
+                fontFamily = MonsterratFont,
+                color = Color(0xFF21394F)
+            )
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.5.dp)
+                .background(AuthInputBorderRegister)
         )
     }
 }
