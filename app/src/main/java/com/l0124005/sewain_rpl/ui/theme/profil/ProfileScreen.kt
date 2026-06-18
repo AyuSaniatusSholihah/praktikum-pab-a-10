@@ -1,6 +1,7 @@
 package com.l0124005.sewain_rpl.ui.theme.profil
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -8,8 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
+import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -20,26 +20,26 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.l0124005.sewain_rpl.network.ApiClient
+import com.l0124005.sewain_rpl.network.UserData
 import com.l0124005.sewain_rpl.ui.theme.katalog.formatRupiah
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.viewmodel.ProfileViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
+private val DarkNavy = Color(0xFF1F2A33)
+private val InputBlue = Color(0xFF8AA9BD)
+
 @Composable
 fun ProfileScreen(
     viewModel: ProfileViewModel,
     token: String,
-    onLogout: () -> Unit,
-    onEditProfile: () -> Unit,
-    onMyRentalClick: () -> Unit,
-    onRentalOwnerClick: () -> Unit,
-    onTransaksiClick: () -> Unit,
-    onRiwayatTransaksiClick: () -> Unit
+    onLogout: () -> Unit
 ) {
     val profileState by viewModel.profile.observeAsState()
 
@@ -47,127 +47,36 @@ fun ProfileScreen(
         viewModel.getProfile(token)
     }
 
-    val primaryColor = Color(0xFF285473)
-
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Profil Saya", fontWeight = FontWeight.Bold) },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
-            )
-        },
-        containerColor = Color(0xFFF8FAFB)
-    ) { padding ->
-        Box(modifier = Modifier.padding(padding).fillMaxSize()) {
+        bottomBar = { ProfileBottomNavigation() }
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .background(Color.White)
+                .verticalScroll(rememberScrollState())
+        ) {
             when (profileState) {
                 is Resource.Loading -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = primaryColor)
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = DarkNavy)
                 }
                 is Resource.Success -> {
                     val user = profileState?.data?.data
                     if (user != null) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .verticalScroll(rememberScrollState())
-                                .padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            // Profile Header
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(16.dp),
-                                colors = CardDefaults.cardColors(containerColor = Color.White),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(20.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    AsyncImage(
-                                        model = if (!user.foto_profil.isNullOrEmpty()) "${ApiClient.IMAGE_BASE_URL}profiles/${user.foto_profil}" else "https://ui-avatars.com/api/?name=${user.name}",
-                                        contentDescription = "Profile Picture",
-                                        modifier = Modifier.size(90.dp).clip(CircleShape),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                    Text(text = user.name, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                                    Text(text = user.email, fontSize = 14.sp, color = Color.Gray)
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Surface(
-                                        color = primaryColor.copy(alpha = 0.1f),
-                                        shape = RoundedCornerShape(20.dp)
-                                    ) {
-                                        Text(
-                                            text = "Saldo: Rp ${formatRupiah(user.saldo)}",
-                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                                            color = primaryColor,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 14.sp
-                                        )
-                                    }
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(24.dp))
-
-                            // Menu Section
-                            Text(
-                                text = "Pengaturan Akun",
-                                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                                fontWeight = FontWeight.Bold,
-                                color = Color.Gray,
-                                fontSize = 13.sp
-                            )
-
-                            ProfileMenuItem(
-                                icon = Icons.Default.Person,
-                                label = "Edit Profile",
-                                onClick = onEditProfile
-                            )
-                            ProfileMenuItem(
-                                icon = Icons.Default.ShoppingCart,
-                                label = "My Rental",
-                                onClick = onMyRentalClick
-                            )
-                            ProfileMenuItem(
-                                icon = Icons.Default.Storefront,
-                                label = "Rental Owner",
-                                onClick = onRentalOwnerClick
-                            )
-                            ProfileMenuItem(
-                                icon = Icons.Default.History,
-                                label = "Transaksi",
-                                onClick = onTransaksiClick
-                            )
-
-                            Spacer(modifier = Modifier.height(32.dp))
-
-                            Button(
-                                onClick = onLogout,
-                                modifier = Modifier.fillMaxWidth().height(50.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE24B4A)),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Keluar", fontWeight = FontWeight.Bold)
-                            }
-                            
-                            Spacer(modifier = Modifier.height(40.dp))
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            ProfileHeaderSection(user.name, user.foto_profil)
+                            Spacer(modifier = Modifier.height(16.dp))
+                            ProfileFormSection(user, onLogout)
                         }
                     }
                 }
                 is Resource.Error -> {
-                    Column(
-                        modifier = Modifier.align(Alignment.Center),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(text = profileState?.message ?: "Error", color = Color.Red)
-                        Button(onClick = { viewModel.getProfile(token) }) {
-                            Text("Coba Lagi")
-                        }
-                    }
+                    Text(
+                        text = "Error: ${profileState?.message}",
+                        color = Color.Red,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
                 }
                 else -> {}
             }
@@ -176,37 +85,193 @@ fun ProfileScreen(
 }
 
 @Composable
-fun ProfileMenuItem(
-    icon: ImageVector,
-    label: String,
-    onClick: () -> Unit
-) {
-    Surface(
+private fun ProfileHeaderSection(name: String, foto: String?) {
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .clickable { onClick() },
-        color = Color.White,
-        shape = RoundedCornerShape(12.dp),
-        shadowElevation = 1.dp
+            .padding(16.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .background(DarkNavy)
+            .padding(20.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            AsyncImage(
+                model = if (!foto.isNullOrEmpty()) "${ApiClient.IMAGE_BASE_URL}profiles/$foto" else "https://ui-avatars.com/api/?name=$name",
+                contentDescription = null,
                 modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0xFFF1F5F9)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(icon, contentDescription = null, tint = Color(0xFF285473), modifier = Modifier.size(20.dp))
-            }
+                    .size(60.dp)
+                    .clip(CircleShape)
+                    .border(2.dp, Color.White, CircleShape),
+                contentScale = ContentScale.Crop
+            )
             Spacer(modifier = Modifier.width(16.dp))
-            Text(text = label, modifier = Modifier.weight(1f), fontWeight = FontWeight.Medium, fontSize = 15.sp)
-            Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, contentDescription = null, tint = Color.LightGray, modifier = Modifier.size(14.dp))
+            Text(name, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.weight(1f))
+            
+            // Sidebar Menu Mockup
+            Column(horizontalAlignment = Alignment.End) {
+                HeaderMenuItem(Icons.Default.GridView, "Profile", true)
+                HeaderMenuItem(Icons.AutoMirrored.Filled.ListAlt, "My Rentals")
+                HeaderMenuItem(Icons.Default.Storefront, "Rentals Owner")
+                HeaderMenuItem(Icons.Default.AccountBalanceWallet, "My Wallet")
+            }
         }
     }
 }
 
+@Composable
+private fun HeaderMenuItem(icon: ImageVector, label: String, isSelected: Boolean = false) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(vertical = 2.dp)
+    ) {
+        Icon(icon, null, Modifier.size(12.dp), tint = if (isSelected) Color.White else Color.Gray)
+        Spacer(Modifier.width(6.dp))
+        Text(label, color = if (isSelected) Color.White else Color.Gray, fontSize = 9.sp)
+    }
+}
+
+@Composable
+private fun ProfileFormSection(user: UserData, onLogout: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
+            .background(DarkNavy)
+            .padding(24.dp)
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            // Profile Picture Center
+            Box(contentAlignment = Alignment.BottomEnd) {
+                Box(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(CircleShape)
+                        .background(Color.White),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.Person, null, Modifier.size(50.dp), tint = DarkNavy)
+                }
+                Box(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clip(CircleShape)
+                        .background(Color.Gray.copy(alpha = 0.8f))
+                        .clickable { /* TODO: Edit Photo */ },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.Edit, null, Modifier.size(14.dp), tint = Color.White)
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("Hello, ${user.name}!", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Serif)
+            Text("Here is your quick overview", color = Color.Gray, fontSize = 12.sp)
+            
+            Spacer(modifier = Modifier.height(28.dp))
+            
+            ProfileTextField("Name Account", user.name)
+            ProfileTextField("Email", user.email)
+            ProfileTextField("Password Baru", "********")
+            ProfileTextField("Konfirmasi Password Baru", "********")
+            ProfileTextField("Nomor Telepon", user.phone_number ?: "085890423763")
+            ProfileTextField("Username", user.username ?: user.name.lowercase().replace(" ", ""))
+            ProfileTextField("Alamat", user.alamat ?: "Alamat belum diatur", isSingleLine = false)
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            // Wallet Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = InputBlue.copy(alpha = 0.2f))
+            ) {
+                Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Saldo", color = Color.White, fontSize = 12.sp)
+                        Text("Rp ${formatRupiah(user.saldo)}", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Black)
+                    }
+                    Box(modifier = Modifier.size(32.dp).background(Color.White.copy(alpha = 0.1f), CircleShape), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Default.AttachMoney, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            StatItem("Total Transaksi Penyewaan", "1 Kali")
+            StatItem("Jumlah Katalog Barang", "0 Barang")
+            
+            Spacer(modifier = Modifier.height(40.dp))
+            
+            Button(
+                onClick = { /* TODO: Update Profile */ },
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = InputBlue),
+                shape = RoundedCornerShape(24.dp)
+            ) {
+                Text("SAVE", fontWeight = FontWeight.Bold, color = DarkNavy)
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("Logout", color = Color.Red.copy(alpha = 0.8f), modifier = Modifier.clickable { onLogout() }.padding(8.dp))
+            Spacer(modifier = Modifier.height(20.dp))
+        }
+    }
+}
+
+@Composable
+private fun ProfileTextField(label: String, value: String, isSingleLine: Boolean = true) {
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+        Text(label, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Serif)
+        Spacer(modifier = Modifier.height(8.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(if (isSingleLine) 48.dp else 100.dp)
+                .clip(RoundedCornerShape(24.dp))
+                .background(InputBlue)
+                .padding(horizontal = 20.dp),
+            contentAlignment = if (isSingleLine) Alignment.CenterStart else Alignment.TopStart
+        ) {
+            Text(
+                text = value,
+                color = DarkNavy,
+                fontSize = 14.sp,
+                modifier = if (isSingleLine) Modifier else Modifier.padding(vertical = 12.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun StatItem(label: String, value: String) {
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+        Text(label, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Serif)
+        Spacer(modifier = Modifier.height(8.dp))
+        Box(
+            modifier = Modifier
+                .width(110.dp)
+                .height(36.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .background(InputBlue),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(value, color = DarkNavy, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun ProfileBottomNavigation() {
+    NavigationBar(
+        containerColor = Color(0xFF4A4A4A),
+        modifier = Modifier.height(65.dp).clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+    ) {
+        NavigationBarItem(selected = false, onClick = {}, icon = { Icon(Icons.Default.Home, null) }, label = { Text("Home", fontSize = 10.sp) }, colors = NavigationBarItemDefaults.colors(selectedIconColor = Color.White, unselectedIconColor = Color.Gray, selectedTextColor = Color.White, unselectedTextColor = Color.Gray, indicatorColor = Color.Transparent))
+        NavigationBarItem(selected = false, onClick = {}, icon = { Icon(Icons.Default.Search, null) }, label = { Text("Search", fontSize = 10.sp) }, colors = NavigationBarItemDefaults.colors(selectedIconColor = Color.White, unselectedIconColor = Color.Gray, selectedTextColor = Color.White, unselectedTextColor = Color.Gray, indicatorColor = Color.Transparent))
+        NavigationBarItem(selected = false, onClick = {}, icon = { Icon(Icons.Default.Store, null) }, label = { Text("My Katalog", fontSize = 10.sp) }, colors = NavigationBarItemDefaults.colors(selectedIconColor = Color.White, unselectedIconColor = Color.Gray, selectedTextColor = Color.White, unselectedTextColor = Color.Gray, indicatorColor = Color.Transparent))
+        NavigationBarItem(selected = true, onClick = {}, icon = { Icon(Icons.Default.Person, null) }, label = { Text("Me", fontSize = 10.sp) }, colors = NavigationBarItemDefaults.colors(selectedIconColor = Color.White, unselectedIconColor = Color.Gray, selectedTextColor = Color.White, unselectedTextColor = Color.Gray, indicatorColor = Color.Transparent))
+    }
+}
