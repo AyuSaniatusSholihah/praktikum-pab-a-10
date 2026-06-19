@@ -28,6 +28,9 @@ class KatalogViewModel(private val repository: KatalogRepository) : ViewModel() 
     private val _deleteResult = MutableLiveData<Resource<GenericResponse>>()
     val deleteResult: LiveData<Resource<GenericResponse>> = _deleteResult
 
+    private val _kategori = MutableLiveData<Resource<KategoriListResponse>>()
+    val kategori: LiveData<Resource<KategoriListResponse>> = _kategori
+
     fun getKatalogPublik(
         search: String? = null,
         kategoriId: Int? = null,
@@ -58,6 +61,14 @@ class KatalogViewModel(private val repository: KatalogRepository) : ViewModel() 
         }
     }
 
+    fun getKatalogPublikDetail(id: Int) {
+        viewModelScope.launch {
+            repository.getKatalogPublikDetail(id).collect {
+                _myKatalogDetail.value = it
+            }
+        }
+    }
+
     fun createKatalog(
         token: String,
         kategoriId: RequestBody,
@@ -69,12 +80,14 @@ class KatalogViewModel(private val repository: KatalogRepository) : ViewModel() 
         stok: RequestBody,
         lokasi: RequestBody,
         fotoBarang: MultipartBody.Part?,
-        status: RequestBody? = null
+        status: RequestBody? = null,
+        additionalInformation: RequestBody? = null
     ) {
         viewModelScope.launch {
             repository.createKatalog(
                 token, kategoriId, namaBarang, deskripsi, hargaSewa,
-                hargaJaminan, hargaDendaPerjam, stok, lokasi, fotoBarang, status
+                hargaJaminan, hargaDendaPerjam, stok, lokasi, fotoBarang, status,
+                additionalInformation
             ).collect {
                 _crudResult.value = it
             }
@@ -93,12 +106,14 @@ class KatalogViewModel(private val repository: KatalogRepository) : ViewModel() 
         stok: RequestBody? = null,
         lokasi: RequestBody? = null,
         fotoBarang: MultipartBody.Part? = null,
-        status: RequestBody? = null
+        status: RequestBody? = null,
+        additionalInformation: RequestBody? = null
     ) {
         viewModelScope.launch {
             repository.updateKatalog(
                 token, id, kategoriId, namaBarang, deskripsi, hargaSewa,
-                hargaJaminan, hargaDendaPerjam, stok, lokasi, fotoBarang, status
+                hargaJaminan, hargaDendaPerjam, stok, lokasi, fotoBarang, status,
+                additionalInformation
             ).collect {
                 _crudResult.value = it
             }
@@ -109,6 +124,14 @@ class KatalogViewModel(private val repository: KatalogRepository) : ViewModel() 
         viewModelScope.launch {
             repository.deleteKatalog(token, id).collect {
                 _deleteResult.value = it
+            }
+        }
+    }
+
+    fun getKategori() {
+        viewModelScope.launch {
+            repository.getKategori().collect {
+                _kategori.value = it
             }
         }
     }

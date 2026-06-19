@@ -27,6 +27,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import coil.compose.AsyncImage
 import com.l0124005.sewain_rpl.network.ApiClient
+import com.l0124005.sewain_rpl.network.KategoriListResponse
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.viewmodel.KatalogViewModel
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -47,23 +48,29 @@ fun EditItemScreen(
     val context = LocalContext.current
     val itemDetailState by viewModel.myKatalogDetail.observeAsState()
     val crudResult by viewModel.crudResult.observeAsState()
+    val kategoriResult by viewModel.kategori.observeAsState()
 
     var itemName by remember { mutableStateOf("") }
-    var categoryId by remember { mutableStateOf(1) }
+    var categoryId by remember { mutableIntStateOf(1) }
+    var categoryName by remember { mutableStateOf("Pilih Kategori") }
     var priceSewa by remember { mutableStateOf("") }
     var priceJaminan by remember { mutableStateOf("") }
     var priceDenda by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
-    var stock by remember { mutableStateOf("1") }
+    var additionalInfo by remember { mutableStateOf("") }
+    var stock by remember { mutableIntStateOf(1) }
     var location by remember { mutableStateOf("") }
     var imageUri by remember { mutableStateOf<Uri?>(null) }
     var existingImageUrl by remember { mutableStateOf("") }
 
+    var showCategorySheet by remember { mutableStateOf(false) }
+
     LaunchedEffect(Unit) {
+        viewModel.getKategori()
         viewModel.getMyKatalogDetail(token, itemId)
     }
 
-    LaunchedEffect(itemDetailState) {
+    LaunchedEffect(itemDetailState, kategoriResult) {
         if (itemDetailState is Resource.Success) {
             val data = itemDetailState?.data?.data
             data?.let {
@@ -73,9 +80,18 @@ fun EditItemScreen(
                 priceJaminan = it.harga_jaminan.toInt().toString()
                 priceDenda = it.harga_denda_perjam.toInt().toString()
                 description = it.deskripsi ?: ""
-                stock = it.stok.toString()
+                additionalInfo = it.additional_information ?: ""
+                stock = it.stok
                 location = it.lokasi
                 existingImageUrl = it.foto_barang ?: ""
+
+                // Cari nama kategori berdasarkan id
+                kategoriResult?.let { res ->
+                    if (res is Resource.Success) {
+                        val cats = res.data?.data ?: emptyList()
+                        categoryName = cats.find { c -> c.id == it.kategori_id }?.nama_kategori ?: "Pilih Kategori"
+                    }
+                }
             }
         }
     }
@@ -92,40 +108,170 @@ fun EditItemScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Edit Katalog") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Black)
                 }
-            )
-        }
+                Text(
+                    text = "Edit Katalog",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Black,
+                    fontFamily = Volkhov,
+                    modifier = Modifier.padding(start = 8.dp)
+                )
+            }
+        },
+        containerColor = White
     ) { padding ->
         Column(
-            modifier = Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // -- Foto Barang --
+            SewainFormLabel(label = "Upload Foto Barang")
             Box(
-                modifier = Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(8.dp)).background(Color.LightGray).clickable { imageLauncher.launch("image/*") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(180.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(UploadBg)
+                    .border(1.dp, UploadBorder, RoundedCornerShape(14.dp))
+                    .clickable { imageLauncher.launch("image/*") },
                 contentAlignment = Alignment.Center
             ) {
                 if (imageUri != null) {
-                    AsyncImage(model = imageUri, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                    AsyncImage(
+                        model = imageUri,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
                 } else if (existingImageUrl.isNotEmpty()) {
-                    AsyncImage(model = "${ApiClient.IMAGE_BASE_URL}products/$existingImageUrl", contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                    AsyncImage(
+                        model = "${ApiClient.IMAGE_BASE_URL}$existingImageUrl",
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
                 } else {
-                    Icon(Icons.Outlined.CameraAlt, contentDescription = null, modifier = Modifier.size(48.dp))
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            Icons.Outlined.CameraAlt,
+                            contentDescription = null,
+                            tint = Primary,
+                            modifier = Modifier.size(32.dp)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("Ganti Foto", color = Primary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    }
                 }
             }
 
-            OutlinedTextField(value = itemName, onValueChange = { itemName = it }, label = { Text("Nama Barang") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = priceSewa, onValueChange = { priceSewa = it }, label = { Text("Harga Sewa / Hari") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = priceJaminan, onValueChange = { priceJaminan = it }, label = { Text("Harga Jaminan") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = priceDenda, onValueChange = { priceDenda = it }, label = { Text("Denda / Jam") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = stock, onValueChange = { stock = it }, label = { Text("Stok") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = location, onValueChange = { location = it }, label = { Text("Lokasi") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Deskripsi") }, modifier = Modifier.fillMaxWidth(), minLines = 3)
+            SewainFormField(
+                label = "Nama Barang",
+                value = itemName,
+                onValueChange = { itemName = it },
+                placeholder = "Masukkan nama barang"
+            )
+
+            // Category Selector
+            Column {
+                SewainFormLabel(label = "Kategori")
+                Spacer(Modifier.height(6.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(FormBg)
+                        .border(1.dp, BorderGray, RoundedCornerShape(6.dp))
+                        .clickable { showCategorySheet = true }
+                        .padding(horizontal = 14.dp, vertical = 12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = categoryName,
+                            fontSize = 13.sp,
+                            color = if (categoryName == "Pilih Kategori") TextMuted else TextDark
+                        )
+                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, tint = TextMuted)
+                    }
+                }
+                Spacer(Modifier.height(14.dp))
+            }
+
+            SewainFormField(
+                label = "Harga Sewa (per hari)",
+                value = priceSewa,
+                onValueChange = { priceSewa = it },
+                placeholder = "Contoh: 50000",
+                keyboardType = KeyboardType.Number
+            )
+
+            SewainFormField(
+                label = "Harga Jaminan",
+                value = priceJaminan,
+                onValueChange = { priceJaminan = it },
+                placeholder = "Contoh: 100000",
+                keyboardType = KeyboardType.Number
+            )
+
+            SewainFormField(
+                label = "Denda per Jam",
+                value = priceDenda,
+                onValueChange = { priceDenda = it },
+                placeholder = "Contoh: 5000",
+                keyboardType = KeyboardType.Number
+            )
+
+            Column {
+                SewainFormLabel(label = "Stok Barang")
+                Spacer(Modifier.height(8.dp))
+                StockQtyStepper(
+                    qty = stock,
+                    onMinus = { if (stock > 1) stock-- },
+                    onPlus = { stock++ }
+                )
+                Spacer(Modifier.height(14.dp))
+            }
+
+            SewainFormField(
+                label = "Lokasi",
+                value = location,
+                onValueChange = { location = it },
+                placeholder = "Contoh: Bandung, Jawa Barat"
+            )
+
+            SewainFormField(
+                label = "Deskripsi",
+                value = description,
+                onValueChange = { description = it },
+                placeholder = "Jelaskan kondisi barang...",
+                singleLine = false,
+                minLines = 3
+            )
+
+            SewainFormField(
+                label = "Informasi Tambahan",
+                value = additionalInfo,
+                onValueChange = { additionalInfo = it },
+                placeholder = "Aturan sewa, kelengkapan, dll...",
+                singleLine = false,
+                minLines = 2
+            )
 
             Button(
                 onClick = {
@@ -134,9 +280,10 @@ fun EditItemScreen(
                     val sewaPart = priceSewa.toRequestBody("text/plain".toMediaTypeOrNull())
                     val jaminanPart = priceJaminan.toRequestBody("text/plain".toMediaTypeOrNull())
                     val dendaPart = priceDenda.toRequestBody("text/plain".toMediaTypeOrNull())
-                    val stokPart = stock.toRequestBody("text/plain".toMediaTypeOrNull())
+                    val stokPart = stock.toString().toRequestBody("text/plain".toMediaTypeOrNull())
                     val locPart = location.toRequestBody("text/plain".toMediaTypeOrNull())
                     val descPart = description.toRequestBody("text/plain".toMediaTypeOrNull())
+                    val addInfoPart = additionalInfo.toRequestBody("text/plain".toMediaTypeOrNull())
 
                     var imagePart: MultipartBody.Part? = null
                     imageUri?.let { uri ->
@@ -148,14 +295,54 @@ fun EditItemScreen(
                         imagePart = MultipartBody.Part.createFormData("foto_barang", file.name, requestFile)
                     }
 
-                    viewModel.updateKatalog(token, itemId, catPart, namePart, descPart, sewaPart, jaminanPart, dendaPart, stokPart, locPart, imagePart)
+                    viewModel.updateKatalog(
+                        token, itemId, catPart, namePart, descPart, sewaPart, 
+                        jaminanPart, dendaPart, stokPart, locPart, imagePart, 
+                        additionalInformation = addInfoPart
+                    )
                 },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Primary),
                 enabled = crudResult !is Resource.Loading
             ) {
-                if (crudResult is Resource.Loading) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
-                else Text("Simpan Perubahan")
+                if (crudResult is Resource.Loading) {
+                    CircularProgressIndicator(color = White, modifier = Modifier.size(24.dp))
+                } else {
+                    Text(
+                        "Simpan Perubahan",
+                        fontFamily = Volkhov,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                }
             }
+            
+            Spacer(modifier = Modifier.height(20.dp))
         }
     }
+
+    if (showCategorySheet) {
+        val categoriesList = if (kategoriResult is Resource.Success) {
+            kategoriResult?.data?.data?.map { it.nama_kategori } ?: emptyList()
+        } else {
+            emptyList()
+        }
+
+        CategoryBottomSheet(
+            selectedCategory = categoryName,
+            categoriesList = categoriesList,
+            onSelect = { selected ->
+                categoryName = selected
+                if (kategoriResult is Resource.Success) {
+                    categoryId = kategoriResult?.data?.data?.find { it.nama_kategori == selected }?.id ?: categoryId
+                }
+                showCategorySheet = false
+            },
+            onDismiss = { showCategorySheet = false }
+        )
+    }
 }
+

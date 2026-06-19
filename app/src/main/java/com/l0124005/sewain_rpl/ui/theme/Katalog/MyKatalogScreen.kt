@@ -31,6 +31,7 @@ import androidx.compose.runtime.livedata.observeAsState
 import com.l0124005.sewain_rpl.network.CatalogData
 import com.l0124005.sewain_rpl.ui.theme.Sewain_rplTheme
 import com.l0124005.sewain_rpl.utils.Resource
+import com.l0124005.sewain_rpl.utils.CurrencyUtils
 import com.l0124005.sewain_rpl.viewmodel.KatalogViewModel
 import com.l0124005.sewain_rpl.ui.theme.katalog.formatRupiah
 import com.l0124005.sewain_rpl.ui.theme.katalog.ProfileCard
@@ -421,7 +422,7 @@ private fun MyKatalogCard(
 
                 // Harga
                 Text(
-                    text       = "Rp ${formatRupiah(item.harga_sewa)}/hari",
+                    text = "${CurrencyUtils.formatRupiah(item.harga_sewa)}/hari",
                     fontSize   = 13.sp,
                     fontWeight = FontWeight.Bold,
                     color      = Primary,

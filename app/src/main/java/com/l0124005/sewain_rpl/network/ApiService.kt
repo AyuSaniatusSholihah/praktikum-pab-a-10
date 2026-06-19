@@ -82,6 +82,14 @@ interface ApiService {
         @Path("id") id: Int
     ): Response<KatalogDetailResponse>
 
+    @GET("katalog-publik/{id}")
+    suspend fun getKatalogPublikDetail(
+        @Path("id") id: Int
+    ): Response<KatalogDetailResponse>
+
+    @GET("kategori")
+    suspend fun getKategori(): Response<KategoriListResponse>
+
     @Multipart
     @POST("katalog")
     suspend fun createKatalog(
@@ -95,7 +103,8 @@ interface ApiService {
         @Part("stok") stok: RequestBody,
         @Part("lokasi") lokasi: RequestBody,
         @Part foto_barang: MultipartBody.Part?,
-        @Part("status") status: RequestBody? = null
+        @Part("status") status: RequestBody? = null,
+        @Part("additional_information") additionalInformation: RequestBody? = null
     ): Response<KatalogCrudResponse>
 
     @Multipart
@@ -113,7 +122,8 @@ interface ApiService {
         @Part("stok") stok: RequestBody? = null,
         @Part("lokasi") lokasi: RequestBody? = null,
         @Part foto_barang: MultipartBody.Part? = null,
-        @Part("status") status: RequestBody? = null
+        @Part("status") status: RequestBody? = null,
+        @Part("additional_information") additionalInformation: RequestBody? = null
     ): Response<KatalogCrudResponse>
 
     @DELETE("katalog/{id}")

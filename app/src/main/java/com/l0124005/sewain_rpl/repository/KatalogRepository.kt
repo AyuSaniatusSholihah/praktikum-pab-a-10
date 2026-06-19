@@ -58,6 +58,34 @@ class KatalogRepository {
         }
     }
 
+    fun getKatalogPublikDetail(id: Int): Flow<Resource<KatalogDetailResponse>> = flow {
+        emit(Resource.Loading())
+        try {
+            val response = apiService.getKatalogPublikDetail(id)
+            if (response.isSuccessful && response.body() != null) {
+                emit(Resource.Success(response.body()!!))
+            } else {
+                emit(Resource.Error(response.message()))
+            }
+        } catch (e: Exception) {
+            emit(Resource.Error(e.message ?: "An error occurred"))
+        }
+    }
+
+    fun getKategori(): Flow<Resource<KategoriListResponse>> = flow {
+        emit(Resource.Loading())
+        try {
+            val response = apiService.getKategori()
+            if (response.isSuccessful && response.body() != null) {
+                emit(Resource.Success(response.body()!!))
+            } else {
+                emit(Resource.Error(response.message()))
+            }
+        } catch (e: Exception) {
+            emit(Resource.Error(e.message ?: "An error occurred"))
+        }
+    }
+
     fun createKatalog(
         token: String,
         kategoriId: RequestBody,
@@ -69,13 +97,14 @@ class KatalogRepository {
         stok: RequestBody,
         lokasi: RequestBody,
         fotoBarang: MultipartBody.Part?,
-        status: RequestBody? = null
+        status: RequestBody? = null,
+        additionalInformation: RequestBody? = null
     ): Flow<Resource<KatalogCrudResponse>> = flow {
         emit(Resource.Loading())
         try {
             val response = apiService.createKatalog(
                 "Bearer $token", kategoriId, namaBarang, deskripsi,
-                hargaSewa, hargaJaminan, hargaDendaPerjam, stok, lokasi, fotoBarang, status
+                hargaSewa, hargaJaminan, hargaDendaPerjam, stok, lokasi, fotoBarang, status, additionalInformation
             )
             if (response.isSuccessful && response.body() != null) {
                 emit(Resource.Success(response.body()!!))
@@ -99,13 +128,15 @@ class KatalogRepository {
         stok: RequestBody? = null,
         lokasi: RequestBody? = null,
         fotoBarang: MultipartBody.Part? = null,
-        status: RequestBody? = null
+        status: RequestBody? = null,
+        additionalInformation: RequestBody? = null
     ): Flow<Resource<KatalogCrudResponse>> = flow {
         emit(Resource.Loading())
         try {
             val response = apiService.updateKatalog(
                 "Bearer $token", id, "PUT", kategoriId, namaBarang, deskripsi,
-                hargaSewa, hargaJaminan, hargaDendaPerjam, stok, lokasi, fotoBarang, status
+                hargaSewa, hargaJaminan, hargaDendaPerjam, stok, lokasi, fotoBarang, status,
+                additionalInformation
             )
             if (response.isSuccessful && response.body() != null) {
                 emit(Resource.Success(response.body()!!))

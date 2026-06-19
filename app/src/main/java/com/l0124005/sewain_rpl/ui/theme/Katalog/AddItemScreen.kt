@@ -53,6 +53,11 @@ fun AddItemScreen(
     var showCategorySheet   by remember { mutableStateOf(false) }
 
     val crudResult by viewModel.crudResult.observeAsState()
+    val kategoriResult by viewModel.kategori.observeAsState()
+
+    LaunchedEffect(Unit) {
+        viewModel.getKategori()
+    }
 
     LaunchedEffect(crudResult) {
         if (crudResult is Resource.Success) {
@@ -83,13 +88,19 @@ fun AddItemScreen(
             PublishBottomBar(
                 onPublish = {
                     val namePart = form.itemName.toRequestBody("text/plain".toMediaTypeOrNull())
-                    val catPart = "1".toRequestBody("text/plain".toMediaTypeOrNull()) // TODO: Map category name to ID
+                    
+                    // Map category name to ID
+                    val categoryList = (kategoriResult as? Resource.Success)?.data?.data
+                    val selectedKategoriId = categoryList?.find { it.nama_kategori == form.category }?.id ?: 1
+                    val catPart = selectedKategoriId.toString().toRequestBody("text/plain".toMediaTypeOrNull())
+                    
                     val sewaPart = form.price.toRequestBody("text/plain".toMediaTypeOrNull())
                     val jaminanPart = form.jaminan.toRequestBody("text/plain".toMediaTypeOrNull())
                     val dendaPart = form.denda.toRequestBody("text/plain".toMediaTypeOrNull())
                     val stokPart = form.stockQty.toString().toRequestBody("text/plain".toMediaTypeOrNull())
                     val locPart = form.lokasi.toRequestBody("text/plain".toMediaTypeOrNull())
                     val descPart = form.description.toRequestBody("text/plain".toMediaTypeOrNull())
+                    val addInfoPart = form.additionalInfo.toRequestBody("text/plain".toMediaTypeOrNull())
 
                     var imagePart: MultipartBody.Part? = null
                     form.mainImageUri?.let { uri ->
@@ -101,7 +112,7 @@ fun AddItemScreen(
                         imagePart = MultipartBody.Part.createFormData("foto_barang", file.name, requestFile)
                     }
 
-                    viewModel.createKatalog(token, catPart, namePart, descPart, sewaPart, jaminanPart, dendaPart, stokPart, locPart, imagePart)
+                    viewModel.createKatalog(token, catPart, namePart, descPart, sewaPart, jaminanPart, dendaPart, stokPart, locPart, imagePart, additionalInformation = addInfoPart)
                 },
                 isLoading = crudResult is Resource.Loading
             )
@@ -295,8 +306,10 @@ fun AddItemScreen(
 
     // ---- CATEGORY BOTTOM SHEET ----
     if (showCategorySheet) {
+        val categoryList = (kategoriResult as? Resource.Success)?.data?.data?.map { it.nama_kategori } ?: emptyList()
         CategoryBottomSheet(
             selectedCategory = form.category,
+            categoriesList = categoryList,
             onSelect = { selected ->
                 form = form.copy(category = selected)
                 showCategorySheet = false

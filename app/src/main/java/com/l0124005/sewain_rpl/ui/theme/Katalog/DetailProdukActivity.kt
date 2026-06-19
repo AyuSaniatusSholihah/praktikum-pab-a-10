@@ -30,6 +30,7 @@ import com.l0124005.sewain_rpl.repository.KeranjangRepository
 import com.l0124005.sewain_rpl.ui.theme.Sewain_rplTheme
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.utils.SessionManager
+import com.l0124005.sewain_rpl.utils.CurrencyUtils
 import com.l0124005.sewain_rpl.viewmodel.KatalogViewModel
 import com.l0124005.sewain_rpl.viewmodel.KatalogViewModelFactory
 import com.l0124005.sewain_rpl.viewmodel.KeranjangViewModel
@@ -84,8 +85,8 @@ fun DetailProdukScreen(
 
     LaunchedEffect(Unit) {
         if (productId != -1) {
-            // Menggunakan getMyKatalogDetail sesuai dengan method di KatalogViewModel
-            katalogViewModel.getMyKatalogDetail(token, productId)
+            // Menggunakan getKatalogPublikDetail karena ini akses publik
+            katalogViewModel.getKatalogPublikDetail(productId)
         }
     }
     
@@ -183,7 +184,7 @@ fun DetailProdukScreen(
                         Spacer(modifier = Modifier.height(8.dp))
                         
                         Text(
-                            text = "Rp ${formatRupiah(product.harga_sewa)} / hari",
+                            text = "Rp ${CurrencyUtils.formatHarga(product.harga_sewa)} / hari",
                             fontSize = 20.sp,
                             fontWeight = FontWeight.ExtraBold,
                             color = Color(0xFF1E5276)
@@ -239,8 +240,12 @@ fun DetailProdukScreen(
                             Column(modifier = Modifier.padding(16.dp)) {
                                 Text(text = "Informasi Tambahan", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                                 Spacer(modifier = Modifier.height(8.dp))
-                                Text(text = "• Jaminan: Rp ${formatRupiah(product.harga_jaminan)}", fontSize = 13.sp)
-                                Text(text = "• Denda Keterlambatan: Rp ${formatRupiah(product.harga_denda_perjam)} / jam", fontSize = 13.sp)
+                                if (!product.additional_information.isNullOrBlank()) {
+                                    Text(text = product.additional_information, fontSize = 13.sp, color = Color.DarkGray)
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                }
+                                Text(text = "• Jaminan: ${CurrencyUtils.formatRupiah(product.harga_jaminan)}", fontSize = 13.sp)
+                                Text(text = "• Denda Keterlambatan: ${CurrencyUtils.formatRupiah(product.harga_denda_perjam)} / jam", fontSize = 13.sp)
                             }
                         }
                         

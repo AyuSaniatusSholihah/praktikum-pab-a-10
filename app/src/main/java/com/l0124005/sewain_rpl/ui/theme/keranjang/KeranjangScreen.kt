@@ -28,6 +28,7 @@ import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.viewmodel.KeranjangViewModel
 import com.l0124005.sewain_rpl.network.KeranjangItem
 import com.l0124005.sewain_rpl.network.CatalogData
+import com.l0124005.sewain_rpl.network.ApiClient
 import com.l0124005.sewain_rpl.utils.CurrencyUtils
 
 object CartColors {
@@ -150,7 +151,11 @@ private fun CartRow(
                     .background(Color(0xFFF2F2F2), RoundedCornerShape(8.dp))
             ) {
                 AsyncImage(
-                    model = item.barang.foto_barang ?: "https://placehold.co/200",
+                    model = if (!item.barang.foto_barang.isNullOrEmpty()) {
+                        "${ApiClient.IMAGE_BASE_URL}${item.barang.foto_barang}"
+                    } else {
+                        "https://placehold.co/200"
+                    },
                     contentDescription = item.barang.nama_barang,
                     modifier = Modifier.fillMaxSize()
                 )

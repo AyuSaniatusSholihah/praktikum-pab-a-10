@@ -27,15 +27,12 @@ import coil.compose.AsyncImage
 import com.l0124005.sewain_rpl.network.ApiClient
 import com.l0124005.sewain_rpl.network.CatalogData
 import com.l0124005.sewain_rpl.utils.Resource
+import com.l0124005.sewain_rpl.utils.CurrencyUtils
 import com.l0124005.sewain_rpl.viewmodel.KatalogViewModel
 
 private val BackgroundPage = Color(0xFFF8FAFB)
 private val CardWhite      = Color(0xFFFFFFFF)
 private val BorderColor    = Color(0xFFE8E8E8)
-
-private val kategoriList = listOf(
-    "Semua", "Kamera", "Outdoor", "Elektronik", "Olahraga", "Fashion", "Lainnya"
-)
 
 @Composable
 fun RentalsScreen(
@@ -46,10 +43,22 @@ fun RentalsScreen(
     var activeKategori by remember { mutableStateOf("Semua") }
     
     val katalogState by viewModel.katalogPublik.observeAsState()
+    val kategoriState by viewModel.kategori.observeAsState()
 
-    LaunchedEffect(activeKategori, searchQuery) {
-        val kategoriId = if (activeKategori == "Semua") null else categories.indexOf(activeKategori)
-        viewModel.getKatalogPublik(search = if (searchQuery.isEmpty()) null else searchQuery, kategoriId = kategoriId)
+    LaunchedEffect(Unit) {
+        viewModel.getKategori()
+    }
+
+    LaunchedEffect(activeKategori, searchQuery, kategoriState) {
+        var kategoriId: Int? = null
+        if (activeKategori != "Semua" && kategoriState is Resource.Success) {
+            val kategoriListApi = kategoriState?.data?.data
+            kategoriId = kategoriListApi?.find { it.nama_kategori == activeKategori }?.id
+        }
+        viewModel.getKatalogPublik(
+            search = if (searchQuery.isEmpty()) null else searchQuery, 
+            kategoriId = kategoriId
+        )
     }
 
     Column(
@@ -64,8 +73,16 @@ fun RentalsScreen(
             onQueryChange = { searchQuery = it }
         )
 
+        val categoriesForFilter = mutableListOf("Semua")
+        if (kategoriState is Resource.Success) {
+            kategoriState?.data?.data?.map { it.nama_kategori }?.let {
+                categoriesForFilter.addAll(it)
+            }
+        }
+
         KategoriFilterRow(
             aktif = activeKategori,
+            kategoriList = categoriesForFilter,
             onKategoriSelected = { activeKategori = it }
         )
 
@@ -193,6 +210,7 @@ private fun RentalsSearchBar(
 @Composable
 private fun KategoriFilterRow(
     aktif: String,
+    kategoriList: List<String>,
     onKategoriSelected: (String) -> Unit
 ) {
     LazyRow(
@@ -334,7 +352,7 @@ private fun RentalCard(
                 Spacer(modifier = Modifier.height(6.dp))
 
                 Text(
-                    text = "Rp ${formatRupiah(item.harga_sewa)}",
+                    text = CurrencyUtils.formatRupiah(item.harga_sewa),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                     color = Primary

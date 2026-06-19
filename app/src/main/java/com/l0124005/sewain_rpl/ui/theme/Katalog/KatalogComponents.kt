@@ -311,6 +311,7 @@ fun StockQtyStepper(
 @Composable
 fun CategoryBottomSheet(
     selectedCategory: String,
+    categoriesList: List<String> = categories,
     onSelect: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -332,7 +333,7 @@ fun CategoryBottomSheet(
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
             )
             HorizontalDivider(color = SectionBorder)
-            categories.forEach { cat ->
+            categoriesList.forEach { cat ->
                 val isSelected = cat == selectedCategory
                 Row(
                     modifier = Modifier
