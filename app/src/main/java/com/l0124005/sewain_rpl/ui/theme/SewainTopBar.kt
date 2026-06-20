@@ -54,7 +54,7 @@ fun SewainTopBar(
                     withStyle(style = SpanStyle(color = Color(0xFF484848))) {
                         append("SEWA")
                     }
-                    withStyle(style = SpanStyle(color = Color(0xFF4A7A9B))) {
+                    withStyle(style = SpanStyle(color = Color(0xFF6A87A1))) {
                         append("IN")
                     }
                 },
