@@ -150,7 +150,7 @@ data class KeranjangData(
 
 data class KeranjangItem(
     val id: Int, 
-    val barang: CatalogData, 
+    val barang: CatalogData?, 
     val jumlah: Int, 
     val tanggal_sewa: String, 
     val tanggal_kembali_rencana: String, 

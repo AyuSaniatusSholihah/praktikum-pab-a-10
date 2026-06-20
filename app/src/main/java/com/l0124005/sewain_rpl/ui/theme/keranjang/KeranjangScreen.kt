@@ -243,7 +243,7 @@ private fun CartRow(
                 .clip(RoundedCornerShape(8.dp))
                 .background(CartColors.ThumbBg)
         ) {
-            val imageUrl = if (!item.barang.foto_barang.isNullOrEmpty()) {
+            val imageUrl = if (item.barang != null && !item.barang.foto_barang.isNullOrEmpty()) {
                 if (item.barang.foto_barang.startsWith("http")) {
                     item.barang.foto_barang
                 } else {
@@ -254,7 +254,7 @@ private fun CartRow(
             }
             AsyncImage(
                 model              = imageUrl,
-                contentDescription = item.barang.nama_barang,
+                contentDescription = item.barang?.nama_barang,
                 contentScale       = ContentScale.Crop,
                 modifier           = Modifier.fillMaxSize()
             )
@@ -274,7 +274,7 @@ private fun CartRow(
                 verticalAlignment     = Alignment.Top
             ) {
                 Text(
-                    text       = item.barang.nama_barang,
+                    text       = item.barang?.nama_barang ?: "Barang Tidak Tersedia",
                     fontFamily = CartFonts.Heading,
                     fontWeight = FontWeight.Bold,
                     fontSize   = 15.sp,
@@ -305,7 +305,7 @@ private fun CartRow(
 
             // Harga/hari
             Text(
-                text       = "Rp ${CurrencyUtils.formatRupiah(item.barang.harga_sewa.toLong())}/hari",
+                text       = "Rp ${CurrencyUtils.formatRupiah(item.barang?.harga_sewa?.toLong() ?: 0)}/hari",
                 fontFamily = MonsterratFont,
                 fontWeight = FontWeight.SemiBold,
                 fontSize   = 11.sp,
@@ -376,7 +376,7 @@ private fun CartRow(
             )
         } // ← tutup Column info produk
     } // ← tutup Row CartRow
-} // ← tutup fun CartRow  ✅ INI YANG HILANG DI VERSI LAMA
+} // ← tutup fun CartRow
 
 // ── Date pill ─────────────────────────────────────────────────
 @Composable

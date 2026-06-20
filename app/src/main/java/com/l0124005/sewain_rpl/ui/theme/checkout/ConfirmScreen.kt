@@ -68,12 +68,15 @@ fun mapCheckoutResponseToState(response: com.l0124005.sewain_rpl.network.Checkou
         )
     }
 
+    val dateFormat = java.text.SimpleDateFormat("dd MMMM yyyy HH:mm:ss", java.util.Locale("id", "ID"))
+    val currentDateTime = dateFormat.format(java.util.Date())
+
     val customer = CustomerInfo(
-        nama = firstTx.user?.name ?: "-",
-        metodePembayaran = firstTx.pembayaran?.metode ?: "Transfer",
+        nama = firstTx.user?.name ?: "Customer (Guest)",
+        metodePembayaran = firstTx.pembayaran?.metode ?: "Transfer Bank - BCA",
         metodePengiriman = if (firstTx.user?.alamat.isNullOrBlank()) "COD" else "Delivery",
         alamat = firstTx.user?.alamat ?: "-",
-        tanggalPembayaran = firstTx.pembayaran?.tanggal_bayar ?: "-"
+        tanggalPembayaran = currentDateTime
     )
 
     return PaymentConfirmedState(
@@ -470,7 +473,7 @@ private fun CustomerInfoSection(customer: CustomerInfo) {
         ) {
             Row {
                 Text("SEWA", fontFamily = CkVolkhov, fontSize = 26.sp, color = CkColors.Dark)
-                Text("IN", fontFamily = CkVolkhov, fontSize = 26.sp, color = CkColors.Blue)
+                Text("IN", fontFamily = CkVolkhov, fontSize = 26.sp, color = Color(0xFF6A87A1))
             }
         }
     }
