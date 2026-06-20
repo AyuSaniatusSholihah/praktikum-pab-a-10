@@ -315,15 +315,15 @@ private fun RentalCard(item: TransaksiData, onClick: () -> Unit, modifier: Modif
             Box(
                 modifier = Modifier
                     .padding(8.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(status.badgeColor.copy(alpha = 0.55f))
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(status.badgeColor)
                     .padding(horizontal = 8.dp, vertical = 3.dp)
             ) {
                 Text(
                     text = status.label,
                     fontFamily = MontaguSlabFont,
                     fontSize = 10.sp,
-                    color = Color.White
+                    color = status.badgeTextColor
                 )
             }
         }

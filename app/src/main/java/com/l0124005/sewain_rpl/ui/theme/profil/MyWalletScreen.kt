@@ -368,7 +368,7 @@ private fun WalletSaldoCard(saldo: Double) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(LocalAccentBlue)
+            .background(InputBlue)
             .padding(20.dp)
     ) {
         Row(
