@@ -13,8 +13,12 @@ import okhttp3.RequestBody
 
 class ProfileViewModel(private val repository: ProfileRepository) : ViewModel() {
 
-    private val _profile = MutableLiveData<Resource<ProfileResponse>>()
-    val profile: LiveData<Resource<ProfileResponse>> = _profile
+    private val _profile = MutableLiveData<Resource<ProfileResponse>?>()
+    val profile: LiveData<Resource<ProfileResponse>?> = _profile
+
+    fun resetStates() {
+        _profile.value = null
+    }
 
     fun getProfile(token: String) {
         viewModelScope.launch {

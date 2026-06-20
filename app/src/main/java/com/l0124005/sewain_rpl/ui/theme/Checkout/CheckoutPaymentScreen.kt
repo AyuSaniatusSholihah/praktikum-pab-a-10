@@ -2,11 +2,13 @@ package com.l0124005.sewain_rpl.ui.theme.checkout
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -14,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -25,12 +28,183 @@ import coil.compose.AsyncImage
 import com.l0124005.sewain_rpl.ui.theme.katalog.*
 import com.l0124005.sewain_rpl.utils.CurrencyUtils
 
-/* ────────────────────────────────────────────────────────────
- *  SUMMARY PRODUCT CARD
- *  Meniru blok `.summary-product` di HTML: foto + badge qty, nama, harga/hari,
- *  dua kotak tanggal (mulai/selesai), lalu baris-baris (durasi, subtotal, shipping,
- *  jaminan, total, catatan denda)
- * ──────────────────────────────────────────────────────────── */
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
+import com.l0124005.sewain_rpl.network.ApiClient
+import com.l0124005.sewain_rpl.utils.Resource
+import com.l0124005.sewain_rpl.viewmodel.KeranjangViewModel
+import com.l0124005.sewain_rpl.viewmodel.ProfileViewModel
+import com.l0124005.sewain_rpl.viewmodel.TransaksiViewModel
+
+@Composable
+fun CheckoutPaymentScreen(
+    token: String,
+    keranjangViewModel: KeranjangViewModel,
+    profileViewModel: ProfileViewModel,
+    transaksiViewModel: TransaksiViewModel,
+    onEditProfile: () -> Unit
+) {
+    val keranjangData by keranjangViewModel.keranjang.observeAsState()
+    val profileState by profileViewModel.profile.observeAsState()
+
+    LaunchedEffect(Unit) {
+        if (profileState == null) {
+            profileViewModel.getProfile(token)
+        }
+    }
+
+    val items = (keranjangData as? Resource.Success)?.data?.data?.items ?: emptyList()
+    val total = (keranjangData as? Resource.Success)?.data?.data?.total_estimasi?.toLong() ?: 0L
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .background(Color.White)
+    ) {
+        CheckoutPageHeader()
+
+        // Shipping Address Section
+        when (val state = profileState) {
+            is Resource.Loading -> {
+                Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = Primary)
+                }
+            }
+            is Resource.Success -> {
+                val user = state.data?.data
+                if (user != null) {
+                    ShippingAddressSection(
+                        name = user.name,
+                        phone = user.phone_number ?: "-",
+                        address = user.alamat ?: "Alamat belum diatur",
+                        onEditClick = onEditProfile
+                    )
+                }
+            }
+            is Resource.Error -> {
+                Text(
+                    "Gagal memuat alamat: ${state.message}",
+                    color = Color.Red,
+                    modifier = Modifier.padding(16.dp),
+                    fontSize = 12.sp
+                )
+            }
+            else -> {}
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Product Summary Section
+        items.forEach { item ->
+            val cartItem = CartItem(
+                id = item.id,
+                nama = item.barang.nama_barang,
+                harga = item.barang.harga_sewa.toLong(),
+                qty = item.jumlah,
+                imageUrl = if (item.barang.foto_barang != null) "${ApiClient.IMAGE_BASE_URL}${item.barang.foto_barang}" else "https://placehold.co/200",
+                tglMulai = item.tanggal_sewa,
+                tglSelesai = item.tanggal_kembali_rencana,
+                dendaPerJam = item.barang.harga_denda_perjam.toLong(),
+                jaminanBase = item.barang.harga_jaminan.toLong()
+            )
+            SummaryProductCard(
+                item = cartItem,
+                shippingCost = 0,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+            Spacer(Modifier.height(16.dp))
+        }
+
+        SummaryTotalRow(grandTotal = total, modifier = Modifier.padding(horizontal = 16.dp))
+
+        Spacer(Modifier.height(24.dp))
+
+        Button(
+            onClick = {
+                transaksiViewModel.checkout(token)
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+                .height(50.dp),
+            shape = RoundedCornerShape(8.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Primary)
+        ) {
+            Text("Bayar Sekarang", color = Color.White, fontWeight = FontWeight.Bold)
+        }
+        
+        Spacer(Modifier.height(32.dp))
+    }
+}
+
+@Composable
+fun ShippingAddressSection(
+    name: String,
+    phone: String,
+    address: String,
+    onEditClick: () -> Unit = {}
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .border(1.dp, SectionBorder, RoundedCornerShape(8.dp))
+            .padding(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "Alamat Pengiriman",
+                fontFamily = Volkhov,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                color = Black
+            )
+            Text(
+                "Ubah",
+                color = Primary,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.clickable { onEditClick() }
+            )
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                Icons.Default.LocationOn,
+                contentDescription = null,
+                tint = Primary,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Column {
+                Text(
+                    text = "$name | $phone",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp,
+                    color = Black
+                )
+                Text(
+                    text = address,
+                    fontSize = 12.sp,
+                    color = TextMuted,
+                    lineHeight = 18.sp
+                )
+            }
+        }
+    }
+}
+
 @Composable
 fun SummaryProductCard(
     item: CartItem,
@@ -206,10 +380,6 @@ private fun SummaryRow(label: String, value: String, bold: Boolean = false, ital
     }
 }
 
-/* ────────────────────────────────────────────────────────────
- *  SUMMARY TOTAL — meniru .summary-total (background abu, label kiri,
- *  pill biru di kanan menampilkan grand total)
- * ──────────────────────────────────────────────────────────── */
 @Composable
 fun SummaryTotalRow(grandTotal: Long, modifier: Modifier = Modifier) {
     Row(

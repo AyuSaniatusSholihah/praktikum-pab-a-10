@@ -29,6 +29,7 @@ import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.viewmodel.KatalogViewModel
+import com.l0124005.sewain_rpl.viewmodel.ProfileViewModel
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
@@ -42,6 +43,7 @@ import java.io.File
 @Composable
 fun AddItemScreen(
     viewModel: KatalogViewModel,
+    profileViewModel: ProfileViewModel,
     token: String,
     onBack: () -> Unit = {},
     onSuccess: () -> Unit = {}
@@ -53,6 +55,13 @@ fun AddItemScreen(
     var showCategorySheet   by remember { mutableStateOf(false) }
 
     val crudResult by viewModel.crudResult.observeAsState()
+    val kategoriResult by viewModel.kategori.observeAsState()
+    val profileState by profileViewModel.profile.observeAsState()
+
+    LaunchedEffect(Unit) {
+        profileViewModel.getProfile(token)
+        viewModel.getKategori()
+    }
 
     LaunchedEffect(crudResult) {
         if (crudResult is Resource.Success) {
@@ -83,13 +92,21 @@ fun AddItemScreen(
             PublishBottomBar(
                 onPublish = {
                     val namePart = form.itemName.toRequestBody("text/plain".toMediaTypeOrNull())
-                    val catPart = "1".toRequestBody("text/plain".toMediaTypeOrNull()) // TODO: Map category name to ID
-                    val sewaPart = form.price.toRequestBody("text/plain".toMediaTypeOrNull())
-                    val jaminanPart = form.jaminan.toRequestBody("text/plain".toMediaTypeOrNull())
-                    val dendaPart = form.denda.toRequestBody("text/plain".toMediaTypeOrNull())
+                    val catPart = form.categoryId.toRequestBody("text/plain".toMediaTypeOrNull())
+                    
+                    val cleanPrice = form.price.filter { it.isDigit() }.ifEmpty { "0" }
+                    val cleanJaminan = form.jaminan.filter { it.isDigit() }.ifEmpty { "0" }
+                    val cleanDenda = form.denda.filter { it.isDigit() }.ifEmpty { "0" }
+                    val cleanWhatsApp = form.whatsApp.filter { it.isDigit() }.ifEmpty { "" }
+
+                    val sewaPart = cleanPrice.toRequestBody("text/plain".toMediaTypeOrNull())
+                    val jaminanPart = cleanJaminan.toRequestBody("text/plain".toMediaTypeOrNull())
+                    val dendaPart = cleanDenda.toRequestBody("text/plain".toMediaTypeOrNull())
                     val stokPart = form.stockQty.toString().toRequestBody("text/plain".toMediaTypeOrNull())
                     val locPart = form.lokasi.toRequestBody("text/plain".toMediaTypeOrNull())
                     val descPart = form.description.toRequestBody("text/plain".toMediaTypeOrNull())
+                    val addInfoPart = form.additionalInfo.toRequestBody("text/plain".toMediaTypeOrNull())
+                    val statusPart = "tersedia".toRequestBody("text/plain".toMediaTypeOrNull())
 
                     var imagePart: MultipartBody.Part? = null
                     form.mainImageUri?.let { uri ->
@@ -101,7 +118,7 @@ fun AddItemScreen(
                         imagePart = MultipartBody.Part.createFormData("foto_barang", file.name, requestFile)
                     }
 
-                    viewModel.createKatalog(token, catPart, namePart, descPart, sewaPart, jaminanPart, dendaPart, stokPart, locPart, imagePart)
+                    viewModel.createKatalog(token, catPart, namePart, descPart, sewaPart, jaminanPart, dendaPart, stokPart, locPart, addInfoPart, imagePart, statusPart)
                 },
                 isLoading = crudResult is Resource.Loading
             )
@@ -155,16 +172,17 @@ fun AddItemScreen(
             Spacer(Modifier.height(24.dp))
 
             // ---- PROFILE CARD ----
+            val user = (profileState as? Resource.Success)?.data?.data
             ProfileCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp),
-                nama = "Camping Groups Bandung",
-                lokasi = "Kota Bandung",
-                rating = 4.3f,
-                totalUlasan = 120,
-                jumlahKatalog = 7,
-                whatsapp = "0821-5620-9034"
+                nama = user?.name ?: "Loading...",
+                lokasi = user?.alamat ?: "Unknown",
+                rating = 4.5f,
+                totalUlasan = 12,
+                jumlahKatalog = 0,
+                whatsapp = user?.phone_number ?: ""
             )
 
             Spacer(Modifier.height(24.dp))
@@ -295,10 +313,16 @@ fun AddItemScreen(
 
     // ---- CATEGORY BOTTOM SHEET ----
     if (showCategorySheet) {
-        CategoryBottomSheet(
-            selectedCategory = form.category,
-            onSelect = { selected ->
-                form = form.copy(category = selected)
+        val availableCategories = (kategoriResult as? Resource.Success)?.data?.data ?: emptyList()
+        
+        CategoryBottomSheetDynamic(
+            categories = availableCategories,
+            selectedCategoryId = form.categoryId,
+            onSelect = { selectedId, selectedName ->
+                form = form.copy(
+                    category = selectedName,
+                    categoryId = selectedId.toString()
+                )
                 showCategorySheet = false
             },
             onDismiss = { showCategorySheet = false }
@@ -328,21 +352,6 @@ fun AddItemTopBar(onBack: () -> Unit) {
         navigationIcon = {
             IconButton(onClick = onBack) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali", tint = Black)
-            }
-        },
-        actions = {
-            IconButton(onClick = {}) {
-                Icon(Icons.Outlined.Person, contentDescription = "Profil", tint = Black)
-            }
-            BadgedBox(badge = { Badge { Text("3") } }) {
-                IconButton(onClick = {}) {
-                    Icon(Icons.Outlined.Notifications, contentDescription = "Notifikasi", tint = Black)
-                }
-            }
-            BadgedBox(badge = { Badge { Text("2") } }) {
-                IconButton(onClick = {}) {
-                    Icon(Icons.Outlined.ShoppingCart, contentDescription = "Keranjang", tint = Black)
-                }
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(containerColor = White)

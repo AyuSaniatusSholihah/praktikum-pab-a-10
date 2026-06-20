@@ -1,6 +1,7 @@
 package com.l0124005.sewain_rpl.ui.theme.transaksi
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -32,7 +33,8 @@ fun DetailTransaksiScreen(
     token: String,
     transaksiId: Int,
     onBack: () -> Unit,
-    onPayClick: (List<Int>) -> Unit
+    onPayClick: (List<Int>) -> Unit,
+    onProductClick: (Int) -> Unit
 ) {
     val transaksiDetailState by viewModel.transaksiDetail.observeAsState()
 
@@ -60,7 +62,7 @@ fun DetailTransaksiScreen(
                 is Resource.Success -> {
                     val transaksi = transaksiDetailState?.data?.data
                     if (transaksi != null) {
-                        TransaksiDetailContent(transaksi, onPayClick)
+                        TransaksiDetailContent(transaksi, onPayClick, onProductClick)
                     } else {
                         Text("Data tidak ditemukan", modifier = Modifier.align(Alignment.Center))
                     }
@@ -72,7 +74,9 @@ fun DetailTransaksiScreen(
                         modifier = Modifier.align(Alignment.Center)
                     )
                 }
-                else -> {}
+                null -> {
+                    // Initial or reset state
+                }
             }
         }
     }
@@ -81,7 +85,8 @@ fun DetailTransaksiScreen(
 @Composable
 fun TransaksiDetailContent(
     transaksi: TransaksiData,
-    onPayClick: (List<Int>) -> Unit
+    onPayClick: (List<Int>) -> Unit,
+    onProductClick: (Int) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -121,9 +126,27 @@ fun TransaksiDetailContent(
 
         // Information Sections
         InfoSection("Informasi Barang") {
-            InfoRow("Nama Barang", transaksi.barang?.nama_barang ?: "-")
-            InfoRow("Jumlah", "${transaksi.jumlah} unit")
-            InfoRow("Harga Sewa", "Rp ${formatRupiah(transaksi.barang?.harga_sewa ?: 0.0)} / hari")
+            Card(
+                modifier = Modifier.fillMaxWidth().clickable { 
+                    transaksi.barang?.id?.let { onProductClick(it) }
+                },
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFF8F9FA)),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.5f))
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    InfoRow("Nama Barang", transaksi.barang?.nama_barang ?: "-")
+                    InfoRow("Jumlah", "${transaksi.jumlah} unit")
+                    InfoRow("Harga Sewa", "Rp ${formatRupiah(transaksi.barang?.harga_sewa ?: 0.0)} / hari")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "Lihat Detail Produk >", 
+                        fontSize = 12.sp, 
+                        color = Color(0xFF1E5276), 
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.align(Alignment.End)
+                    )
+                }
+            }
         }
 
         InfoSection("Informasi Sewa") {
