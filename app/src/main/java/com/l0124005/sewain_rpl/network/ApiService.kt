@@ -47,6 +47,7 @@ interface ApiService {
     ): Response<ProfileResponse>
 
     @Multipart
+    @Headers("Accept: application/json")
     @POST("profile")
     suspend fun updateProfile(
         @Header("Authorization") token: String,

@@ -338,32 +338,89 @@ fun AddItemScreen(
 
     // ---- CATEGORY BOTTOM SHEET ----
     if (showCategorySheet) {
-        when (kategoriResult) {
-            is Resource.Success -> {
-                val list = kategoriResult?.data?.data ?: emptyList()
-                CategoryBottomSheetDynamic(
-                    categories = list,
-                    selectedCategoryId = form.categoryId,
-                    onSelect = { selectedId, selectedName ->
-                        form = form.copy(
-                            category = selectedName,
-                            categoryId = selectedId.toString()
-                        )
-                        showCategorySheet = false
-                    },
-                    onDismiss = { showCategorySheet = false }
+        ModalBottomSheet(
+            onDismissRequest = { showCategorySheet = false },
+            containerColor = Color.White,
+            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+        ) {
+            Column(modifier = Modifier.padding(bottom = 32.dp)) {
+                Text(
+                    text = "Pilih Kategori",
+                    fontFamily = Volkhov,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = Black,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
                 )
-            }
-            is Resource.Loading -> {
-                // Bisa tambahkan loading indicator jika perlu
-            }
-            is Resource.Error -> {
-                Toast.makeText(context, "Gagal memuat kategori: ${kategoriResult?.message}", Toast.LENGTH_SHORT).show()
-                showCategorySheet = false
-            }
-            else -> {
-                // Jika null, panggil lagi
-                viewModel.getKategori()
+                HorizontalDivider(color = SectionBorder)
+
+                when (kategoriResult) {
+                    is Resource.Loading -> {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().height(200.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(color = Primary)
+                        }
+                    }
+                    is Resource.Success -> {
+                        val categories = kategoriResult?.data?.data ?: emptyList()
+                        if (categories.isEmpty()) {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().height(100.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("Tidak ada kategori tersedia", color = TextMuted)
+                            }
+                        } else {
+                            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                                categories.forEach { cat ->
+                                    val isSelected = form.categoryId == cat.id.toString()
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
+                                                form = form.copy(
+                                                    category = cat.nama_kategori,
+                                                    categoryId = cat.id.toString()
+                                                )
+                                                showCategorySheet = false
+                                            }
+                                            .padding(horizontal = 20.dp, vertical = 14.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            text = cat.nama_kategori,
+                                            fontSize = 14.sp,
+                                            color = if (isSelected) Primary else TextDark,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                        )
+                                        if (isSelected) {
+                                            Icon(Icons.Default.Check, null, tint = Primary, modifier = Modifier.size(18.dp))
+                                        }
+                                    }
+                                    HorizontalDivider(color = SectionBorder.copy(alpha = 0.5f), modifier = Modifier.padding(horizontal = 20.dp))
+                                }
+                            }
+                        }
+                    }
+                    is Resource.Error -> {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(20.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text("Gagal memuat kategori", color = Color.Red)
+                            TextButton(onClick = { viewModel.getKategori() }) {
+                                Text("Coba Lagi", color = Primary)
+                            }
+                        }
+                    }
+                    else -> {
+                        // Jika null, panggil lagi
+                        LaunchedEffect(Unit) { viewModel.getKategori() }
+                    }
+                }
             }
         }
     }

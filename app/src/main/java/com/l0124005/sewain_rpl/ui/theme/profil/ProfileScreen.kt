@@ -26,6 +26,9 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -36,7 +39,10 @@ import com.l0124005.sewain_rpl.ui.theme.katalog.formatRupiah
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.viewmodel.ProfileViewModel
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.File
 
 private val DarkNavy = Color(0xFF1F2A33)
 private val InputBlue = Color(0xFF8AA9BD)
@@ -54,16 +60,25 @@ fun ProfileScreen(
 ) {
     val profileState by viewModel.profile.observeAsState()
     val context = LocalContext.current
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+
+    val photoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        selectedImageUri = uri
+    }
+
+    // Pastikan token menggunakan format Bearer untuk Laravel Sanctum
+    val authToken = if (token.startsWith("Bearer ")) token else "Bearer $token"
 
     LaunchedEffect(Unit) {
-        viewModel.getProfile(token)
+        viewModel.getProfile(authToken)
     }
 
     LaunchedEffect(profileState) {
         if (profileState is Resource.Success && (profileState as Resource.Success<ProfileResponse>).data?.message == "Profile updated successfully") {
             Toast.makeText(context, "Profil berhasil diperbarui", Toast.LENGTH_SHORT).show()
+            selectedImageUri = null
             viewModel.resetStates()
-            viewModel.getProfile(token)
+            viewModel.getProfile(authToken)
         } else if (profileState is Resource.Error) {
             Toast.makeText(context, "Gagal update: ${profileState?.message}", Toast.LENGTH_SHORT).show()
             viewModel.resetStates()
@@ -87,6 +102,7 @@ fun ProfileScreen(
                         ProfileHeaderSection(
                             name = user.name,
                             foto = user.foto_profil,
+                            selectedImageUri = selectedImageUri,
                             onMyRentalClick = onMyRentalClick,
                             onRentalOwnerClick = onRentalOwnerClick,
                             onWalletClick = onTransaksiClick
@@ -95,14 +111,29 @@ fun ProfileScreen(
                         ProfileFormSection(
                             user = user,
                             onLogout = onLogout,
-                            onEditPhoto = onEditProfile,
+                            selectedImageUri = selectedImageUri,
+                            onEditPhoto = { photoLauncher.launch("image/*") },
                             onSave = { updatedUser ->
                                 val namePart = updatedUser.name.toRequestBody("text/plain".toMediaTypeOrNull())
                                 val usernamePart = updatedUser.username?.toRequestBody("text/plain".toMediaTypeOrNull())
                                 val phonePart = updatedUser.phone_number?.toRequestBody("text/plain".toMediaTypeOrNull())
                                 val alamatPart = updatedUser.alamat?.toRequestBody("text/plain".toMediaTypeOrNull())
                                 
-                                viewModel.updateProfile(token, namePart, usernamePart, phonePart, alamatPart)
+                                var imagePart: MultipartBody.Part? = null
+                                selectedImageUri?.let { uri ->
+                                    try {
+                                        val file = File(context.cacheDir, "profile_${System.currentTimeMillis()}.jpg")
+                                        context.contentResolver.openInputStream(uri)?.use { input ->
+                                            file.outputStream().use { output -> input.copyTo(output) }
+                                        }
+                                        val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
+                                        imagePart = MultipartBody.Part.createFormData("foto_profil", file.name, requestFile)
+                                    } catch (e: Exception) {
+                                        Toast.makeText(context, "Gagal memproses gambar", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+
+                                viewModel.updateProfile(authToken, namePart, usernamePart, phonePart, alamatPart, imagePart)
                             },
                             onWalletClick = onTransaksiClick
                         )
@@ -125,6 +156,7 @@ fun ProfileScreen(
 private fun ProfileHeaderSection(
     name: String,
     foto: String?,
+    selectedImageUri: Uri?,
     onMyRentalClick: () -> Unit,
     onRentalOwnerClick: () -> Unit,
     onWalletClick: () -> Unit
@@ -140,8 +172,10 @@ private fun ProfileHeaderSection(
             .padding(20.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            val profileImageUrl = remember(foto) {
-                if (!foto.isNullOrEmpty()) {
+            val profileImageUrl = remember(foto, selectedImageUri) {
+                if (selectedImageUri != null) {
+                    selectedImageUri
+                } else if (!foto.isNullOrEmpty()) {
                     if (foto.startsWith("http")) {
                         foto
                     } else {
@@ -215,6 +249,7 @@ private fun ProfileHeaderSection(
 private fun ProfileFormSection(
     user: UserData,
     onLogout: () -> Unit,
+    selectedImageUri: Uri?,
     onEditPhoto: () -> Unit,
     onSave: (UserData) -> Unit,
     onWalletClick: () -> Unit
@@ -235,8 +270,10 @@ private fun ProfileFormSection(
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             // Profile Picture Center
             Box(contentAlignment = Alignment.BottomEnd) {
-                val profileImageUrl = remember(user.foto_profil) {
-                    if (!user.foto_profil.isNullOrEmpty()) {
+                val profileImageUrl = remember(user.foto_profil, selectedImageUri) {
+                    if (selectedImageUri != null) {
+                        selectedImageUri
+                    } else if (!user.foto_profil.isNullOrEmpty()) {
                         if (user.foto_profil.startsWith("http")) {
                             user.foto_profil
                         } else {
