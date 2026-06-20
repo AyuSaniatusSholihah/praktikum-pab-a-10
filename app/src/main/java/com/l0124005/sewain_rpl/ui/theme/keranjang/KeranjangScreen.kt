@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
@@ -27,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.l0124005.sewain_rpl.R
+import com.l0124005.sewain_rpl.network.ApiClient
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.viewmodel.KeranjangViewModel
 import com.l0124005.sewain_rpl.network.KeranjangItem
@@ -260,9 +262,19 @@ private fun CartRow(
                 .clip(RoundedCornerShape(8.dp))
                 .background(CartColors.ThumbBg)
         ) {
+            val imageUrl = if (!item.barang.foto_barang.isNullOrEmpty()) {
+                if (item.barang.foto_barang.startsWith("http")) {
+                    item.barang.foto_barang
+                } else {
+                    ApiClient.IMAGE_BASE_URL + item.barang.foto_barang
+                }
+            } else {
+                "https://placehold.co/200"
+            }
             AsyncImage(
-                model              = item.barang.foto_barang ?: "https://placehold.co/200",
+                model              = imageUrl,
                 contentDescription = item.barang.nama_barang,
+                contentScale       = ContentScale.Crop,
                 modifier           = Modifier.fillMaxSize()
             )
         }

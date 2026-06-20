@@ -1,6 +1,7 @@
 package com.l0124005.sewain_rpl.ui.theme.katalog
 
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.*
@@ -58,14 +59,25 @@ fun AddItemScreen(
     val kategoriResult by viewModel.kategori.observeAsState()
     val profileState by profileViewModel.profile.observeAsState()
 
+    // Pastikan token menggunakan format Bearer untuk Laravel Sanctum
+    val authToken = if (token.startsWith("Bearer ")) token else "Bearer $token"
+
     LaunchedEffect(Unit) {
-        profileViewModel.getProfile(token)
+        profileViewModel.getProfile(authToken)
         viewModel.getKategori()
     }
 
     LaunchedEffect(crudResult) {
-        if (crudResult is Resource.Success) {
-            onSuccess()
+        when (crudResult) {
+            is Resource.Success -> {
+                Toast.makeText(context, "Katalog berhasil dipublikasikan!", Toast.LENGTH_SHORT).show()
+                onSuccess()
+                viewModel.resetStates()
+            }
+            is Resource.Error -> {
+                Toast.makeText(context, "Gagal publish: ${crudResult?.message}", Toast.LENGTH_LONG).show()
+            }
+            else -> {}
         }
     }
 
@@ -91,13 +103,17 @@ fun AddItemScreen(
         bottomBar = {
             PublishBottomBar(
                 onPublish = {
+                    if (form.itemName.isEmpty() || form.categoryId.isEmpty() || form.mainImageUri == null) {
+                        Toast.makeText(context, "Nama, Kategori, dan Foto Utama wajib diisi", Toast.LENGTH_SHORT).show()
+                        return@PublishBottomBar
+                    }
+
                     val namePart = form.itemName.toRequestBody("text/plain".toMediaTypeOrNull())
                     val catPart = form.categoryId.toRequestBody("text/plain".toMediaTypeOrNull())
                     
                     val cleanPrice = form.price.filter { it.isDigit() }.ifEmpty { "0" }
                     val cleanJaminan = form.jaminan.filter { it.isDigit() }.ifEmpty { "0" }
                     val cleanDenda = form.denda.filter { it.isDigit() }.ifEmpty { "0" }
-                    val cleanWhatsApp = form.whatsApp.filter { it.isDigit() }.ifEmpty { "" }
 
                     val sewaPart = cleanPrice.toRequestBody("text/plain".toMediaTypeOrNull())
                     val jaminanPart = cleanJaminan.toRequestBody("text/plain".toMediaTypeOrNull())
@@ -110,15 +126,19 @@ fun AddItemScreen(
 
                     var imagePart: MultipartBody.Part? = null
                     form.mainImageUri?.let { uri ->
-                        val file = File(context.cacheDir, "temp_image_add.jpg")
-                        context.contentResolver.openInputStream(uri)?.use { input ->
-                            file.outputStream().use { output -> input.copyTo(output) }
+                        try {
+                            val file = File(context.cacheDir, "temp_image_${System.currentTimeMillis()}.jpg")
+                            context.contentResolver.openInputStream(uri)?.use { input ->
+                                file.outputStream().use { output -> input.copyTo(output) }
+                            }
+                            val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
+                            imagePart = MultipartBody.Part.createFormData("foto_barang", file.name, requestFile)
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "Gagal memproses gambar", Toast.LENGTH_SHORT).show()
                         }
-                        val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
-                        imagePart = MultipartBody.Part.createFormData("foto_barang", file.name, requestFile)
                     }
 
-                    viewModel.createKatalog(token, catPart, namePart, descPart, sewaPart, jaminanPart, dendaPart, stokPart, locPart, addInfoPart, imagePart, statusPart)
+                    viewModel.createKatalog(authToken, catPart, namePart, descPart, sewaPart, jaminanPart, dendaPart, stokPart, locPart, addInfoPart, imagePart, statusPart)
                 },
                 isLoading = crudResult is Resource.Loading
             )
@@ -278,7 +298,12 @@ fun AddItemScreen(
             ItemDetailsForm(
                 form = form,
                 onFormChange = { form = it },
-                onCategoryClick = { showCategorySheet = true },
+                onCategoryClick = {
+                    if (kategoriResult !is Resource.Success) {
+                        viewModel.getKategori()
+                    }
+                    showCategorySheet = true
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp)
@@ -313,20 +338,34 @@ fun AddItemScreen(
 
     // ---- CATEGORY BOTTOM SHEET ----
     if (showCategorySheet) {
-        val availableCategories = (kategoriResult as? Resource.Success)?.data?.data ?: emptyList()
-        
-        CategoryBottomSheetDynamic(
-            categories = availableCategories,
-            selectedCategoryId = form.categoryId,
-            onSelect = { selectedId, selectedName ->
-                form = form.copy(
-                    category = selectedName,
-                    categoryId = selectedId.toString()
+        when (kategoriResult) {
+            is Resource.Success -> {
+                val list = kategoriResult?.data?.data ?: emptyList()
+                CategoryBottomSheetDynamic(
+                    categories = list,
+                    selectedCategoryId = form.categoryId,
+                    onSelect = { selectedId, selectedName ->
+                        form = form.copy(
+                            category = selectedName,
+                            categoryId = selectedId.toString()
+                        )
+                        showCategorySheet = false
+                    },
+                    onDismiss = { showCategorySheet = false }
                 )
+            }
+            is Resource.Loading -> {
+                // Bisa tambahkan loading indicator jika perlu
+            }
+            is Resource.Error -> {
+                Toast.makeText(context, "Gagal memuat kategori: ${kategoriResult?.message}", Toast.LENGTH_SHORT).show()
                 showCategorySheet = false
-            },
-            onDismiss = { showCategorySheet = false }
-        )
+            }
+            else -> {
+                // Jika null, panggil lagi
+                viewModel.getKategori()
+            }
+        }
     }
 }
 

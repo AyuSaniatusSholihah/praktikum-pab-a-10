@@ -137,7 +137,7 @@ fun ProductDetailScreen(
     var selectedThumb by remember { mutableStateOf(0) }
     var quantity      by remember { mutableStateOf(1) }
     var selectedTab   by remember { mutableStateOf(0) }
-    
+
     val sdfDisplay = SimpleDateFormat("dd MMMM yyyy", Locale("id"))
     val sdfApi = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
 
@@ -147,8 +147,11 @@ fun ProductDetailScreen(
     var showDatePickerStart by remember { mutableStateOf(false) }
     var showDatePickerEnd by remember { mutableStateOf(false) }
 
+    var fallbackTried by remember { mutableStateOf(false) }
+
     LaunchedEffect(productId) {
         if (productId != -1) {
+            fallbackTried = false
             katalogViewModel.resetStates()
             // Mencoba ambil secara publik dulu (umum)
             katalogViewModel.getKatalogPublikDetail(productId)
@@ -157,8 +160,9 @@ fun ProductDetailScreen(
 
     // Listener tambahan untuk menangani 404 (Data baru yang belum muncul di publik)
     LaunchedEffect(detailState) {
-        if (detailState is Resource.Error && detailState?.message?.contains("404") == true) {
+        if (detailState is Resource.Error && detailState?.code == 404 && !fallbackTried) {
             // Jika 404 di publik, coba ambil dari endpoint privat (milik sendiri)
+            fallbackTried = true
             katalogViewModel.getMyKatalogDetail(token, productId)
         }
     }
@@ -375,7 +379,13 @@ fun ProductDetailScreen(
                     ) {
                         Text(text = "Error: ${detailState?.message}", color = Color.Red)
                         Spacer(Modifier.height(8.dp))
-                        Button(onClick = { if (productId != -1) katalogViewModel.getKatalogPublikDetail(productId) }) {
+                        Button(onClick = {
+                            if (productId != -1) {
+                                fallbackTried = false
+                                katalogViewModel.resetStates()
+                                katalogViewModel.getKatalogPublikDetail(productId)
+                            }
+                        }) {
                             Text("Coba Lagi")
                         }
                     }

@@ -365,8 +365,13 @@ private fun MyKatalogCard(
                     .background(UploadBg)
             ) {
                 if (!item.foto_barang.isNullOrEmpty()) {
+                    val imageUrl = if (item.foto_barang.startsWith("http")) {
+                        item.foto_barang
+                    } else {
+                        "${ApiClient.IMAGE_BASE_URL}${item.foto_barang}"
+                    }
                     AsyncImage(
-                        model              = "${ApiClient.IMAGE_BASE_URL}${item.foto_barang}",
+                        model              = imageUrl,
                         contentDescription = item.nama_barang,
                         contentScale       = ContentScale.Crop,
                         modifier           = Modifier.fillMaxSize()

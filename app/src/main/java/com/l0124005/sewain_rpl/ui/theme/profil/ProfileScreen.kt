@@ -139,8 +139,22 @@ private fun ProfileHeaderSection(
             .padding(20.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
+            val profileImageUrl = remember(foto) {
+                if (!foto.isNullOrEmpty()) {
+                    if (foto.startsWith("http")) {
+                        foto
+                    } else {
+                        // Jika path tidak diawali profiles/ dan bukan URL lengkap
+                        val path = if (foto.startsWith("profiles/")) foto else "profiles/$foto"
+                        "${ApiClient.IMAGE_BASE_URL}$path"
+                    }
+                } else {
+                    "https://ui-avatars.com/api/?name=$name"
+                }
+            }
+
             AsyncImage(
-                model = if (!foto.isNullOrEmpty()) "${ApiClient.IMAGE_BASE_URL}profiles/$foto" else "https://ui-avatars.com/api/?name=$name",
+                model = profileImageUrl,
                 contentDescription = null,
                 modifier = Modifier
                     .size(60.dp)
@@ -220,8 +234,21 @@ private fun ProfileFormSection(
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             // Profile Picture Center
             Box(contentAlignment = Alignment.BottomEnd) {
+                val profileImageUrl = remember(user.foto_profil) {
+                    if (!user.foto_profil.isNullOrEmpty()) {
+                        if (user.foto_profil.startsWith("http")) {
+                            user.foto_profil
+                        } else {
+                            val path = if (user.foto_profil.startsWith("profiles/")) user.foto_profil else "profiles/${user.foto_profil}"
+                            "${ApiClient.IMAGE_BASE_URL}$path"
+                        }
+                    } else {
+                        "https://ui-avatars.com/api/?name=${user.name}"
+                    }
+                }
+
                 AsyncImage(
-                    model = if (!user.foto_profil.isNullOrEmpty()) "${ApiClient.IMAGE_BASE_URL}profiles/${user.foto_profil}" else "https://ui-avatars.com/api/?name=${user.name}",
+                    model = profileImageUrl,
                     contentDescription = null,
                     modifier = Modifier
                         .size(80.dp)
