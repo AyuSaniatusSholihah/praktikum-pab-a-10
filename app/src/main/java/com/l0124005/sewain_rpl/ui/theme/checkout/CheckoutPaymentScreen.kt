@@ -56,7 +56,7 @@ import android.widget.Toast
 
 // ── Tema warna & font (sama dengan checkout.css) ──────────────
 object CkColors {
-    val Blue  = Color(0xFF4A7A9B)
+    val Blue  = Color(0xFF6A87A1)
     val Navy  = Color(0xFF285473)
     val Black = Color(0xFF000000)
     val Dark  = Color(0xFF484848)
@@ -654,8 +654,15 @@ private fun QrisPanel(nominal: Long) {
             Box(
                 modifier = Modifier
                     .size(120.dp)
-                    .background(Color(0xFF333333))
-            )
+                    .background(Color.White)
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.qris_kode),
+                    contentDescription = "QRIS Code",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit
+                )
+            }
             Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
                 PanelInfoRow("A/n", "SEWAIN")
                 PanelInfoRow("Nominal", currencyOrFallback(nominal))
