@@ -28,10 +28,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import androidx.compose.runtime.livedata.observeAsState
+import com.l0124005.sewain_rpl.network.ApiClient
 import com.l0124005.sewain_rpl.network.CatalogData
 import com.l0124005.sewain_rpl.ui.theme.Sewain_rplTheme
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.viewmodel.KatalogViewModel
+import com.l0124005.sewain_rpl.viewmodel.ProfileViewModel
 import com.l0124005.sewain_rpl.ui.theme.katalog.formatRupiah
 import com.l0124005.sewain_rpl.ui.theme.katalog.ProfileCard
 import com.l0124005.sewain_rpl.ui.theme.katalog.Volkhov
@@ -66,6 +68,7 @@ class MyKatalogActivity : ComponentActivity() {
 @Composable
 fun MyKatalogScreen(
     viewModel: KatalogViewModel,
+    profileViewModel: ProfileViewModel,
     token: String,
     onBack: () -> Unit,
     onAddItem: () -> Unit,
@@ -75,9 +78,11 @@ fun MyKatalogScreen(
     var searchQuery by remember { mutableStateOf("") }
 
     val myKatalogState by viewModel.myKatalog.observeAsState(Resource.Loading())
+    val profileState by profileViewModel.profile.observeAsState()
 
     LaunchedEffect(Unit) {
         viewModel.getMyKatalog(token)
+        profileViewModel.getProfile(token)
     }
 
     Column(
@@ -115,14 +120,15 @@ fun MyKatalogScreen(
                 ) {
                     // ── Profile Card ──
                     item {
+                        val user = (profileState as? Resource.Success)?.data?.data
                         ProfileCard(
                             modifier = Modifier.padding(16.dp),
-                            nama          = "My Store", // Bisa diambil dari UserData jika perlu
-                            lokasi        = if (allItems.isNotEmpty()) allItems[0].lokasi else "Unknown",
-                            rating        = 0.0f,
-                            totalUlasan   = 0,
+                            nama          = user?.name ?: "Loading...",
+                            lokasi        = user?.alamat ?: (if (allItems.isNotEmpty()) allItems[0].lokasi else "Unknown"),
+                            rating        = 4.5f,
+                            totalUlasan   = 12,
                             jumlahKatalog = allItems.size,
-                            whatsapp      = ""
+                            whatsapp      = user?.phone_number ?: ""
                         )
                     }
 
@@ -179,6 +185,8 @@ fun MyKatalogScreen(
                     }
                 }
             }
+
+            else -> {}
         }
     }
 }
@@ -358,7 +366,7 @@ private fun MyKatalogCard(
             ) {
                 if (!item.foto_barang.isNullOrEmpty()) {
                     AsyncImage(
-                        model              = item.foto_barang,
+                        model              = "${ApiClient.IMAGE_BASE_URL}${item.foto_barang}",
                         contentDescription = item.nama_barang,
                         contentScale       = ContentScale.Crop,
                         modifier           = Modifier.fillMaxSize()

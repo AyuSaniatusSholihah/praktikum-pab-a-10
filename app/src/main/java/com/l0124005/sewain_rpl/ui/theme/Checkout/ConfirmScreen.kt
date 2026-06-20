@@ -23,8 +23,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.l0124005.sewain_rpl.network.ApiClient
+import com.l0124005.sewain_rpl.network.CheckoutResponse
+import com.l0124005.sewain_rpl.network.TransaksiData
 import com.l0124005.sewain_rpl.ui.theme.katalog.*
 import com.l0124005.sewain_rpl.utils.CurrencyUtils
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 // ============================================================
 // 1. TEMA WARNA & TIPOGRAFI — Menggunakan katalog shared
@@ -33,8 +38,60 @@ import com.l0124005.sewain_rpl.utils.CurrencyUtils
 val PaidGreen = Color(0xFF2E7D32) // border .paid-badge
 
 // ============================================================
-// 2. MODEL DATA (dummy dulu, nanti diisi dari API Laravel)
+// 2. MAPPING HELPERS
 // ============================================================
+
+fun mapCheckoutResponseToState(response: CheckoutResponse): PaymentConfirmedState {
+    val transaksiList = response.data?.transaksi ?: emptyList()
+    val firstTransaksi = transaksiList.firstOrNull()
+    
+    val items = transaksiList.map { tx ->
+        val barang = tx.barang
+        val startDate = tx.tanggal_sewa
+        val endDate = tx.tanggal_kembali_rencana
+        
+        val durationDays = try {
+            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val start = sdf.parse(startDate)
+            val end = sdf.parse(endDate)
+            if (start != null && end != null) {
+                val diff = end.time - start.time
+                val days = (diff / (1000 * 60 * 60 * 24)).toInt()
+                if (days < 1) 1 else days
+            } else 1
+        } catch (e: Exception) {
+            1
+        }
+
+        RentedItem(
+            imageUrl = if (barang?.foto_barang != null) "${ApiClient.IMAGE_BASE_URL}${barang.foto_barang}" else "https://placehold.co/200",
+            name = barang?.nama_barang ?: "Produk",
+            pricePerDay = barang?.harga_sewa?.toLong() ?: 0L,
+            qty = tx.jumlah,
+            startDate = startDate,
+            endDate = endDate,
+            durationDays = durationDays,
+            subtotal = (barang?.harga_sewa?.toLong() ?: 0L) * tx.jumlah * durationDays,
+            shipping = 0L, // Backend doesn't seem to have explicit shipping per item yet
+            deposit = barang?.harga_jaminan?.toLong() ?: 0L,
+            total = tx.total_harga.toLong(),
+            lateFeeNote = "Rp ${CurrencyUtils.formatRupiah(barang?.harga_denda_perjam?.toLong() ?: 0L)}/jam"
+        )
+    }
+
+    val customer = CustomerInfo(
+        name = firstTransaksi?.user?.name ?: "Customer",
+        address = firstTransaksi?.user?.alamat ?: "Alamat tidak tersedia",
+        shippingMethod = "Delivery", 
+        paymentDate = firstTransaksi?.pembayaran?.tanggal_bayar ?: SimpleDateFormat("EEEE, d MMMM yyyy — HH:mm", Locale.forLanguageTag("id")).format(java.util.Date())
+    )
+
+    return PaymentConfirmedState(
+        orderNumber = firstTransaksi?.pembayaran_id?.toString() ?: firstTransaksi?.id?.toString() ?: "0000",
+        items = items,
+        customer = customer
+    )
+}
 
 data class RentedItem(
     val imageUrl: String,
@@ -64,45 +121,10 @@ data class PaymentConfirmedState(
     val customer: CustomerInfo
 )
 
-// Dummy data sesuai contoh di HTML asli — nanti diganti dari response API
-fun dummyPaymentConfirmedState() = PaymentConfirmedState(
-    orderNumber = "5020",
-    items = listOf(
-        RentedItem(
-            imageUrl = "https://placehold.co/200x220?text=Tenda",
-            name = "ALLTREK Tenda Camping Tentastic Outdoor 1 Bedroom + 1 Guest Room",
-            pricePerDay = 450_000,
-            qty = 1,
-            startDate = "30 Juli 2026",
-            endDate = "1 Agustus 2026",
-            durationDays = 2,
-            subtotal = 900_000,
-            shipping = 40_000,
-            deposit = 810_000,
-            total = 1_750_000,
-            lateFeeNote = "Rp 15.000/jam"
-        ),
-        RentedItem(
-            imageUrl = "https://placehold.co/200x220?text=Kebaya",
-            name = "Kebaya Cream (1 Set)",
-            pricePerDay = 630_000,
-            qty = 1,
-            startDate = "30 Juli 2026",
-            endDate = "31 Juli 2026",
-            durationDays = 1,
-            subtotal = 630_000,
-            shipping = 10_000,
-            deposit = 315_000,
-            total = 955_000,
-            lateFeeNote = "Rp 15.000/jam"
-        )
-    ),
-    customer = CustomerInfo(
-        name = "Aprilia Afia",
-        address = "Jl. Bondong, 45, Brigie",
-        shippingMethod = "Delivery",
-        paymentDate = "Kamis, 11 Maret 2026 — 05:46 AM"
-    )
+val dummyPaymentConfirmedState = PaymentConfirmedState(
+    orderNumber = "ORDER-ID",
+    items = emptyList(),
+    customer = CustomerInfo("User Name", "User Address", "Delivery", "Tanggal")
 )
 
 // ============================================================
@@ -121,7 +143,7 @@ fun PaymentConfirmedScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
         ) {
-            PageHeader()
+            PaymentConfirmedPageHeader()
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -145,7 +167,7 @@ fun PaymentConfirmedScreen(
 // ============================================================
 
 @Composable
-private fun PageHeader() {
+fun PaymentConfirmedPageHeader() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -243,9 +265,9 @@ private fun ConfirmSection(
         Spacer(modifier = Modifier.height(28.dp))
 
         Text(
-            text = "Thank you for buying Goodfeel. The system is grateful to you. " +
-                    "Please check your e-mail, there will be a payment link that will be sent " +
-                    "to your e-mail address according to your agreement.",
+            text = "Terima kasih telah bertransaksi di SEWAIN. " +
+                    "Pesanan Anda telah kami terima dan sedang diproses. " +
+                    "Silakan cek detail transaksi di menu riwayat untuk informasi lebih lanjut.",
             fontFamily = FontFamily.Default,
             fontWeight = FontWeight.SemiBold,
             fontSize = 14.sp,
@@ -601,6 +623,11 @@ private fun CustomerField(label: String, value: String, modifier: Modifier = Mod
 @Composable
 fun PaymentConfirmedScreenPreview() {
     MaterialTheme {
-        PaymentConfirmedScreen(state = dummyPaymentConfirmedState())
+        // Preview dengan data statis untuk keperluan desain, bukan dummy logic
+        PaymentConfirmedScreen(state = PaymentConfirmedState(
+            orderNumber = "ORDER-ID",
+            items = emptyList(),
+            customer = CustomerInfo("User Name", "User Address", "Delivery", "Tanggal")
+        ))
     }
 }

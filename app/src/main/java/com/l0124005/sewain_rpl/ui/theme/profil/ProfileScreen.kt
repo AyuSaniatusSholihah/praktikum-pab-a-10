@@ -1,5 +1,6 @@
 package com.l0124005.sewain_rpl.ui.theme.profil
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -20,6 +21,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -31,6 +34,8 @@ import com.l0124005.sewain_rpl.network.UserData
 import com.l0124005.sewain_rpl.ui.theme.katalog.formatRupiah
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.viewmodel.ProfileViewModel
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody.Companion.toRequestBody
 
 private val DarkNavy = Color(0xFF1F2A33)
 private val InputBlue = Color(0xFF8AA9BD)
@@ -39,53 +44,92 @@ private val InputBlue = Color(0xFF8AA9BD)
 fun ProfileScreen(
     viewModel: ProfileViewModel,
     token: String,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onEditProfile: () -> Unit,
+    onMyRentalClick: () -> Unit,
+    onRentalOwnerClick: () -> Unit,
+    onTransaksiClick: () -> Unit,
+    onRiwayatTransaksiClick: () -> Unit
 ) {
     val profileState by viewModel.profile.observeAsState()
+    val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         viewModel.getProfile(token)
     }
 
-    Scaffold(
-        bottomBar = { ProfileBottomNavigation() }
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .background(Color.White)
-                .verticalScroll(rememberScrollState())
-        ) {
-            when (profileState) {
-                is Resource.Loading -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = DarkNavy)
-                }
-                is Resource.Success -> {
-                    val user = profileState?.data?.data
-                    if (user != null) {
-                        Column(modifier = Modifier.fillMaxSize()) {
-                            ProfileHeaderSection(user.name, user.foto_profil)
-                            Spacer(modifier = Modifier.height(16.dp))
-                            ProfileFormSection(user, onLogout)
-                        }
+    LaunchedEffect(profileState) {
+        if (profileState is Resource.Success && profileState?.message == "Profile updated successfully") {
+            Toast.makeText(context, "Profil berhasil diperbarui", Toast.LENGTH_SHORT).show()
+            viewModel.resetStates()
+            viewModel.getProfile(token)
+        } else if (profileState is Resource.Error) {
+            Toast.makeText(context, "Gagal update: ${profileState?.message}", Toast.LENGTH_SHORT).show()
+            viewModel.resetStates()
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White)
+            .verticalScroll(rememberScrollState())
+    ) {
+        when (profileState) {
+            is Resource.Loading -> {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = DarkNavy)
+            }
+            is Resource.Success -> {
+                val user = profileState?.data?.data
+                if (user != null) {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        ProfileHeaderSection(
+                            name = user.name,
+                            foto = user.foto_profil,
+                            onMyRentalClick = onMyRentalClick,
+                            onRentalOwnerClick = onRentalOwnerClick,
+                            onWalletClick = onTransaksiClick
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        ProfileFormSection(
+                            user = user,
+                            onLogout = onLogout,
+                            onEditPhoto = onEditProfile,
+                            onSave = { updatedUser ->
+                                val namePart = updatedUser.name.toRequestBody("text/plain".toMediaTypeOrNull())
+                                val usernamePart = updatedUser.username?.toRequestBody("text/plain".toMediaTypeOrNull())
+                                val phonePart = updatedUser.phone_number?.toRequestBody("text/plain".toMediaTypeOrNull())
+                                val alamatPart = updatedUser.alamat?.toRequestBody("text/plain".toMediaTypeOrNull())
+                                
+                                viewModel.updateProfile(token, namePart, usernamePart, phonePart, alamatPart)
+                            },
+                            onWalletClick = onTransaksiClick
+                        )
                     }
                 }
-                is Resource.Error -> {
-                    Text(
-                        text = "Error: ${profileState?.message}",
-                        color = Color.Red,
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
-                else -> {}
             }
+            is Resource.Error -> {
+                Text(
+                    text = "Error: ${profileState?.message}",
+                    color = Color.Red,
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            }
+            else -> {}
         }
     }
 }
 
 @Composable
-private fun ProfileHeaderSection(name: String, foto: String?) {
+private fun ProfileHeaderSection(
+    name: String,
+    foto: String?,
+    onMyRentalClick: () -> Unit,
+    onRentalOwnerClick: () -> Unit,
+    onWalletClick: () -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -108,31 +152,63 @@ private fun ProfileHeaderSection(name: String, foto: String?) {
             Text(name, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.weight(1f))
             
-            // Sidebar Menu Mockup
-            Column(horizontalAlignment = Alignment.End) {
-                HeaderMenuItem(Icons.Default.GridView, "Profile", true)
-                HeaderMenuItem(Icons.AutoMirrored.Filled.ListAlt, "My Rentals")
-                HeaderMenuItem(Icons.Default.Storefront, "Rentals Owner")
-                HeaderMenuItem(Icons.Default.AccountBalanceWallet, "My Wallet")
+            // Hamburger Menu
+            Box {
+                IconButton(onClick = { expanded = true }) {
+                    Icon(
+                        imageVector = Icons.Default.Menu,
+                        contentDescription = "Menu",
+                        tint = Color.White
+                    )
+                }
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false },
+                    modifier = Modifier.background(Color.White)
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("My Rentals") },
+                        onClick = { 
+                            expanded = false
+                            onMyRentalClick() 
+                        },
+                        leadingIcon = { Icon(Icons.AutoMirrored.Filled.ListAlt, null) }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Rentals Owner") },
+                        onClick = { 
+                            expanded = false
+                            onRentalOwnerClick() 
+                        },
+                        leadingIcon = { Icon(Icons.Default.Storefront, null) }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("My Wallet") },
+                        onClick = { 
+                            expanded = false
+                            onWalletClick() 
+                        },
+                        leadingIcon = { Icon(Icons.Default.AccountBalanceWallet, null) }
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun HeaderMenuItem(icon: ImageVector, label: String, isSelected: Boolean = false) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.padding(vertical = 2.dp)
-    ) {
-        Icon(icon, null, Modifier.size(12.dp), tint = if (isSelected) Color.White else Color.Gray)
-        Spacer(Modifier.width(6.dp))
-        Text(label, color = if (isSelected) Color.White else Color.Gray, fontSize = 9.sp)
-    }
-}
+private fun ProfileFormSection(
+    user: UserData,
+    onLogout: () -> Unit,
+    onEditPhoto: () -> Unit,
+    onSave: (UserData) -> Unit,
+    onWalletClick: () -> Unit
+) {
+    var name by remember { mutableStateOf(user.name) }
+    var username by remember { mutableStateOf(user.username ?: "") }
+    var phone by remember { mutableStateOf(user.phone_number ?: "") }
+    var alamat by remember { mutableStateOf(user.alamat ?: "") }
 
-@Composable
-private fun ProfileFormSection(user: UserData, onLogout: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -144,21 +220,22 @@ private fun ProfileFormSection(user: UserData, onLogout: () -> Unit) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             // Profile Picture Center
             Box(contentAlignment = Alignment.BottomEnd) {
-                Box(
+                AsyncImage(
+                    model = if (!user.foto_profil.isNullOrEmpty()) "${ApiClient.IMAGE_BASE_URL}profiles/${user.foto_profil}" else "https://ui-avatars.com/api/?name=${user.name}",
+                    contentDescription = null,
                     modifier = Modifier
                         .size(80.dp)
                         .clip(CircleShape)
-                        .background(Color.White),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Default.Person, null, Modifier.size(50.dp), tint = DarkNavy)
-                }
+                        .background(Color.White)
+                        .border(2.dp, Color.White, CircleShape),
+                    contentScale = ContentScale.Crop
+                )
                 Box(
                     modifier = Modifier
                         .size(24.dp)
                         .clip(CircleShape)
                         .background(Color.Gray.copy(alpha = 0.8f))
-                        .clickable { /* TODO: Edit Photo */ },
+                        .clickable { onEditPhoto() },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(Icons.Default.Edit, null, Modifier.size(14.dp), tint = Color.White)
@@ -171,19 +248,17 @@ private fun ProfileFormSection(user: UserData, onLogout: () -> Unit) {
             
             Spacer(modifier = Modifier.height(28.dp))
             
-            ProfileTextField("Name Account", user.name)
-            ProfileTextField("Email", user.email)
-            ProfileTextField("Password Baru", "********")
-            ProfileTextField("Konfirmasi Password Baru", "********")
-            ProfileTextField("Nomor Telepon", user.phone_number ?: "085890423763")
-            ProfileTextField("Username", user.username ?: user.name.lowercase().replace(" ", ""))
-            ProfileTextField("Alamat", user.alamat ?: "Alamat belum diatur", isSingleLine = false)
+            ProfileTextField("Name Account", name) { name = it }
+            ProfileTextField("Email", user.email, enabled = false) {}
+            ProfileTextField("Nomor Telepon", phone) { phone = it }
+            ProfileTextField("Username", username) { username = it }
+            ProfileTextField("Alamat", alamat, isSingleLine = false) { alamat = it }
             
             Spacer(modifier = Modifier.height(24.dp))
             
             // Wallet Card
             Card(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().clickable { onWalletClick() },
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = InputBlue.copy(alpha = 0.2f))
             ) {
@@ -200,13 +275,15 @@ private fun ProfileFormSection(user: UserData, onLogout: () -> Unit) {
             
             Spacer(modifier = Modifier.height(24.dp))
             
-            StatItem("Total Transaksi Penyewaan", "1 Kali")
-            StatItem("Jumlah Katalog Barang", "0 Barang")
+            StatItem("Status Akun", if (user.is_banned) "Banned" else "Aktif")
+            StatItem("Role", user.role.uppercase())
             
             Spacer(modifier = Modifier.height(40.dp))
             
             Button(
-                onClick = { /* TODO: Update Profile */ },
+                onClick = { 
+                    onSave(user.copy(name = name, username = username, phone_number = phone, alamat = alamat))
+                },
                 modifier = Modifier.fillMaxWidth().height(48.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = InputBlue),
                 shape = RoundedCornerShape(24.dp)
@@ -221,27 +298,40 @@ private fun ProfileFormSection(user: UserData, onLogout: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ProfileTextField(label: String, value: String, isSingleLine: Boolean = true) {
+private fun ProfileTextField(
+    label: String, 
+    value: String, 
+    enabled: Boolean = true,
+    isSingleLine: Boolean = true,
+    onValueChange: (String) -> Unit
+) {
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
         Text(label, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Serif)
         Spacer(modifier = Modifier.height(8.dp))
-        Box(
+        TextField(
+            value = value,
+            onValueChange = onValueChange,
+            enabled = enabled,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(if (isSingleLine) 48.dp else 100.dp)
-                .clip(RoundedCornerShape(24.dp))
-                .background(InputBlue)
-                .padding(horizontal = 20.dp),
-            contentAlignment = if (isSingleLine) Alignment.CenterStart else Alignment.TopStart
-        ) {
-            Text(
-                text = value,
-                color = DarkNavy,
-                fontSize = 14.sp,
-                modifier = if (isSingleLine) Modifier else Modifier.padding(vertical = 12.dp)
-            )
-        }
+                .heightIn(min = if (isSingleLine) 48.dp else 100.dp)
+                .clip(RoundedCornerShape(24.dp)),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = InputBlue,
+                unfocusedContainerColor = InputBlue,
+                disabledContainerColor = InputBlue.copy(alpha = 0.5f),
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+                disabledIndicatorColor = Color.Transparent,
+                focusedTextColor = DarkNavy,
+                unfocusedTextColor = DarkNavy,
+                disabledTextColor = DarkNavy.copy(alpha = 0.6f)
+            ),
+            singleLine = isSingleLine,
+            textStyle = TextStyle(fontSize = 14.sp)
+        )
     }
 }
 
@@ -260,18 +350,5 @@ private fun StatItem(label: String, value: String) {
         ) {
             Text(value, color = DarkNavy, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         }
-    }
-}
-
-@Composable
-private fun ProfileBottomNavigation() {
-    NavigationBar(
-        containerColor = Color(0xFF4A4A4A),
-        modifier = Modifier.height(65.dp).clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
-    ) {
-        NavigationBarItem(selected = false, onClick = {}, icon = { Icon(Icons.Default.Home, null) }, label = { Text("Home", fontSize = 10.sp) }, colors = NavigationBarItemDefaults.colors(selectedIconColor = Color.White, unselectedIconColor = Color.Gray, selectedTextColor = Color.White, unselectedTextColor = Color.Gray, indicatorColor = Color.Transparent))
-        NavigationBarItem(selected = false, onClick = {}, icon = { Icon(Icons.Default.Search, null) }, label = { Text("Search", fontSize = 10.sp) }, colors = NavigationBarItemDefaults.colors(selectedIconColor = Color.White, unselectedIconColor = Color.Gray, selectedTextColor = Color.White, unselectedTextColor = Color.Gray, indicatorColor = Color.Transparent))
-        NavigationBarItem(selected = false, onClick = {}, icon = { Icon(Icons.Default.Store, null) }, label = { Text("My Katalog", fontSize = 10.sp) }, colors = NavigationBarItemDefaults.colors(selectedIconColor = Color.White, unselectedIconColor = Color.Gray, selectedTextColor = Color.White, unselectedTextColor = Color.Gray, indicatorColor = Color.Transparent))
-        NavigationBarItem(selected = true, onClick = {}, icon = { Icon(Icons.Default.Person, null) }, label = { Text("Me", fontSize = 10.sp) }, colors = NavigationBarItemDefaults.colors(selectedIconColor = Color.White, unselectedIconColor = Color.Gray, selectedTextColor = Color.White, unselectedTextColor = Color.Gray, indicatorColor = Color.Transparent))
     }
 }

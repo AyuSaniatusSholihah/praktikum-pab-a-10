@@ -81,6 +81,11 @@ data class KategoriData(
     val deskripsi: String?
 )
 
+data class KategoriListResponse(
+    val status: String,
+    val data: List<KategoriData>
+)
+
 data class CatalogData(
     val id: Int, 
     val user_id: Int,
