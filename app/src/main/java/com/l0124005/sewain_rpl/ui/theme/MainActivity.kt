@@ -47,7 +47,7 @@ import com.l0124005.sewain_rpl.ui.theme.profil.ProfileScreen
 import com.l0124005.sewain_rpl.ui.theme.transaksi.RiwayatTransaksiScreen
 import com.l0124005.sewain_rpl.ui.theme.transaksi.DetailTransaksiScreen
 import com.l0124005.sewain_rpl.ui.theme.keranjang.KeranjangScreen
-import com.l0124005.sewain_rpl.ui.theme.Checkout.*
+import com.l0124005.sewain_rpl.ui.theme.checkout.*
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.utils.SessionManager
 import com.l0124005.sewain_rpl.utils.CurrencyUtils
@@ -120,7 +120,9 @@ fun MainContainer(
 
     // Checkout States
     var itemsForCheckout by remember { mutableStateOf<List<CartItem>>(emptyList()) }
-    var confirmedPaymentState by remember { mutableStateOf<PaymentConfirmedState?>(null) }
+    var confirmedOrderNumber by remember { mutableStateOf("") }
+    var confirmedShippingCost by remember { mutableStateOf(0L) }
+    var confirmedCustomerInfo by remember { mutableStateOf<CustomerInfo?>(null) }
 
     Scaffold(
         bottomBar = {
@@ -179,41 +181,36 @@ fun MainContainer(
                         CheckoutPaymentScreen(
                             items = itemsForCheckout,
                             onPay = { formData ->
-                                confirmedPaymentState = PaymentConfirmedState(
-                                    orderNumber = (1000..9999).random().toString(),
-                                    items = itemsForCheckout.map {
-                                        RentedItem(
-                                            imageUrl = it.imageUrl,
-                                            name = it.nama,
-                                            pricePerDay = it.harga,
-                                            qty = it.qty,
-                                            startDate = it.tglMulai,
-                                            endDate = it.tglSelesai,
-                                            durationDays = it.durasiHari(),
-                                            subtotal = it.subtotal(it.durasiHari()),
-                                            shipping = if (formData.shipping == ShippingMethod.DELIVERY) 40000L else 0L,
-                                            deposit = it.jaminan(),
-                                            total = it.subtotal(it.durasiHari()) + it.jaminan() + (if (formData.shipping == ShippingMethod.DELIVERY) 40000L else 0L),
-                                            lateFeeNote = "Rp ${CurrencyUtils.formatRupiah(it.dendaPerJam)}/jam"
-                                        )
+                                confirmedOrderNumber = (1000..9999).random().toString()
+                                confirmedShippingCost = if (formData.shipping == ShippingMethod.DELIVERY) 40000L else 0L
+                                confirmedCustomerInfo = CustomerInfo(
+                                    nama = "${formData.firstName} ${formData.lastName}",
+                                    metodePembayaran = when(formData.paymentType) {
+                                        PaymentType.CREDIT -> "Credit Card"
+                                        PaymentType.QRIS -> "QRIS"
+                                        PaymentType.TRANSFER -> "Transfer Bank"
+                                        PaymentType.EWALLET -> "E-Wallet"
                                     },
-                                    customer = CustomerInfo(
-                                        name = "${formData.firstName} ${formData.lastName}",
-                                        address = if (formData.shipping == ShippingMethod.DELIVERY) "${formData.address}, ${formData.cityProvince} ${formData.postalCode}" else "Ambil Sendiri",
-                                        shippingMethod = if (formData.shipping == ShippingMethod.DELIVERY) "Delivery" else "COD (Ambil Sendiri)",
-                                        paymentDate = SimpleDateFormat("EEEE, dd MMMM yyyy — HH:mm a", Locale.forLanguageTag("id-ID")).format(java.util.Date())
-                                    )
+                                    waktuPemesanan = SimpleDateFormat("EEEE, dd MMMM yyyy — HH:mm a", Locale.forLanguageTag("id-ID")).format(java.util.Date()),
+                                    metodePengiriman = if (formData.shipping == ShippingMethod.DELIVERY) "Delivery" else "COD (Ambil Sendiri)",
+                                    alamat = if (formData.shipping == ShippingMethod.DELIVERY) "${formData.address}, ${formData.cityProvince} ${formData.postalCode}" else "Ambil Sendiri",
+                                    tanggalPembayaran = SimpleDateFormat("EEEE, dd MMMM yyyy — HH:mm a", Locale.forLanguageTag("id-ID")).format(java.util.Date())
                                 )
                                 currentScreen = Screen.CheckoutConfirm
                             }
                         )
                     }
                 }
-                Screen.CheckoutConfirm -> confirmedPaymentState?.let { state ->
-                    PaymentConfirmedScreen(
-                        state = state,
-                        onBackToHome = { currentScreen = Screen.Home }
-                    )
+                Screen.CheckoutConfirm -> {
+                    confirmedCustomerInfo?.let { customer ->
+                        PaymentConfirmedScreen(
+                            orderNumber = confirmedOrderNumber,
+                            items = itemsForCheckout,
+                            shippingCost = confirmedShippingCost,
+                            customer = customer,
+                            onBackHome = { currentScreen = Screen.Home }
+                        )
+                    }
                 }
                 Screen.ProductDetail -> selectedProductId?.let { id ->
                     DetailProdukScreen(

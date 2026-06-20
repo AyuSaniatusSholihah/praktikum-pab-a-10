@@ -1,11 +1,10 @@
-package com.l0124005.sewain_rpl.ui.theme.Checkout
+package com.l0124005.sewain_rpl.ui.theme.checkout
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -14,514 +13,376 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.l0124005.sewain_rpl.ui.theme.katalog.*
+import com.l0124005.sewain_rpl.R
 import com.l0124005.sewain_rpl.utils.CurrencyUtils
 
-// ============================================================
-// 1. TEMA WARNA & TIPOGRAFI — Menggunakan katalog shared
-// ============================================================
-
-val PaidGreen = Color(0xFF2E7D32) // border .paid-badge
-
-// ============================================================
-// 2. MODEL DATA (dummy dulu, nanti diisi dari API Laravel)
-// ============================================================
-
-data class RentedItem(
-    val imageUrl: String,
-    val name: String,
-    val pricePerDay: Long,
-    val qty: Int,
-    val startDate: String,
-    val endDate: String,
-    val durationDays: Int,
-    val subtotal: Long,
-    val shipping: Long,
-    val deposit: Long, // Jaminan
-    val total: Long,
-    val lateFeeNote: String // contoh: "Rp 15.000/jam"
-)
-
+// ── Data customer untuk struk ─────────────────────────────────
 data class CustomerInfo(
-    val name: String,
-    val address: String,
-    val shippingMethod: String, // "Delivery" atau "COD — Ambil Sendiri"
-    val paymentDate: String
+    val nama: String,
+    val metodePembayaran: String,
+    val waktuPemesanan: String,
+    val metodePengiriman: String, // "COD" atau "Delivery"
+    val alamat: String,            // kosong/"-" kalau COD
+    val tanggalPembayaran: String
 )
 
-data class PaymentConfirmedState(
-    val orderNumber: String,
-    val items: List<RentedItem>,
-    val customer: CustomerInfo
-)
+val LatoFont = FontFamily(Font(R.font.lato_regular))
+val AbrilFatfaceFont = FontFamily(Font(R.font.abrilfatface_regular))
 
-// Dummy data sesuai contoh di HTML asli — nanti diganti dari response API
-fun dummyPaymentConfirmedState() = PaymentConfirmedState(
-    orderNumber = "5020",
-    items = listOf(
-        RentedItem(
-            imageUrl = "https://placehold.co/200x220?text=Tenda",
-            name = "ALLTREK Tenda Camping Tentastic Outdoor 1 Bedroom + 1 Guest Room",
-            pricePerDay = 450_000,
-            qty = 1,
-            startDate = "30 Juli 2026",
-            endDate = "1 Agustus 2026",
-            durationDays = 2,
-            subtotal = 900_000,
-            shipping = 40_000,
-            deposit = 810_000,
-            total = 1_750_000,
-            lateFeeNote = "Rp 15.000/jam"
-        ),
-        RentedItem(
-            imageUrl = "https://placehold.co/200x220?text=Kebaya",
-            name = "Kebaya Cream (1 Set)",
-            pricePerDay = 630_000,
-            qty = 1,
-            startDate = "30 Juli 2026",
-            endDate = "31 Juli 2026",
-            durationDays = 1,
-            subtotal = 630_000,
-            shipping = 10_000,
-            deposit = 315_000,
-            total = 955_000,
-            lateFeeNote = "Rp 15.000/jam"
-        )
-    ),
-    customer = CustomerInfo(
-        name = "Aprilia Afia",
-        address = "Jl. Bondong, 45, Brigie",
-        shippingMethod = "Delivery",
-        paymentDate = "Kamis, 11 Maret 2026 — 05:46 AM"
-    )
-)
+// CATATAN: CkColors, CkVolkhov, CkBody, MonsterratFont, dan clickableNoRipple
+// sudah didefinisikan di CheckoutPaymentScreen.kt dalam package yang sama.
 
-// ============================================================
-// 3. SCREEN UTAMA
-// ============================================================
-
+// ── Screen utama ──────────────────────────────────────────────
 @Composable
 fun PaymentConfirmedScreen(
-    state: PaymentConfirmedState,
-    onBackToHome: () -> Unit = {},
+    orderNumber: String,
+    items: List<CartItem>,
+    shippingCost: Long,
+    customer: CustomerInfo,
+    onBackHome: () -> Unit,
     onPrintReceipt: () -> Unit = {}
 ) {
-    Surface(color = Color.White, modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-        ) {
-            PageHeader()
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            ConfirmSection(
-                orderNumber = state.orderNumber,
-                onBackToHome = onBackToHome,
-                onPrintReceipt = onPrintReceipt
-            )
-
-            Spacer(modifier = Modifier.height(28.dp))
-
-            ReceiptCard(state = state)
-
-            Spacer(modifier = Modifier.height(24.dp))
-        }
-    }
-}
-
-// ============================================================
-// 4. PAGE HEADER ("Checkout Payment" + breadcrumb)
-// ============================================================
-
-@Composable
-private fun PageHeader() {
+    val scrollState = rememberScrollState()
     Column(
         modifier = Modifier
-            .fillMaxWidth()
-            .background(Color.White)
-            .padding(vertical = 28.dp, horizontal = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .fillMaxSize()
+            .verticalScroll(scrollState)
+            .padding(horizontal = 20.dp)
     ) {
+
         Text(
-            text = "Checkout Payment",
-            fontFamily = Volkhov,
+            "Checkout Payment",
+            fontFamily = CkVolkhov,
             fontWeight = FontWeight.Bold,
-            fontSize = 28.sp,
-            color = Black,
-            textAlign = TextAlign.Center
+            fontSize = 26.sp,
+            color = CkColors.Black,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp)
         )
-        Spacer(modifier = Modifier.height(10.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Home", color = TextMuted, fontSize = 12.sp, fontFamily = FontFamily.Default)
-            Text("  ›  ", color = Color(0xFFCCCCCC), fontSize = 12.sp)
-            Text("Rentals", color = TextMuted, fontSize = 12.sp, fontFamily = FontFamily.Default)
-            Text("  ›  ", color = Color(0xFFCCCCCC), fontSize = 12.sp)
-            Text(
-                "Checkout Payment",
-                color = Black,
-                fontWeight = FontWeight.Bold,
-                fontSize = 12.sp,
-                fontFamily = FontFamily.Default
-            )
-        }
+
+        // ── Bagian kiri: Konfirmasi ──
+        ConfirmationStatus(
+            orderNumber = orderNumber,
+            onBackHome = onBackHome,
+            onPrintReceipt = onPrintReceipt
+        )
+
+        Spacer(Modifier.height(32.dp))
+
+        // ── Bagian kanan: Struk ──
+        ReceiptCard(
+            items = items,
+            shippingCost = shippingCost,
+            customer = customer
+        )
+
+        Spacer(Modifier.height(32.dp))
     }
-    HorizontalDivider(color = Color(0xFFF0F0F0), thickness = 1.dp)
 }
 
-// ============================================================
-// 5. CONFIRM SECTION (lingkaran centang, judul, tombol)
-// ============================================================
-
+// ── Status konfirmasi (ikon centang + judul + pesan) ──────────
 @Composable
-private fun ConfirmSection(
+private fun ConfirmationStatus(
     orderNumber: String,
-    onBackToHome: () -> Unit,
+    onBackHome: () -> Unit,
     onPrintReceipt: () -> Unit
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 28.dp, vertical = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp)
     ) {
-        // check-circle
         Box(
             modifier = Modifier
-                .padding(top = 24.dp)
                 .size(90.dp)
-                .background(Primary, CircleShape),
+                .clip(RoundedCornerShape(50))
+                .background(CkColors.Blue),
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = Icons.Filled.Check,
-                contentDescription = "Payment confirmed",
+                Icons.Default.Check,
+                contentDescription = "Pembayaran berhasil",
                 tint = Color.White,
-                modifier = Modifier.size(48.dp)
+                modifier = Modifier.size(50.dp)
             )
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(Modifier.height(18.dp))
 
         Text(
-            text = "PAYMENT CONFIRMED!",
-            fontFamily = Volkhov,
-            fontWeight = FontWeight.Medium,
+            "PAYMENT CONFIRMED!",
+            fontFamily = CkVolkhov,
+            fontWeight = FontWeight.SemiBold,
             fontSize = 24.sp,
-            color = TextDark,
+            color = CkColors.Dark,
             textAlign = TextAlign.Center
         )
 
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(Modifier.height(6.dp))
 
         Row {
-            Text(
-                "ORDER ",
-                color = Color(0xFF888888),
-                fontSize = 14.sp,
-                fontFamily = FontFamily.Default
-            )
+            Text("ORDER ", fontSize = 15.sp, color = Color(0xFF888888), fontFamily = CkBody, fontWeight = FontWeight.SemiBold)
             Text(
                 "#$orderNumber",
-                color = Primary,
+                fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
-                fontSize = 14.sp,
-                fontFamily = FontFamily.Default
+                color = CkColors.Blue,
+                fontFamily = CkBody
             )
         }
 
-        Spacer(modifier = Modifier.height(28.dp))
+        Spacer(Modifier.height(24.dp))
 
         Text(
-            text = "Thank you for buying Goodfeel. The system is grateful to you. " +
-                    "Please check your e-mail, there will be a payment link that will be sent " +
-                    "to your e-mail address according to your agreement.",
-            fontFamily = FontFamily.Default,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 14.sp,
+            "Thank you for buying Goodfeel. The system is grateful to you. Please check your e-mail, there will be a payment link that will be sent to your e-mail address according to your agreement.",
+            fontSize = 13.sp,
+            fontFamily = AbrilFatfaceFont,
             color = Color(0xFF818181),
+            lineHeight = 22.sp,
             textAlign = TextAlign.Center,
-            lineHeight = 22.sp
+            modifier = Modifier.padding(horizontal = 8.dp)
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(Modifier.height(20.dp))
 
         Button(
-            onClick = onBackToHome,
+            onClick = onBackHome,
             shape = RoundedCornerShape(8.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Primary),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp)
+            colors = ButtonDefaults.buttonColors(containerColor = CkColors.Blue),
+            modifier = Modifier.fillMaxWidth().height(48.dp)
         ) {
-            Text(
-                "Back to SEWAIN Home",
-                fontFamily = FontFamily.Default,
-                fontWeight = FontWeight.Light,
-                fontSize = 15.sp,
-                color = Color.White
-            )
+            Text("Back to SEWAIN Home", color = Color.White, fontFamily = MonsterratFont, fontSize = 17.sp, fontWeight = FontWeight.Bold)
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(Modifier.height(10.dp))
 
-        TextButton(onClick = onPrintReceipt) {
-            Text(
-                "Print Receipt",
-                color = Primary,
-                fontFamily = FontFamily.Default,
-                fontSize = 12.sp
-            )
-        }
+        Text(
+            "Print Receipt",
+            fontSize = 12.sp,
+            color = CkColors.Blue,
+            fontFamily = CkBody,
+            fontWeight = FontWeight.SemiBold,
+            textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline,
+            modifier = Modifier.clickableNoRipple(onPrintReceipt).padding(6.dp)
+        )
     }
 }
 
-// ============================================================
-// 6. RECEIPT CARD (daftar produk + customer info + logo)
-// ============================================================
-
+// ── Kartu struk lengkap ────────────────────────────────────────
 @Composable
-private fun ReceiptCard(state: PaymentConfirmedState) {
+private fun ReceiptCard(
+    items: List<CartItem>,
+    shippingCost: Long,
+    customer: CustomerInfo
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .border(width = 1.dp, color = BorderGray, shape = RoundedCornerShape(8.dp))
-            .background(UploadBg, RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(8.dp))
+            .border(1.dp, CkColors.Border, RoundedCornerShape(8.dp))
+            .background(CkColors.PanelBg)
     ) {
-        state.items.forEach { item ->
-            ReceiptProductItem(item = item)
-            HorizontalDivider(color = BorderGray, thickness = 1.dp)
+        for (item in items) {
+            ReceiptProductRow(item = item, shippingCost = shippingCost)
         }
 
-        CustomerInfoSection(customer = state.customer)
-
-        // receipt-logo
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color.White)
-                .border(width = 1.dp, color = Color(0xFFF0F0F0))
-                .padding(vertical = 16.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Row {
-                Text(
-                    "SEWA",
-                    fontFamily = Volkhov,
-                    fontSize = 28.sp,
-                    color = TextDark
-                )
-                Text(
-                    "IN",
-                    fontFamily = Volkhov,
-                    fontSize = 28.sp,
-                    color = Primary
-                )
-            }
-        }
+        CustomerInfoSection(customer = customer)
     }
 }
 
 @Composable
-private fun ReceiptProductItem(item: RentedItem) {
+private fun ReceiptProductRow(item: CartItem, shippingCost: Long) {
+    val durasi = item.durasiHari()
+    val subtotal = item.subtotal(durasi)
+    val jaminan = item.jaminan()
+    val total = subtotal + shippingCost + jaminan
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(Color.White)
+            .border(width = 0.5.dp, color = CkColors.Border)
             .padding(18.dp)
     ) {
-        // Header: badge qty + gambar + info produk + badge PAID
-        Box(modifier = Modifier.fillMaxWidth()) {
+        // Header: badge qty + foto + nama + harga + badge PAID
+        Box {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
                 verticalAlignment = Alignment.Top
             ) {
                 Box(
                     modifier = Modifier
-                        .size(100.dp, 110.dp)
-                        .background(UploadBg, RoundedCornerShape(4.dp))
+                        .size(width = 100.dp, height = 110.dp)
+                        .clip(RoundedCornerShape(4.dp))
                 ) {
                     AsyncImage(
                         model = item.imageUrl,
-                        contentDescription = item.name,
+                        contentDescription = item.nama,
+                        contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize()
                     )
                 }
-
-                Spacer(modifier = Modifier.width(14.dp))
-
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = item.name,
-                        fontFamily = Volkhov,
+                        item.nama,
+                        fontFamily = CkVolkhov,
                         fontWeight = FontWeight.Bold,
                         fontSize = 13.sp,
-                        color = Black,
+                        color = CkColors.Black,
                         lineHeight = 18.sp
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(Modifier.height(4.dp))
                     Text(
-                        text = "${CurrencyUtils.formatRupiah(item.pricePerDay)}/hari",
-                        fontFamily = FontFamily.Default,
-                        fontWeight = FontWeight.SemiBold,
+                        "${CurrencyUtils.formatRupiah(item.harga)}/hari",
+                        fontFamily = CkBody,
                         fontSize = 11.sp,
-                        color = Primary
+                        fontWeight = FontWeight.SemiBold,
+                        color = CkColors.Blue
                     )
                 }
             }
-
-            // item-badge (qty), posisinya nempel pojok kiri atas gambar
+            // Badge qty di pojok kiri-atas foto
             Box(
                 modifier = Modifier
                     .offset(x = (-6).dp, y = (-6).dp)
                     .size(20.dp)
-                    .background(Primary, CircleShape),
+                    .clip(RoundedCornerShape(50))
+                    .background(CkColors.Blue),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "${item.qty}",
-                    color = Color.White,
+                    "${item.qty}",
+                    fontFamily = CkBody,
+                    fontWeight = FontWeight.Bold,
                     fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold
+                    color = Color.White
                 )
             }
         }
 
-        // PAID badge — rotate -15deg, border hijau, mirip stempel
+        Spacer(Modifier.height(8.dp))
+
+        // Badge PAID, miring, di tengah
         Box(
             modifier = Modifier
-                .padding(vertical = 12.dp)
                 .align(Alignment.CenterHorizontally)
+                .border(width = 3.5.dp, color = Color(0xFF2E7D32), shape = RoundedCornerShape(4.dp))
                 .rotate(-15f)
-                .border(width = 3.dp, color = PaidGreen, shape = RoundedCornerShape(4.dp))
-                .padding(horizontal = 15.dp, vertical = 6.dp)
+                .padding(horizontal = 15.dp, vertical = 8.dp)
         ) {
             Text(
-                text = "PAID",
-                color = PaidGreen,
-                fontFamily = Volkhov,
+                "PAID",
+                fontFamily = CkVolkhov,
                 fontWeight = FontWeight.Black,
-                fontSize = 16.sp,
+                fontSize = 17.sp,
+                color = Color(0xFF2E7D32).copy(alpha = 0.75f),
                 letterSpacing = 2.sp
             )
         }
 
-        // Tanggal mulai & selesai
+        Spacer(Modifier.height(14.dp))
+
+        // Dua kotak tanggal
         Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 14.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
+                .align(Alignment.CenterHorizontally)
+                .padding(bottom = 14.dp)
         ) {
-            DateBlock(
-                label = "Tanggal Mulai Penyewaan",
-                value = item.startDate,
-                modifier = Modifier.weight(1f)
-            )
-            DateBlock(
-                label = "Tanggal Selesai Penyewaan",
-                value = item.endDate,
-                modifier = Modifier.weight(1f)
-            )
+            ReceiptDateBox("Tanggal Mulai Penyewaan", item.tglMulai, Modifier.weight(1f))
+            ReceiptDateBox("Tanggal Selesai Penyewaan", item.tglSelesai, Modifier.weight(1f))
         }
 
-        // Rows: durasi, subtotal, shipping, jaminan, total, denda
-        ReceiptRow(label = "Durasi Sewa", value = "${item.durationDays} Hari")
-        ReceiptRow(label = "Subtotal", value = CurrencyUtils.formatRupiah(item.subtotal))
-        ReceiptRow(
-            label = "Shipping",
-            value = if (item.shipping > 0) CurrencyUtils.formatRupiah(item.shipping) else "-"
-        )
-        ReceiptRow(label = "Jaminan", value = CurrencyUtils.formatRupiah(item.deposit))
-        ReceiptRow(label = "Total", value = CurrencyUtils.formatRupiah(item.total), isBold = true)
-        ReceiptRow(
-            label = "#Catatan Denda Pengembalian",
-            value = item.lateFeeNote,
-            isItalic = true
-        )
+        // Rincian harga — rata kiri sesuai .rec-row
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            ReceiptRow("Durasi Sewa", "$durasi Hari")
+            ReceiptRow("Subtotal", CurrencyUtils.formatRupiah(subtotal))
+            ReceiptRow("Shipping", if (shippingCost > 0) CurrencyUtils.formatRupiah(shippingCost) else "-")
+            ReceiptRow("Jaminan", CurrencyUtils.formatRupiah(jaminan))
+            ReceiptRow("Total", CurrencyUtils.formatRupiah(total), bold = true)
+            ReceiptRow("#Catatan Denda", "${CurrencyUtils.formatRupiah(item.dendaPerJam)}/jam", italic = true)
+        }
     }
 }
 
 @Composable
-private fun DateBlock(label: String, value: String, modifier: Modifier = Modifier) {
+private fun ReceiptDateBox(label: String, value: String, modifier: Modifier = Modifier) {
     Column(
-        modifier = modifier,
+        modifier = modifier.padding(vertical = 8.dp, horizontal = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             Icon(
-                imageVector = Icons.Filled.DateRange,
+                Icons.Filled.DateRange,
                 contentDescription = null,
-                tint = Color(0xFF181A18),
+                tint = CkColors.Black,
                 modifier = Modifier.size(13.dp)
             )
-            Spacer(modifier = Modifier.width(4.dp))
             Text(
-                text = label,
-                fontFamily = FontFamily.Default,
-                fontWeight = FontWeight.Black,
+                label,
+                fontFamily = LatoFont,
+                fontWeight = FontWeight.Bold,
                 fontSize = 11.sp,
-                color = Color(0xFF181A18),
-                textAlign = TextAlign.Center
+                color = CkColors.Black,
+                textAlign = TextAlign.Center,
+                maxLines = 2
             )
         }
-        Spacer(modifier = Modifier.height(3.dp))
+        Spacer(Modifier.height(3.dp))
         Text(
-            text = value,
-            fontFamily = FontFamily.Default,
+            value,
+            fontFamily = LatoFont,
+            fontWeight = FontWeight.SemiBold,
             fontSize = 11.sp,
-            color = Color(0xFF181A18),
-            textAlign = TextAlign.Center
+            color = CkColors.Black
         )
     }
 }
 
 @Composable
-private fun ReceiptRow(
-    label: String,
-    value: String,
-    isBold: Boolean = false,
-    isItalic: Boolean = false
-) {
+private fun ReceiptRow(label: String, value: String, bold: Boolean = false, italic: Boolean = false) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 3.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = label,
-            fontFamily = FontFamily.Default,
-            fontSize = 11.sp,
-            fontStyle = if (isItalic) androidx.compose.ui.text.font.FontStyle.Italic else androidx.compose.ui.text.font.FontStyle.Normal,
-            fontWeight = if (isBold) FontWeight.Bold else FontWeight.Normal,
-            color = TextDark
+            label,
+            fontFamily = CkBody,
+            fontSize = if (bold) 12.sp else 11.sp,
+            fontWeight = if (bold) FontWeight.Bold else FontWeight.SemiBold,
+            fontStyle = if (italic) FontStyle.Italic else FontStyle.Normal,
+            color = CkColors.Dark,
+            modifier = Modifier.weight(2f)
         )
         Text(
-            text = value,
-            fontFamily = FontFamily.Default,
-            fontSize = if (isBold) 12.sp else 11.sp,
-            fontStyle = if (isItalic) androidx.compose.ui.text.font.FontStyle.Italic else androidx.compose.ui.text.font.FontStyle.Normal,
-            fontWeight = if (isBold) FontWeight.Bold else FontWeight.Medium,
-            color = TextDark
+            value,
+            fontFamily = CkBody,
+            fontSize = if (bold) 12.sp else 11.sp,
+            fontWeight = if (bold) FontWeight.Bold else FontWeight.SemiBold,
+            fontStyle = if (italic) FontStyle.Italic else FontStyle.Normal,
+            color = CkColors.Dark,
+            textAlign = TextAlign.Start,
+            modifier = Modifier.weight(1f)
         )
     }
 }
-
-// ============================================================
-// 7. CUSTOMER INFO SECTION
-// ============================================================
 
 @Composable
 private fun CustomerInfoSection(customer: CustomerInfo) {
@@ -529,78 +390,124 @@ private fun CustomerInfoSection(customer: CustomerInfo) {
         modifier = Modifier
             .fillMaxWidth()
             .background(Color.White)
-            .padding(20.dp)
+            .border(width = 0.5.dp, color = CkColors.Border)
+            .padding(horizontal = 18.dp, vertical = 20.dp)
     ) {
         Text(
-            text = "Informasi Customer",
-            fontFamily = Volkhov,
+            "Informasi Customer",
+            fontFamily = CkVolkhov,
             fontWeight = FontWeight.Bold,
-            fontSize = 18.sp,
-            color = Black,
+            fontSize = 19.sp,
+            color = CkColors.Black,
             textAlign = TextAlign.Center,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 14.dp)
+            modifier = Modifier.fillMaxWidth().padding(bottom = 14.dp)
         )
-        HorizontalDivider(color = BorderGray, thickness = 1.dp)
-        Spacer(modifier = Modifier.height(14.dp))
+        HorizontalDivider(color = CkColors.Border, thickness = 1.dp)
+        Spacer(Modifier.height(14.dp))
 
-        Row(modifier = Modifier.fillMaxWidth()) {
-            CustomerField(
-                label = "Nama Customer",
-                value = customer.name,
-                modifier = Modifier.weight(1f)
-            )
-            CustomerField(
-                label = "Alamat",
-                value = customer.address,
-                modifier = Modifier.weight(1f)
-            )
+        // 1. Nama Customer
+        CustomerInfoItem("Nama Customer", customer.nama, Modifier.fillMaxWidth())
+        Spacer(Modifier.height(12.dp))
+
+        // 2. Metode Pembayaran
+        CustomerInfoItem("Metode Pembayaran", customer.metodePembayaran, Modifier.fillMaxWidth())
+        Spacer(Modifier.height(12.dp))
+
+        // 3. Waktu Pemesanan
+        CustomerInfoItem("Waktu Pemesanan", customer.waktuPemesanan, Modifier.fillMaxWidth())
+        Spacer(Modifier.height(12.dp))
+
+        // 4. Metode Pengiriman — COD: catatan ambil sendiri | Delivery: "-" lalu Alamat
+        CustomerInfoItem("Metode Pengiriman", customer.metodePengiriman, Modifier.fillMaxWidth())
+        if (customer.metodePengiriman.contains("COD", ignoreCase = true)) {
+            Spacer(Modifier.height(4.dp))
+        Text(
+            "Catatan: Ambil sendiri di lokasi SEWAIN",
+            fontSize = 11.sp,
+            fontStyle = FontStyle.Italic,
+            color = CkColors.Gray,
+            fontFamily = CkBody,
+            fontWeight = FontWeight.SemiBold
+        )
+        } else {
+            Spacer(Modifier.height(12.dp))
+            CustomerInfoItem("Alamat", customer.alamat.ifBlank { "-" }, Modifier.fillMaxWidth())
         }
-        Spacer(modifier = Modifier.height(12.dp))
-        Row(modifier = Modifier.fillMaxWidth()) {
-            CustomerField(
-                label = "Metode Pengiriman",
-                value = customer.shippingMethod,
-                modifier = Modifier.weight(1f)
-            )
-            CustomerField(
-                label = "Tanggal Pembayaran",
-                value = customer.paymentDate,
-                modifier = Modifier.weight(1f)
-            )
+
+        Spacer(Modifier.height(12.dp))
+
+        // Tanggal Pembayaran tetap di bawah
+        CustomerInfoItem("Tanggal Pembayaran", customer.tanggalPembayaran, Modifier.fillMaxWidth())
+
+        Spacer(Modifier.height(20.dp))
+        HorizontalDivider(color = CkColors.Border, thickness = 1.dp)
+
+        // Logo SEWAIN di dalam card customer info (ikut ke-print)
+        Box(
+            modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Row {
+                Text("SEWA", fontFamily = CkVolkhov, fontSize = 26.sp, color = CkColors.Dark)
+                Text("IN", fontFamily = CkVolkhov, fontSize = 26.sp, color = CkColors.Blue)
+            }
         }
     }
 }
 
 @Composable
-private fun CustomerField(label: String, value: String, modifier: Modifier = Modifier) {
+private fun CustomerInfoItem(label: String, value: String, modifier: Modifier = Modifier) {
     Column(modifier = modifier) {
-        Text(
-            text = label,
-            fontFamily = FontFamily.Default,
-            fontSize = 12.sp,
-            color = TextDark
-        )
-        Spacer(modifier = Modifier.height(2.dp))
-        Text(
-            text = value,
-            fontFamily = FontFamily.Default,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 13.sp,
-            color = TextDark
-        )
+        Text(label, fontSize = 12.sp, color = CkColors.Dark, fontFamily = CkBody, fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.height(2.dp))
+        Text(value, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = CkColors.Dark, fontFamily = CkBody)
     }
 }
 
-// ============================================================
-// 8. PREVIEW
-// ============================================================
-
-@Preview(showBackground = true, heightDp = 1400, name = "Payment Confirmed - Full Page")
+@Preview(showBackground = true, heightDp = 1800)
 @Composable
 fun PaymentConfirmedScreenPreview() {
+    val dummyItems = listOf(
+        CartItem(
+            id = 1,
+            nama = "ALLTREK Tenda Camping Tentastic Outdoor 1 Bedroom + 1 Guest Room",
+            harga = 450000,
+            qty = 1,
+            imageUrl = "https://placehold.co/200",
+            tglMulai = "30 Juli 2026",
+            tglSelesai = "1 Agustus 2026",
+            dendaPerJam = 15000,
+            jaminanBase = 810000
+        ),
+        CartItem(
+            id = 2,
+            nama = "Kebaya Cream (1 Set)",
+            harga = 630000,
+            qty = 1,
+            imageUrl = "https://placehold.co/200",
+            tglMulai = "30 Juli 2026",
+            tglSelesai = "31 Juli 2026",
+            dendaPerJam = 15000,
+            jaminanBase = 315000
+        )
+    )
+
     MaterialTheme {
-        PaymentConfirmedScreen(state = dummyPaymentConfirmedState())
+        Surface(color = Color.White, modifier = Modifier.fillMaxSize()) {
+            PaymentConfirmedScreen(
+                orderNumber = "5020",
+                items = dummyItems,
+                shippingCost = 40000L,
+                customer = CustomerInfo(
+                    nama = "Aprilia Afia",
+                    metodePembayaran = "Transfer Bank — BCA",
+                    waktuPemesanan = "Kamis, 11 Maret 2026 — 05:40 AM",
+                    metodePengiriman = "Delivery",
+                    alamat = "Jl. Bondong, 45, Brigie",
+                    tanggalPembayaran = "Kamis, 11 Maret 2026 — 05:46 AM"
+                ),
+                onBackHome = {}
+            )
+        }
     }
 }

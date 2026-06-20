@@ -1,4 +1,4 @@
-package com.l0124005.sewain_rpl.ui.theme.Checkout
+package com.l0124005.sewain_rpl.ui.theme.checkout
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -32,7 +32,7 @@ import com.l0124005.sewain_rpl.ui.theme.katalog.*
 import com.l0124005.sewain_rpl.utils.CurrencyUtils
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
-import com.l0124005.sewain_rpl.ui.theme.Checkout.CartItem
+import com.l0124005.sewain_rpl.ui.theme.checkout.CartItem
 
 
 
@@ -48,8 +48,8 @@ object CkColors {
     val Border = Color(0xFFE0E0E0)
     val PanelBg = Color(0xFFF5F5F5)
 }
-val CkVolkhov = FontFamily.Serif   // Volkhov fallback
-val CkBody    = FontFamily.Default // Poppins fallback
+val CkVolkhov = VolkhovFont
+val CkBody    = MonsterratFont
 
 enum class ShippingMethod { COD, DELIVERY }
 enum class PaymentType { CREDIT, QRIS, TRANSFER, EWALLET }
@@ -159,6 +159,7 @@ fun CheckoutPaymentScreen(
             fontSize = 11.sp,
             color = CkColors.Gray,
             fontFamily = CkBody,
+            fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(bottom = 12.dp)
         )
 
@@ -198,7 +199,7 @@ fun CheckoutPaymentScreen(
             colors = ButtonDefaults.buttonColors(containerColor = CkColors.Blue),
             modifier = Modifier.fillMaxWidth().height(48.dp)
         ) {
-            Text("Pay Now", color = Color.White, fontFamily = MonsterratFont, fontSize = 14.sp)
+            Text("Pay Now", color = Color.White, fontFamily = MonsterratFont, fontWeight = FontWeight.Bold, fontSize = 17.sp)
         }
 
         Text(
@@ -206,6 +207,7 @@ fun CheckoutPaymentScreen(
             fontSize = 10.sp,
             color = CkColors.Gray,
             fontFamily = CkBody,
+            fontWeight = FontWeight.SemiBold,
             modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
@@ -233,6 +235,7 @@ fun CheckoutPaymentScreen(
             fontSize = 11.sp,
             color = CkColors.Gray,
             fontFamily = CkBody,
+            fontWeight = FontWeight.SemiBold,
             lineHeight = 17.sp,
             modifier = Modifier
                 .fillMaxWidth()
@@ -292,8 +295,8 @@ private fun CkTextField(
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        placeholder = { Text(placeholder, fontSize = 12.sp, color = CkColors.Gray, fontFamily = CkBody) },
-        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp, color = CkColors.Dark, fontFamily = CkBody),
+        placeholder = { Text(placeholder, fontSize = 12.sp, color = CkColors.Gray, fontFamily = CkBody, fontWeight = FontWeight.SemiBold) },
+        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp, color = CkColors.Dark, fontFamily = CkBody, fontWeight = FontWeight.SemiBold),
         shape = RoundedCornerShape(0.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = CkColors.Blue,
@@ -303,7 +306,7 @@ private fun CkTextField(
         ),
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
         singleLine = true,
-        modifier = modifier.fillMaxWidth().height(48.dp)
+        modifier = modifier.fillMaxWidth().height(52.dp)
     )
 }
 
@@ -329,7 +332,7 @@ private fun ShippingToggleButton(
         Text(
             label,
             fontSize = 12.sp,
-            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+            fontWeight = FontWeight.SemiBold,
             color = textColor,
             fontFamily = CkBody
         )
@@ -364,7 +367,7 @@ private fun PaymentMethodSelector(
                 RadioButton(selected = true, onClick = {}, colors = RadioButtonDefaults.colors(selectedColor = CkColors.Blue))
                 Column {
                     Text(label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = CkColors.Dark, fontFamily = CkBody)
-                    Text(sub, fontSize = 11.sp, color = CkColors.Gray, fontFamily = CkBody)
+                    Text(sub, fontSize = 11.sp, color = CkColors.Gray, fontFamily = CkBody, fontWeight = FontWeight.SemiBold)
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.dp)) { // ← jarak diperbesar di sini
@@ -408,7 +411,7 @@ private fun PaymentMethodSelector(
                     Spacer(Modifier.width(8.dp))
                     Column(modifier = Modifier.weight(1f)) {  // ← tambah weight di sini
                         Text(l, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = CkColors.Dark, fontFamily = CkBody)
-                        Text(s, fontSize = 11.sp, color = CkColors.Gray, fontFamily = CkBody)
+                        Text(s, fontSize = 11.sp, color = CkColors.Gray, fontFamily = CkBody, fontWeight = FontWeight.SemiBold)
                     }
                     // ↓ INI YANG DITAMBAH
                     PaymentLogoBox(
@@ -631,7 +634,7 @@ private fun PaymentLogoBox(logoRes: Int? = null) {
 @Composable
 private fun PanelInfoRow(label: String, value: String) {
     Column {
-        Text(label, fontSize = 10.sp, color = CkColors.Gray, fontFamily = CkBody)
+        Text(label, fontSize = 10.sp, color = CkColors.Gray, fontFamily = CkBody, fontWeight = FontWeight.SemiBold)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -655,7 +658,7 @@ private fun SaveInfoCheckbox() {
             modifier = Modifier.size(16.dp)
         )
         Spacer(Modifier.width(6.dp))
-        Text("Save This Info For Future", fontSize = 11.sp, color = CkColors.Gray, fontFamily = CkBody)
+        Text("Save This Info For Future", fontSize = 11.sp, color = CkColors.Gray, fontFamily = CkBody, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -726,7 +729,7 @@ fun SummaryProductCard(
                         "${CurrencyUtils.formatRupiah(item.harga)}/hari",
                         fontFamily = CkBody,
                         fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                         color = CkColors.Blue
                     )
                 }
@@ -795,8 +798,8 @@ private fun SummaryDateBox(label: String, value: String, modifier: Modifier = Mo
             )
             Text(
                 label,
-                fontFamily = CkBody,
-                fontWeight = FontWeight.Black,
+                fontFamily = LatoFont,
+                fontWeight = FontWeight.Bold,
                 fontSize = 11.sp,
                 color = CkColors.Black,
                 maxLines = 2
@@ -805,8 +808,8 @@ private fun SummaryDateBox(label: String, value: String, modifier: Modifier = Mo
         Spacer(Modifier.height(3.dp))
         Text(
             value,
-            fontFamily = CkBody,
-            fontWeight = FontWeight.Normal,
+            fontFamily = LatoFont,
+            fontWeight = FontWeight.SemiBold,
             fontSize = 11.sp,
             color = CkColors.Black
         )
@@ -824,7 +827,7 @@ private fun SummaryRow(label: String, value: String, bold: Boolean = false, ital
             label,
             fontFamily = CkBody,
             fontSize = 11.sp,
-            fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal,
+            fontWeight = if (bold) FontWeight.Bold else FontWeight.SemiBold,
             fontStyle = if (italic) FontStyle.Italic else FontStyle.Normal,
             color = CkColors.Dark,
             modifier = Modifier.weight(2f)   // ← ganti width(110.dp) jadi weight(1f)
@@ -833,7 +836,7 @@ private fun SummaryRow(label: String, value: String, bold: Boolean = false, ital
             value,
             fontFamily = CkBody,
             fontSize = 11.sp,
-            fontWeight = if (bold) FontWeight.Bold else FontWeight.Medium,
+            fontWeight = if (bold) FontWeight.Bold else FontWeight.SemiBold,
             fontStyle = if (italic) FontStyle.Italic else FontStyle.Normal,
             color = CkColors.Dark,
             textAlign = androidx.compose.ui.text.style.TextAlign.Start,  // ← tambah ini
