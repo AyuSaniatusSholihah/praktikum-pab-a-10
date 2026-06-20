@@ -77,26 +77,15 @@ fun mapCheckoutResponseToState(
         )
     }
 
-    // Gunakan formData jika tersedia untuk info yang lebih akurat/lengkap dari input user
-    val customerName = if (formData != null) "${formData.firstName} ${formData.lastName}" else firstTx.user?.name ?: "-"
-    val paymentMethod = if (formData != null) "${formData.paymentType} — ${formData.paymentDetail}" else firstTx.pembayaran?.metode ?: "Transfer"
-    val shippingMethod = if (formData != null) formData.shipping.name else if (firstTx.user?.alamat.isNullOrBlank()) "COD" else "Delivery"
-    val address = if (formData != null && formData.shipping == ShippingMethod.DELIVERY) {
-        "${formData.address}, ${formData.cityProvince}, ${formData.postalCode}"
-    } else {
-        firstTx.user?.alamat ?: "-"
-    }
-
-    // Format tanggal pembayaran real-time
-    val sdf = SimpleDateFormat("EEEE, d MMMM yyyy — hh:mm a", Locale("id", "ID"))
-    val currentTimestamp = sdf.format(Date())
+    val dateFormat = java.text.SimpleDateFormat("dd MMMM yyyy HH:mm:ss", java.util.Locale("id", "ID"))
+    val currentDateTime = dateFormat.format(java.util.Date())
 
     val customer = CustomerInfo(
-        nama = customerName,
-        metodePembayaran = paymentMethod,
-        metodePengiriman = shippingMethod,
-        alamat = address,
-        tanggalPembayaran = currentTimestamp
+        nama = firstTx.user?.name ?: "Customer (Guest)",
+        metodePembayaran = firstTx.pembayaran?.metode ?: "Transfer Bank - BCA",
+        metodePengiriman = if (firstTx.user?.alamat.isNullOrBlank()) "COD" else "Delivery",
+        alamat = firstTx.user?.alamat ?: "-",
+        tanggalPembayaran = currentDateTime
     )
 
     // Hitung total ongkir jika ada
@@ -496,7 +485,7 @@ private fun CustomerInfoSection(customer: CustomerInfo) {
         ) {
             Row {
                 Text("SEWA", fontFamily = CkVolkhov, fontSize = 26.sp, color = CkColors.Dark)
-                Text("IN", fontFamily = CkVolkhov, fontSize = 26.sp, color = CkColors.Blue)
+                Text("IN", fontFamily = CkVolkhov, fontSize = 26.sp, color = Color(0xFF6A87A1))
             }
         }
     }

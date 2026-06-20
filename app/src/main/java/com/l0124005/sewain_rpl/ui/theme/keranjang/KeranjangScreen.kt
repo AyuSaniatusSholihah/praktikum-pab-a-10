@@ -243,7 +243,7 @@ private fun CartRow(
                 .clip(RoundedCornerShape(8.dp))
                 .background(CartColors.ThumbBg)
         ) {
-            val imageUrl = if (!item.barang.foto_barang.isNullOrEmpty()) {
+            val imageUrl = if (item.barang != null && !item.barang.foto_barang.isNullOrEmpty()) {
                 if (item.barang.foto_barang.startsWith("http")) {
                     item.barang.foto_barang
                 } else {
@@ -254,7 +254,7 @@ private fun CartRow(
             }
             AsyncImage(
                 model              = imageUrl,
-                contentDescription = item.barang.nama_barang,
+                contentDescription = item.barang?.nama_barang,
                 contentScale       = ContentScale.Crop,
                 modifier           = Modifier.fillMaxSize()
             )
@@ -274,7 +274,7 @@ private fun CartRow(
                 verticalAlignment     = Alignment.Top
             ) {
                 Text(
-                    text       = item.barang.nama_barang,
+                    text       = item.barang?.nama_barang ?: "Barang Tidak Tersedia",
                     fontFamily = CartFonts.Heading,
                     fontWeight = FontWeight.Bold,
                     fontSize   = 15.sp,
@@ -305,7 +305,7 @@ private fun CartRow(
 
             // Harga/hari
             Text(
-                text       = "${CurrencyUtils.formatRupiah(item.barang.harga_sewa.toLong())}/hari",
+                text       = "Rp ${CurrencyUtils.formatRupiah(item.barang?.harga_sewa?.toLong() ?: 0)}/hari",
                 fontFamily = MonsterratFont,
                 fontWeight = FontWeight.SemiBold,
                 fontSize   = 11.sp,
@@ -368,7 +368,7 @@ private fun CartRow(
             Spacer(Modifier.height(4.dp))
 
             Text(
-                text       = "Subtotal: ${CurrencyUtils.formatRupiah(item.subtotal.toLong())}",
+                text       = "Subtotal: Rp ${CurrencyUtils.formatRupiah(item.subtotal.toLong())}",
                 fontSize   = 11.sp,
                 fontFamily = MonsterratFont,
                 fontWeight = FontWeight.SemiBold,
@@ -376,7 +376,7 @@ private fun CartRow(
             )
         } // ← tutup Column info produk
     } // ← tutup Row CartRow
-} // ← tutup fun CartRow  ✅ INI YANG HILANG DI VERSI LAMA
+} // ← tutup fun CartRow
 
 // ── Date pill ─────────────────────────────────────────────────
 @Composable
@@ -458,7 +458,7 @@ private fun CheckoutSection(
                 )
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
-                        text       = CurrencyUtils.formatRupiah(total),
+                        text       = "Rp ${CurrencyUtils.formatRupiah(total)}",
                         fontFamily = CartFonts.Heading,
                         fontWeight = FontWeight.Bold,
                         fontSize   = 20.sp,

@@ -136,6 +136,7 @@ class MainActivity : ComponentActivity() {
         return when (str) {
             "KERANJANG" -> Screen.Keranjang
             "TRANSAKSI" -> Screen.RiwayatTransaksi
+            "CHECKOUT"  -> Screen.CheckoutPayment
             else -> Screen.Home
         }
     }
@@ -215,8 +216,10 @@ fun MainContainer(
                     onLogout()
                 },
                 onSettingsClick = {
-                    scope.launch { drawerState.close() }
-                    currentScreen = Screen.Settings
+                    scope.launch {
+                        drawerState.close()
+                        Toast.makeText(context, "Fitur Settings dalam pengembangan", Toast.LENGTH_SHORT).show()
+                    }
                 }
             )
         },
@@ -364,7 +367,7 @@ fun MainContainer(
                     onMyRentalClick = { currentScreen = Screen.MyRental },
                     onRentalOwnerClick = { currentScreen = Screen.RentalsOwner },
                     onMyWalletClick = { currentScreen = Screen.MyWallet },
-                    onSettingsClick = { currentScreen = Screen.Settings }
+                    onSettingsClick = { Toast.makeText(context, "Fitur Settings dalam pengembangan", Toast.LENGTH_SHORT).show() }
                 )
                 Screen.MyRental -> {
                     MyRentalsScreen(
@@ -375,7 +378,7 @@ fun MainContainer(
                         onRentalsOwnerClick = { currentScreen = Screen.RentalsOwner },
                         onMyWalletClick = { currentScreen = Screen.MyWallet },
                         onLogoutClick = onLogout,
-                        onSettingsClick = { currentScreen = Screen.Settings }
+                        onSettingsClick = { Toast.makeText(context, "Fitur Settings dalam pengembangan", Toast.LENGTH_SHORT).show() }
                     )
                 }
                 Screen.RentalsOwner -> {
@@ -389,7 +392,7 @@ fun MainContainer(
                         onMyRentalClick = { currentScreen = Screen.MyRental },
                         onWalletClick = { currentScreen = Screen.MyWallet },
                         onRentalClick = { /* TODO */ },
-                        onSettingsClick = { currentScreen = Screen.Settings }
+                        onSettingsClick = { Toast.makeText(context, "Fitur Settings dalam pengembangan", Toast.LENGTH_SHORT).show() }
                     )
                 }
                 Screen.RiwayatTransaksi -> RiwayatTransaksiScreen(
@@ -409,7 +412,7 @@ fun MainContainer(
                     onLogout = onLogout,
                     onMyRentalClick = { currentScreen = Screen.MyRental },
                     onRentalOwnerClick = { currentScreen = Screen.RentalsOwner },
-                    onSettingsClick = { currentScreen = Screen.Settings }
+                    onSettingsClick = { Toast.makeText(context, "Fitur Settings dalam pengembangan", Toast.LENGTH_SHORT).show() }
                 )
                 Screen.Settings -> {
                     // Placeholder for Settings Screen

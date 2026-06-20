@@ -43,19 +43,29 @@ private val CardBlue   = Color(0xFF21394F)
 private val LocalMidBlue = Color(0xFF4D6674)
 private val LocalDarkNavy = Color(0xFF21394F)
 
-// ── Warna badge status ──
-private val StatusActiveBlue    = Color(0xFF438CFA) 
-private val StatusUpcomingYellow = Color(0xFFEBF530) 
-private val StatusCompletedGreen = Color(0xFF34ED4A) 
-private val StatusCanceledRed    = Color(0xFFF83220) 
-private val StatusReturnOrange   = Color(0xFFFAA443) 
+// ── Warna badge status -- sesuai .dc-badge di CSS ──
+// Background soft, text dark sesuai .dc-badge.active / .paid / .return dll.
+private val StatusActiveBg    = Color(0xFFC3D4E9)
+private val StatusActiveText  = Color(0xFF1e3a5f)
+private val StatusUpcomingBg  = Color(0xFFe8f4ea)
+private val StatusUpcomingText = Color(0xFF1f7a47)
+private val StatusCompletedBg  = Color(0xFFd1f0dd)
+private val StatusCompletedText = Color(0xFF1f7a47)
+private val StatusCanceledBg  = Color(0xFFffcdd2)
+private val StatusCanceledText = Color(0xFFc62828)
+private val StatusReturnBg   = Color(0xFFffe3c4)
+private val StatusReturnText  = Color(0xFFa35a17)
 
-enum class RentalStatus(val label: String, val badgeColor: Color) {
-    ACTIVE("Active Rent", StatusActiveBlue),
-    UPCOMING("Upcoming Rent", StatusUpcomingYellow),
-    COMPLETED("Completed Rent", StatusCompletedGreen),
-    CANCELED("Canceled Rent", StatusCanceledRed),
-    RETURN("Return Rent", StatusReturnOrange);
+enum class RentalStatus(
+    val label: String,
+    val badgeColor: Color,
+    val badgeTextColor: Color
+) {
+    ACTIVE("Active Rent", StatusActiveBg, StatusActiveText),
+    UPCOMING("Upcoming Rent", StatusUpcomingBg, StatusUpcomingText),
+    COMPLETED("Completed Rent", StatusCompletedBg, StatusCompletedText),
+    CANCELED("Canceled Rent", StatusCanceledBg, StatusCanceledText),
+    RETURN("Return Rent", StatusReturnBg, StatusReturnText);
 
     companion object {
         fun fromBackend(status: String): RentalStatus {
@@ -313,13 +323,13 @@ private fun RentalCard(item: TransaksiData, modifier: Modifier = Modifier) {
             Box(
                 modifier = Modifier
                     .padding(8.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(status.badgeColor.copy(alpha = 0.55f))
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(status.badgeColor)
                     .padding(horizontal = 8.dp, vertical = 3.dp)
             ) {
                 Text(
                     text = status.label,
-                    color = Color.White,
+                    color = status.badgeTextColor,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold
                 )

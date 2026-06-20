@@ -81,14 +81,14 @@ fun ProfileScreen(
     // ── State buat drawer ──
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    var isSaving by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) { viewModel.getProfile(token) }
 
     LaunchedEffect(profileState) {
-        if (profileState is Resource.Success &&
-            (profileState as Resource.Success<ProfileResponse>).data?.message == "Profile updated successfully"
-        ) {
-            Toast.makeText(context, "Profil berhasil diperbarui", Toast.LENGTH_SHORT).show()
+        if (isSaving && profileState is Resource.Success) {
+            Toast.makeText(context, "Profil berhasil diperbarui!", Toast.LENGTH_SHORT).show()
+            isSaving = false
             viewModel.resetStates()
             viewModel.getProfile(token)
         } else if (profileState is Resource.Error) {
@@ -171,11 +171,16 @@ fun ProfileScreen(
 
                                 var imagePart: MultipartBody.Part? = null
                                 imageUri?.let { uri ->
-                                    val file = uriToFile(context, uri)
-                                    val requestFile = file.readBytes().toRequestBody("image/*".toMediaTypeOrNull())
-                                    imagePart = MultipartBody.Part.createFormData("foto_profil", file.name, requestFile)
+                                    try {
+                                        val file = uriToFile(context, uri)
+                                        val requestFile = file.readBytes().toRequestBody("image/*".toMediaTypeOrNull())
+                                        imagePart = MultipartBody.Part.createFormData("foto_profil", file.name, requestFile)
+                                    } catch (e: Exception) {
+                                        Toast.makeText(context, "Gagal memproses foto", Toast.LENGTH_SHORT).show()
+                                    }
                                 }
 
+                                isSaving = true
                                 viewModel.updateProfile(token, namePart, null, phonePart, alamatPart, tanggalLahirPart, jenisKelaminPart, imagePart)
                             }
                         )
@@ -388,7 +393,7 @@ internal fun ProfileContent(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = AccentBlue)
+                colors = CardDefaults.cardColors(containerColor = InputBlue)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     // Badge "+2.3%" -- sesuai .saldo-badge di web (background putih transparan, teks hijau gelap)
@@ -415,13 +420,13 @@ internal fun ProfileContent(
                                 fontFamily = VolkhovFont,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp,
-                                color = Color.White
+                                color = DarkNavy
                             )
                             Text(
                                 text = "Rp ${formatRupiah(user.saldo)}",
                                 fontFamily = AbrilFatfaceFont,
                                 fontSize = 22.sp,
-                                color = Color.White
+                                color = Color.Black
                             )
                         }
                         Box(
@@ -433,7 +438,7 @@ internal fun ProfileContent(
                             Icon(
                                 Icons.Default.AttachMoney,
                                 contentDescription = null,
-                                tint = Color.White,
+                                tint = DarkNavy,
                                 modifier = Modifier.size(22.dp)
                             )
                         }

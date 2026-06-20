@@ -5,8 +5,8 @@ import java.util.Locale
 
 object CurrencyUtils {
     fun formatRupiah(amount: Number): String {
-        val formatter = NumberFormat.getCurrencyInstance(Locale("id", "ID"))
-        return formatter.format(amount).replace("Rp", "Rp ").trim()
+        val formatter = NumberFormat.getNumberInstance(Locale("id", "ID"))
+        return formatter.format(amount)
     }
 
     // Simple format without currency symbol
