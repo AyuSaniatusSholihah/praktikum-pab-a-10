@@ -14,8 +14,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -23,6 +21,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
 import com.l0124005.sewain_rpl.R
 import com.l0124005.sewain_rpl.ui.theme.Sewain_rplTheme
+import com.l0124005.sewain_rpl.ui.theme.VidalokaFont
+import com.l0124005.sewain_rpl.ui.theme.MontaguSlabFont
+import com.l0124005.sewain_rpl.ui.theme.VolkhovFont
 import com.l0124005.sewain_rpl.ui.theme.auth.LoginActivity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -56,17 +57,6 @@ private val verticalFadeBrush = Brush.verticalGradient(
         Color(0xFF21394F)  // biru tua di paling bawah
     )
 )
-// TODO: pastikan file font sudah ditaruh di res/font dengan nama "vidaloka"
-// (contoh: res/font/vidaloka.ttf), lalu uncomment baris di bawah ini
-// dan ganti FontFamily.Serif pada VidalokaFont jadi FontFamily(Font(R.font.vidaloka))
-val VidalokaFont = FontFamily(Font(R.font.vidaloka_regular))
-val MontaguSlabFont = FontFamily(
-    Font(R.font.montaguslab_regular, FontWeight.Normal),
-    Font(R.font.montaguslab_regular, FontWeight.Medium),
-    Font(R.font.montaguslab_semibold, FontWeight.SemiBold),
-    Font(R.font.montaguslab_bold, FontWeight.Bold)
-)
-val VolkhovFont = FontFamily(Font(R.font.volkhov_regular))
 
 // Warna-warna ini diambil dari home.css agar konsisten dengan tema web
 private val ColorBgSection = Color(0xFFF5F5F5)   // --color-bg-soft / --color-bg-section

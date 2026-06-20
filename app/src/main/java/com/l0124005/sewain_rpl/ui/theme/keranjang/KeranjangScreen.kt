@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
@@ -27,10 +28,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.l0124005.sewain_rpl.R
+import com.l0124005.sewain_rpl.network.ApiClient
+import com.l0124005.sewain_rpl.ui.theme.MonsterratFont
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.viewmodel.KeranjangViewModel
 import com.l0124005.sewain_rpl.network.KeranjangItem
 import com.l0124005.sewain_rpl.network.CatalogData
+import com.l0124005.sewain_rpl.network.UpdateKeranjangRequest
 import com.l0124005.sewain_rpl.utils.CurrencyUtils
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -55,7 +59,6 @@ object CartColors {
 
 object CartFonts {
     val Heading = FontFamily.Serif
-    val MonsterratFont = FontFamily(Font(R.font.montserrat))
     val Body    = FontFamily.Default
 }
 
@@ -189,7 +192,9 @@ fun KeranjangScreen(
                                         else checkedIds - item.id
                                     },
                                     onRemove    = { viewModel.removeKeranjangItem(token, item.id) },
-                                    onQtyChange = { /* tambahkan update qty ke viewModel jika ada */ }
+                                    onQtyChange = { newQty ->
+                                        viewModel.updateKeranjangItem(token, item.id, UpdateKeranjangRequest(jumlah = newQty))
+                                    }
                                 )
                                 HorizontalDivider(color = CartColors.DividerRow, thickness = 1.dp)
                             }
@@ -260,9 +265,19 @@ private fun CartRow(
                 .clip(RoundedCornerShape(8.dp))
                 .background(CartColors.ThumbBg)
         ) {
+            val imageUrl = if (!item.barang.foto_barang.isNullOrEmpty()) {
+                if (item.barang.foto_barang.startsWith("http")) {
+                    item.barang.foto_barang
+                } else {
+                    ApiClient.IMAGE_BASE_URL + item.barang.foto_barang
+                }
+            } else {
+                "https://placehold.co/200"
+            }
             AsyncImage(
-                model              = item.barang.foto_barang ?: "https://placehold.co/200",
+                model              = imageUrl,
                 contentDescription = item.barang.nama_barang,
+                contentScale       = ContentScale.Crop,
                 modifier           = Modifier.fillMaxSize()
             )
         }
@@ -313,7 +328,7 @@ private fun CartRow(
             // Harga/hari
             Text(
                 text       = "${CurrencyUtils.formatRupiah(item.barang.harga_sewa.toLong())}/hari",
-                fontFamily = CartFonts.MonsterratFont,
+                fontFamily = MonsterratFont,
                 fontWeight = FontWeight.SemiBold,
                 fontSize   = 11.sp,
                 color      = CartColors.Dark
@@ -327,7 +342,7 @@ private fun CartRow(
                     text       = "$hari hari sewa",
                     fontSize   = 12.sp,
                     color      = CartColors.DurText,
-                    fontFamily = CartFonts.MonsterratFont,
+                    fontFamily = MonsterratFont,
                     fontWeight = FontWeight.SemiBold,
                     modifier   = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                 )
@@ -377,7 +392,7 @@ private fun CartRow(
             Text(
                 text       = "Subtotal: ${CurrencyUtils.formatRupiah(item.subtotal.toLong())}",
                 fontSize   = 11.sp,
-                fontFamily = CartFonts.MonsterratFont,
+                fontFamily = MonsterratFont,
                 fontWeight = FontWeight.SemiBold,
                 color      = CartColors.Gray
             )
@@ -475,7 +490,7 @@ private fun CheckoutSection(
                         text       = "$selectedCount item dipilih",
                         fontSize   = 11.sp,
                         color      = CartColors.Gray,
-                        fontFamily = CartFonts.MonsterratFont,
+                        fontFamily = MonsterratFont,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -498,7 +513,7 @@ private fun CheckoutSection(
                 Text(
                     text       = "Checkout",
                     color      = Color.White,
-                    fontFamily = CartFonts.MonsterratFont,
+                    fontFamily = MonsterratFont,
                     fontWeight = FontWeight.SemiBold,
                     fontSize   = 15.sp
                 )

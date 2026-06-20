@@ -31,8 +31,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.l0124005.sewain_rpl.repository.AuthRepository
 import com.l0124005.sewain_rpl.ui.theme.Sewain_rplTheme
-import com.l0124005.sewain_rpl.ui.theme.landing.VidalokaFont
-import com.l0124005.sewain_rpl.ui.theme.landing.VolkhovFont
+import com.l0124005.sewain_rpl.ui.theme.VidalokaFont
+import com.l0124005.sewain_rpl.ui.theme.VolkhovFont
+import com.l0124005.sewain_rpl.ui.theme.MonsterratFont
 import com.l0124005.sewain_rpl.R
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.utils.SessionManager
@@ -40,11 +41,6 @@ import com.l0124005.sewain_rpl.viewmodel.AuthViewModel
 import com.l0124005.sewain_rpl.viewmodel.AuthViewModelFactory
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
-
-// Deklarasi font lokal agar tidak konflik
-private val LocalMonsterratFont = FontFamily(Font(R.font.montserrat))
 
 // Warna sama seperti Login/Register, diambil dari auth.css
 private val AuthBlue = Color(0xFF6A87A1)
@@ -89,7 +85,8 @@ class OtpActivity : ComponentActivity() {
                     viewModel = viewModel,
                     onVerificationSuccess = {
                         val intent = Intent(this, LoginActivity::class.java)
-                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                        intent.flags =
+                            Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                         startActivity(intent)
                     }
                 )
@@ -110,12 +107,15 @@ fun OtpScreen(
     LaunchedEffect(otpState) {
         when (otpState) {
             is Resource.Success -> {
-                Toast.makeText(context, "Verifikasi Berhasil! Silakan Login.", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, "Verifikasi Berhasil! Silakan Login.", Toast.LENGTH_LONG)
+                    .show()
                 onVerificationSuccess()
             }
+
             is Resource.Error -> {
                 Toast.makeText(context, otpState?.message ?: "OTP Salah", Toast.LENGTH_SHORT).show()
             }
+
             else -> {}
         }
     }
@@ -209,7 +209,7 @@ fun OtpScreenContent(
             Text(
                 text = "We sent a 4-digit code to\n$email",
                 fontSize = 11.sp,
-                fontFamily = LocalMonsterratFont,
+                fontFamily = MonsterratFont,
                 fontWeight = FontWeight.SemiBold,
                 color = AuthTextMutedOtp,
                 textAlign = TextAlign.Center,
@@ -267,7 +267,11 @@ fun OtpScreenContent(
                     if (code.length == 4) {
                         onVerify(code)
                     } else {
-                        Toast.makeText(context, "Masukkan kode OTP dengan lengkap!", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            context,
+                            "Masukkan kode OTP dengan lengkap!",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 },
                 modifier = Modifier
@@ -284,7 +288,7 @@ fun OtpScreenContent(
                         text = "Verify Now",
                         color = Color.White,
                         fontSize = 14.sp,
-                        fontFamily = LocalMonsterratFont,
+                        fontFamily = MonsterratFont,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -303,7 +307,7 @@ fun OtpScreenContent(
                     }
                 },
                 fontSize = 13.sp,
-                fontFamily = LocalMonsterratFont,
+                fontFamily = MonsterratFont,
                 modifier = Modifier.clickable { onResendOtp() }
             )
 
@@ -315,7 +319,7 @@ fun OtpScreenContent(
                 color = AuthBlack,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 10.5.sp,
-                fontFamily = LocalMonsterratFont
+                fontFamily = MonsterratFont
             )
         }
     }
@@ -330,7 +334,9 @@ private fun OtpDigitBox(
 ) {
     Box(
         modifier = if (focusRequester != null) {
-            Modifier.size(48.dp).focusRequester(focusRequester)
+            Modifier
+                .size(48.dp)
+                .focusRequester(focusRequester)
         } else {
             Modifier.size(48.dp)
         },
@@ -345,7 +351,7 @@ private fun OtpDigitBox(
             textStyle = LocalTextStyle.current.copy(
                 textAlign = TextAlign.Center,
                 fontSize = 18.sp,
-                fontFamily = LocalMonsterratFont,
+                fontFamily = MonsterratFont,
                 fontWeight = FontWeight.SemiBold,
                 color = Color(0xFF21394F)
             ),

@@ -1,12 +1,16 @@
 package com.l0124005.sewain_rpl.ui.theme
 
 import android.content.Intent
+import androidx.compose.ui.platform.LocalContext
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -14,6 +18,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PhoneCallback
+import androidx.compose.material.icons.automirrored.filled.ListAlt
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -32,10 +38,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 import coil.compose.AsyncImage
 import com.l0124005.sewain_rpl.network.ApiClient
 import com.l0124005.sewain_rpl.network.CatalogData
 import com.l0124005.sewain_rpl.network.KatalogListResponse
+import com.l0124005.sewain_rpl.network.KategoriListResponse
 import com.l0124005.sewain_rpl.repository.KatalogRepository
 import com.l0124005.sewain_rpl.repository.KeranjangRepository
 import com.l0124005.sewain_rpl.repository.ProfileRepository
@@ -44,18 +54,23 @@ import com.l0124005.sewain_rpl.ui.theme.auth.LoginActivity
 import com.l0124005.sewain_rpl.ui.theme.katalog.*
 import com.l0124005.sewain_rpl.ui.theme.landing.LandingActivity
 import com.l0124005.sewain_rpl.ui.theme.profil.ProfileScreen
+import com.l0124005.sewain_rpl.ui.theme.profil.MyWalletScreen
+import com.l0124005.sewain_rpl.ui.theme.profil.MyRentalsScreen
+import com.l0124005.sewain_rpl.ui.theme.admin.OwnerDashboardScreen
 import com.l0124005.sewain_rpl.ui.theme.transaksi.RiwayatTransaksiScreen
 import com.l0124005.sewain_rpl.ui.theme.transaksi.DetailTransaksiScreen
 import com.l0124005.sewain_rpl.ui.theme.keranjang.KeranjangScreen
-import com.l0124005.sewain_rpl.ui.theme.checkout.*
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.utils.SessionManager
 import com.l0124005.sewain_rpl.utils.CurrencyUtils
 import com.l0124005.sewain_rpl.viewmodel.*
-import java.text.SimpleDateFormat
-import java.util.Locale
+import kotlinx.coroutines.launch
+
+data class ScreenTarget(val screen: Screen, val id: Long = System.currentTimeMillis())
 
 class MainActivity : ComponentActivity() {
+    private val _initialScreen = mutableStateOf(ScreenTarget(Screen.Home))
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -69,11 +84,14 @@ class MainActivity : ComponentActivity() {
             return
         }
 
+        val screenStr = intent.getStringExtra("TARGET_SCREEN")
+        _initialScreen.value = ScreenTarget(getScreenFromStr(screenStr))
+
         enableEdgeToEdge()
         setContent {
             Sewain_rplTheme {
                 val token = sessionManager.getToken()
-
+                
                 // ViewModels
                 val katalogViewModel: KatalogViewModel = viewModel(factory = KatalogViewModelFactory(KatalogRepository()))
                 val profileViewModel: ProfileViewModel = viewModel(factory = ProfileViewModelFactory(ProfileRepository()))
@@ -86,6 +104,7 @@ class MainActivity : ComponentActivity() {
                     profileViewModel = profileViewModel,
                     keranjangViewModel = keranjangViewModel,
                     transaksiViewModel = transaksiViewModel,
+                    initialScreen = _initialScreen.value,
                     onLogout = {
                         sessionManager.clearSession()
                         val intent = Intent(this@MainActivity, LoginActivity::class.java)
@@ -97,10 +116,26 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        val screenStr = intent.getStringExtra("TARGET_SCREEN")
+        if (screenStr != null) {
+            _initialScreen.value = ScreenTarget(getScreenFromStr(screenStr))
+        }
+    }
+
+    private fun getScreenFromStr(str: String?): Screen {
+        return when (str) {
+            "KERANJANG" -> Screen.Keranjang
+            "TRANSAKSI" -> Screen.RiwayatTransaksi
+            else -> Screen.Home
+        }
+    }
 }
 
 enum class Screen {
-    Home, Rental, Keranjang, MyKatalog, Profile, RiwayatTransaksi, AddItem, EditItem, DetailTransaksi, Pembayaran, MyRental, ProductDetail, CheckoutPayment, CheckoutConfirm
+    Home, Rental, Keranjang, MyKatalog, Profile, RiwayatTransaksi, AddItem, EditItem, DetailTransaksi, Pembayaran, MyRental, RentalsOwner, CheckoutPayment, Confirm, MyWallet
 }
 
 @Composable
@@ -110,116 +145,160 @@ fun MainContainer(
     profileViewModel: ProfileViewModel,
     keranjangViewModel: KeranjangViewModel,
     transaksiViewModel: TransaksiViewModel,
+    initialScreen: ScreenTarget = ScreenTarget(Screen.Home),
     onLogout: () -> Unit
 ) {
-    var currentScreen by remember { mutableStateOf(Screen.Home) }
+    val context = LocalContext.current
+    var currentScreen by remember { mutableStateOf(initialScreen.screen) }
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(initialScreen) {
+        currentScreen = initialScreen.screen
+    }
+
+    val checkoutState by transaksiViewModel.checkoutState.observeAsState()
+
+    LaunchedEffect(checkoutState) {
+        if (checkoutState is Resource.Success) {
+            Toast.makeText(context, "Sewa berhasil!", Toast.LENGTH_SHORT).show()
+            // Jangan reset state dulu agar Confirm screen bisa baca datanya
+            // transaksiViewModel.resetCheckoutState()
+            keranjangViewModel.getKeranjang(token)
+            currentScreen = Screen.Confirm
+        } else if (checkoutState is Resource.Error) {
+            Toast.makeText(context, "Checkout gagal: ${checkoutState?.message}", Toast.LENGTH_SHORT).show()
+            transaksiViewModel.resetCheckoutState()
+        }
+    }
+
     var selectedBarangForEdit by remember { mutableStateOf<CatalogData?>(null) }
-    var selectedProductId by remember { mutableStateOf<Int?>(null) }
     var selectedTransaksiId by remember { mutableStateOf<Int?>(null) }
     var selectedTransaksiIdsForPayment by remember { mutableStateOf<List<Int>>(emptyList()) }
 
-    // Checkout States
-    var itemsForCheckout by remember { mutableStateOf<List<CartItem>>(emptyList()) }
-    var confirmedOrderNumber by remember { mutableStateOf("") }
-    var confirmedShippingCost by remember { mutableStateOf(0L) }
-    var confirmedCustomerInfo by remember { mutableStateOf<CustomerInfo?>(null) }
-
-    Scaffold(
-        bottomBar = {
-            if (currentScreen in listOf(Screen.Home, Screen.Rental, Screen.Keranjang, Screen.MyKatalog, Screen.Profile)) {
-                HomeBottomNavigation(
-                    currentScreen = currentScreen,
-                    onScreenSelected = { currentScreen = it }
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet {
+                Spacer(modifier = Modifier.height(16.dp))
+                NavigationDrawerItem(
+                    label = { Text("My Rentals") },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        currentScreen = Screen.MyRental
+                    },
+                    icon = { Icon(Icons.AutoMirrored.Filled.ListAlt, null) }
                 )
+                NavigationDrawerItem(
+                    label = { Text("Rentals Owner") },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        currentScreen = Screen.RentalsOwner
+                    },
+                    icon = { Icon(Icons.Default.Storefront, null) }
+                )
+                NavigationDrawerItem(
+                    label = { Text("My Wallet") },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        currentScreen = Screen.MyWallet
+                    },
+                    icon = { Icon(Icons.Default.AccountBalanceWallet, null) }
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                NavigationDrawerItem(
+                    label = { Text("Logout") },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        onLogout()
+                    },
+                    icon   = { Icon(Icons.AutoMirrored.Filled.Logout, null) }
+                )
+                Spacer(modifier = Modifier.height(16.dp))
             }
-        }
-    ) { innerPadding ->
-        Box(modifier = Modifier.padding(innerPadding)) {
-            when (currentScreen) {
-                Screen.Home -> HomeScreenContent(
-                    katalogViewModel = katalogViewModel,
-                    onLogout = onLogout,
-                    onSeeAllRentals = { currentScreen = Screen.Rental },
-                    onProductClick = { id ->
-                        selectedProductId = id
-                        currentScreen = Screen.ProductDetail
-                    }
-                )
-                Screen.Rental -> RentalsScreen(
-                    viewModel = katalogViewModel,
-                    keranjangViewModel = keranjangViewModel,
-                    token = token,
-                    onItemClick = { barang ->
-                        selectedProductId = barang.id
-                        currentScreen = Screen.ProductDetail
-                    }
-                )
+        },
+        gesturesEnabled = currentScreen in listOf(Screen.Home, Screen.Rental, Screen.Keranjang, Screen.MyKatalog, Screen.Profile)
+    ) {
+        Scaffold(
+            bottomBar = {
+                if (currentScreen in listOf(Screen.Home, Screen.Rental, Screen.Keranjang, Screen.MyKatalog, Screen.Profile)) {
+                    HomeBottomNavigation(
+                        currentScreen = currentScreen,
+                        onScreenSelected = { currentScreen = it }
+                    )
+                }
+            }
+        ) { innerPadding ->
+            Box(modifier = Modifier.padding(innerPadding)) {
+                when (currentScreen) {
+                    Screen.Home -> HomeScreenContent(
+                        katalogViewModel = katalogViewModel,
+                        keranjangViewModel = keranjangViewModel,
+                        token = token,
+                        onLogout = onLogout,
+                        onMenuClick = {
+                            scope.launch { drawerState.open() }
+                        },
+                        onSeeAllRentals = { currentScreen = Screen.Rental },
+                        onProductClick = { productId: Int ->
+                            val intent = Intent(context, DetailProdukActivity::class.java).apply {
+                                putExtra("EXTRA_PRODUCT_ID", productId)
+                            }
+                            context.startActivity(intent)
+                        }
+                    )
+                    Screen.Rental -> ProductScreen(
+                        token = token,
+                        viewModel = katalogViewModel,
+                        keranjangViewModel = keranjangViewModel,
+                        onItemClick = { id ->
+                            val intent = Intent(context, DetailProdukActivity::class.java).apply {
+                                putExtra("EXTRA_PRODUCT_ID", id)
+                            }
+                            context.startActivity(intent)
+                        }
+                    )
                 Screen.Keranjang -> KeranjangScreen(
                     token = token,
                     viewModel = keranjangViewModel,
                     onBack = { currentScreen = Screen.Home },
-                    onCheckout = { items ->
-                        itemsForCheckout = items.map { kItem ->
-                            CartItem(
-                                id = kItem.id,
-                                nama = kItem.barang.nama_barang,
-                                harga = kItem.barang.harga_sewa.toLong(),
-                                qty = kItem.jumlah,
-                                imageUrl = if (kItem.barang.foto_barang != null) "${ApiClient.IMAGE_BASE_URL}${kItem.barang.foto_barang}" else "https://placehold.co/200",
-                                tglMulai = formatTanggalLengkap(kItem.tanggal_sewa),
-                                tglSelesai = formatTanggalLengkap(kItem.tanggal_kembali_rencana),
-                                dendaPerJam = kItem.barang.harga_denda_perjam.toLong(),
-                                jaminanBase = kItem.barang.harga_jaminan.toLong()
-                            )
-                        }
+                    onCheckout = {
                         currentScreen = Screen.CheckoutPayment
                     }
                 )
                 Screen.CheckoutPayment -> {
-                    val scrollState = rememberScrollState()
-                    Column(modifier = Modifier.verticalScroll(scrollState)) {
-                        CheckoutPaymentScreen(
-                            items = itemsForCheckout,
-                            onPay = { formData ->
-                                confirmedOrderNumber = (1000..9999).random().toString()
-                                confirmedShippingCost = if (formData.shipping == ShippingMethod.DELIVERY) 40000L else 0L
-                                confirmedCustomerInfo = CustomerInfo(
-                                    nama = "${formData.firstName} ${formData.lastName}",
-                                    metodePembayaran = when(formData.paymentType) {
-                                        PaymentType.CREDIT -> "Credit Card"
-                                        PaymentType.QRIS -> "QRIS"
-                                        PaymentType.TRANSFER -> "Transfer Bank"
-                                        PaymentType.EWALLET -> "E-Wallet"
-                                    },
-                                    waktuPemesanan = SimpleDateFormat("EEEE, dd MMMM yyyy — HH:mm a", Locale.forLanguageTag("id-ID")).format(java.util.Date()),
-                                    metodePengiriman = if (formData.shipping == ShippingMethod.DELIVERY) "Delivery" else "COD (Ambil Sendiri)",
-                                    alamat = if (formData.shipping == ShippingMethod.DELIVERY) "${formData.address}, ${formData.cityProvince} ${formData.postalCode}" else "Ambil Sendiri",
-                                    tanggalPembayaran = SimpleDateFormat("EEEE, dd MMMM yyyy — HH:mm a", Locale.forLanguageTag("id-ID")).format(java.util.Date())
-                                )
-                                currentScreen = Screen.CheckoutConfirm
+                    com.l0124005.sewain_rpl.ui.theme.checkout.CheckoutPaymentScreen(
+                        token = token,
+                        keranjangViewModel = keranjangViewModel,
+                        profileViewModel = profileViewModel,
+                        transaksiViewModel = transaksiViewModel,
+                        onEditProfile = {
+                            currentScreen = Screen.Profile
+                        }
+                    )
+                }
+                Screen.Confirm -> {
+                    // Tampilkan Confirm screen setelah checkout sukses (data dari Laravel)
+                    val checkoutResponse = (checkoutState as? Resource.Success)?.data
+                    if (checkoutResponse != null) {
+                        val confirmedState = com.l0124005.sewain_rpl.ui.theme.checkout.mapCheckoutResponseToState(checkoutResponse)
+                        com.l0124005.sewain_rpl.ui.theme.checkout.PaymentConfirmedScreen(
+                            state = confirmedState,
+                            onBackToHome = {
+                                transaksiViewModel.resetCheckoutState()
+                                currentScreen = Screen.Home
                             }
                         )
+                    } else {
+                        // Jika data tidak ada (misal setelah refresh), kembali ke Home
+                        LaunchedEffect(Unit) {
+                            currentScreen = Screen.Home
+                        }
                     }
-                }
-                Screen.CheckoutConfirm -> {
-                    confirmedCustomerInfo?.let { customer ->
-                        PaymentConfirmedScreen(
-                            orderNumber = confirmedOrderNumber,
-                            items = itemsForCheckout,
-                            shippingCost = confirmedShippingCost,
-                            customer = customer,
-                            onBackHome = { currentScreen = Screen.Home }
-                        )
-                    }
-                }
-                Screen.ProductDetail -> selectedProductId?.let { id ->
-                    DetailProdukScreen(
-                        productId = id,
-                        token = token,
-                        katalogViewModel = katalogViewModel,
-                        keranjangViewModel = keranjangViewModel,
-                        onBack = { currentScreen = Screen.Rental }
-                    )
                 }
                 Screen.Pembayaran -> {
                     com.l0124005.sewain_rpl.ui.theme.transaksi.PembayaranScreen(
@@ -234,8 +313,10 @@ fun MainContainer(
                 }
                 Screen.AddItem -> AddItemScreen(
                     viewModel = katalogViewModel,
+                    profileViewModel = profileViewModel,
                     token = token,
-                    onBack = { currentScreen = Screen.MyKatalog }
+                    onBack = { currentScreen = Screen.MyKatalog },
+                    onSuccess = { currentScreen = Screen.MyKatalog }
                 )
                 Screen.EditItem -> selectedBarangForEdit?.let {
                     EditItemScreen(
@@ -248,10 +329,15 @@ fun MainContainer(
                 }
                 Screen.MyKatalog -> MyKatalogScreen(
                     viewModel = katalogViewModel,
+                    profileViewModel = profileViewModel,
                     token = token,
                     onBack = { currentScreen = Screen.Home },
                     onAddItem = { currentScreen = Screen.AddItem },
                     onEditItem = { barang ->
+                        selectedBarangForEdit = barang
+                        currentScreen = Screen.EditItem
+                    },
+                    onItemClick = { barang ->
                         selectedBarangForEdit = barang
                         currentScreen = Screen.EditItem
                     }
@@ -259,8 +345,31 @@ fun MainContainer(
                 Screen.Profile -> ProfileScreen(
                     viewModel = profileViewModel,
                     token = token,
-                    onLogout = onLogout
+                    onLogout = onLogout,
+                    onEditProfile = { /* TODO */ },
+                    onMyRentalClick = { currentScreen = Screen.MyRental },
+                    onRentalOwnerClick = { currentScreen = Screen.RentalsOwner },
+                    onTransaksiClick = { currentScreen = Screen.RiwayatTransaksi },
+                    onRiwayatTransaksiClick = { currentScreen = Screen.RiwayatTransaksi }
                 )
+                Screen.MyRental -> {
+                    MyRentalsScreen(
+                        viewModel = transaksiViewModel,
+                        token = token,
+                        onBack = { currentScreen = Screen.Profile }
+                    )
+                }
+                Screen.RentalsOwner -> {
+                    OwnerDashboardScreen(
+                        viewModel = transaksiViewModel,
+                        token = token,
+                        onManageKatalog = { currentScreen = Screen.MyKatalog },
+                        onTransaksiDetail = { id ->
+                            selectedTransaksiId = id
+                            currentScreen = Screen.DetailTransaksi
+                        }
+                    )
+                }
                 Screen.RiwayatTransaksi -> RiwayatTransaksiScreen(
                     viewModel = transaksiViewModel,
                     token = token,
@@ -269,6 +378,11 @@ fun MainContainer(
                         selectedTransaksiId = id
                         currentScreen = Screen.DetailTransaksi
                     }
+                )
+                Screen.MyWallet -> MyWalletScreen(
+                    viewModel = profileViewModel,
+                    token = token,
+                    onBack = { currentScreen = Screen.Profile }
                 )
                 Screen.DetailTransaksi -> selectedTransaksiId?.let { id ->
                     DetailTransaksiScreen(
@@ -279,18 +393,12 @@ fun MainContainer(
                         onPayClick = { ids ->
                             selectedTransaksiIdsForPayment = ids
                             currentScreen = Screen.Pembayaran
-                        }
-                    )
-                }
-                Screen.MyRental -> {
-                    // Fallback sementara jika MyRental dipilih
-                    HomeScreenContent(
-                        katalogViewModel = katalogViewModel,
-                        onLogout = onLogout,
-                        onSeeAllRentals = { currentScreen = Screen.Rental },
-                        onProductClick = { id ->
-                            selectedProductId = id
-                            currentScreen = Screen.ProductDetail
+                        },
+                        onProductClick = { productId ->
+                            val intent = Intent(context, DetailProdukActivity::class.java).apply {
+                                putExtra("EXTRA_PRODUCT_ID", productId)
+                            }
+                            context.startActivity(intent)
                         }
                     )
                 }
@@ -298,27 +406,23 @@ fun MainContainer(
         }
     }
 }
-
-fun formatTanggalLengkap(tgl: String): String {
-    return try {
-        val input = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        val output = SimpleDateFormat("dd MMMM yyyy", Locale.forLanguageTag("id-ID"))
-        output.format(input.parse(tgl)!!)
-    } catch (e: Exception) {
-        tgl
-    }
 }
 
 @Composable
 fun HomeScreenContent(
     katalogViewModel: KatalogViewModel,
+    keranjangViewModel: KeranjangViewModel,
+    token: String,
     onLogout: () -> Unit,
+    onMenuClick: () -> Unit,
     onSeeAllRentals: () -> Unit,
     onProductClick: (Int) -> Unit
 ) {
     val katalogState by katalogViewModel.katalogPublik.observeAsState(Resource.Loading())
-
+    val kategoriState by katalogViewModel.kategori.observeAsState(Resource.Loading())
+    
     LaunchedEffect(Unit) {
+        katalogViewModel.getKategori()
         katalogViewModel.getKatalogPublik(kategoriId = null)
     }
 
@@ -328,7 +432,7 @@ fun HomeScreenContent(
             .background(Color.White)
             .verticalScroll(rememberScrollState())
     ) {
-        HomeTopBar(onLogout = onLogout)
+        HomeTopBar(onLogout = onLogout, onMenuClick = onMenuClick)
         HeroCollage(onSeeAllRentals)
         Spacer(modifier = Modifier.height(20.dp))
         SearchCard()
@@ -337,9 +441,14 @@ fun HomeScreenContent(
         Spacer(modifier = Modifier.height(32.dp))
         AboutUsSection()
         Spacer(modifier = Modifier.height(48.dp))
-        CategoriesSection()
+        CategoriesSection(kategoriState = kategoriState)
         Spacer(modifier = Modifier.height(48.dp))
-        RentItemsSection(katalogState, onProductClick)
+        RentItemsSection(
+            katalogState = katalogState,
+            onProductClick = onProductClick,
+            keranjangViewModel = keranjangViewModel,
+            token = token
+        )
         Spacer(modifier = Modifier.height(48.dp))
         TestimonialsSection()
         Spacer(modifier = Modifier.height(100.dp))
@@ -348,7 +457,7 @@ fun HomeScreenContent(
 
 
 @Composable
-private fun HomeTopBar(onLogout: () -> Unit) {
+private fun HomeTopBar(onLogout: () -> Unit, onMenuClick: () -> Unit) {
     Surface(color = Color.White, shadowElevation = 1.dp) {
         Row(
             modifier = Modifier
@@ -356,7 +465,9 @@ private fun HomeTopBar(onLogout: () -> Unit) {
                 .padding(horizontal = 16.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Default.Menu, "Menu", Modifier.size(24.dp))
+            IconButton(onClick = onMenuClick) {
+                Icon(Icons.Default.Menu, "Menu", Modifier.size(24.dp))
+            }
             Spacer(modifier = Modifier.width(12.dp))
             Text(
                 text = "SEWAIN",
@@ -510,15 +621,28 @@ private fun FeatureItem(icon: ImageVector, title: String, desc: String) {
 }
 
 @Composable
-private fun CategoriesSection() {
+private fun CategoriesSection(kategoriState: Resource<KategoriListResponse>?) {
+    val categories = (kategoriState as? Resource.Success)?.data?.data ?: emptyList()
+
     Column(modifier = Modifier.fillMaxWidth()) {
         Text("Categories", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, fontSize = 28.sp, fontWeight = FontWeight.Bold)
         Text("Find what you are looking for", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, fontSize = 12.sp, color = Color.Gray)
         Spacer(modifier = Modifier.height(32.dp))
-        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            CategoryCard("Photography", Modifier.weight(1f))
-            CategoryCard("Vehicles", Modifier.weight(1f))
-            CategoryCard("Camping", Modifier.weight(1f))
+        
+        if (kategoriState is Resource.Loading) {
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(modifier = Modifier.size(30.dp), strokeWidth = 2.dp)
+            }
+        } else {
+            LazyRow(
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                items(categories) { category ->
+                    CategoryCard(category.nama_kategori, Modifier.width(120.dp))
+                }
+            }
         }
     }
 }
@@ -533,13 +657,19 @@ private fun CategoryCard(name: String, modifier: Modifier) {
 }
 
 @Composable
-private fun RentItemsSection(katalogState: Resource<KatalogListResponse>, onProductClick: (Int) -> Unit) {
+private fun RentItemsSection(
+    katalogState: Resource<KatalogListResponse>?,
+    onProductClick: (Int) -> Unit,
+    keranjangViewModel: KeranjangViewModel,
+    token: String
+) {
+    val context = LocalContext.current
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Text("Rent Items", fontSize = 32.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Serif)
         Spacer(modifier = Modifier.height(12.dp))
         Text("Temukan berbagai barang pilihan yang siap mendukung aktivitasmu.", fontSize = 13.sp, color = Color.Gray, textAlign = TextAlign.Center)
         Spacer(modifier = Modifier.height(32.dp))
-
+        
         when (katalogState) {
             is Resource.Loading -> {
                 CircularProgressIndicator(color = PrimaryBlue)
@@ -551,19 +681,47 @@ private fun RentItemsSection(katalogState: Resource<KatalogListResponse>, onProd
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items.forEach { barang ->
-                        HomeRentalCard(barang, onProductClick, Modifier.weight(1f))
+                        HomeRentalCard(
+                            barang = barang,
+                            onProductClick = onProductClick,
+                            onAddToCart = { product ->
+                                val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                                val tglSewa = sdf.format(Calendar.getInstance().time)
+                                val calendar = Calendar.getInstance()
+                                calendar.add(Calendar.DAY_OF_YEAR, 1)
+                                val tglKembali = sdf.format(calendar.time)
+
+                                keranjangViewModel.addToKeranjang(
+                                    token = token,
+                                    barangId = product.id,
+                                    jumlah = 1,
+                                    tglSewa = tglSewa,
+                                    tglKembali = tglKembali
+                                )
+                                Toast.makeText(context, "${product.nama_barang} ditambahkan ke keranjang", Toast.LENGTH_SHORT).show()
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
                     }
                 }
             }
             is Resource.Error -> {
                 Text("Gagal memuat barang", color = Color.Red, fontSize = 12.sp)
             }
+            null -> {
+                // Initial state or reset state
+            }
         }
     }
 }
 
 @Composable
-private fun HomeRentalCard(barang: CatalogData, onProductClick: (Int) -> Unit, modifier: Modifier = Modifier) {
+private fun HomeRentalCard(
+    barang: CatalogData,
+    onProductClick: (Int) -> Unit,
+    onAddToCart: (CatalogData) -> Unit,
+    modifier: Modifier = Modifier
+) {
     Card(
         modifier = modifier.clickable { onProductClick(barang.id) },
         shape = RoundedCornerShape(16.dp),
@@ -588,6 +746,23 @@ private fun HomeRentalCard(barang: CatalogData, onProductClick: (Int) -> Unit, m
                     )
                 } else {
                     Text("No Image", color = Color.Gray, fontSize = 12.sp)
+                }
+                
+                // Floating Add to Cart Button for Home Card
+                IconButton(
+                    onClick = { onAddToCart(barang) },
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(4.dp)
+                        .size(28.dp)
+                        .background(PrimaryBlue, CircleShape)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AddShoppingCart,
+                        contentDescription = "Add to Cart",
+                        tint = Color.White,
+                        modifier = Modifier.size(16.dp)
+                    )
                 }
             }
             Spacer(modifier = Modifier.height(10.dp))

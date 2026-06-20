@@ -50,6 +50,7 @@ interface ApiService {
     @POST("profile")
     suspend fun updateProfile(
         @Header("Authorization") token: String,
+        @Query("_method") method: String = "PUT",
         @Part("name") name: RequestBody? = null,
         @Part("username") username: RequestBody? = null,
         @Part("phone_number") phoneNumber: RequestBody? = null,
@@ -70,6 +71,11 @@ interface ApiService {
         @Query("min_harga") minHarga: Double? = null,
         @Query("max_harga") maxHarga: Double? = null
     ): Response<KatalogListResponse>
+
+    @GET("katalog-publik/{id}")
+    suspend fun getKatalogPublikDetail(
+        @Path("id") id: Int
+    ): Response<KatalogDetailResponse>
 
     @GET("katalog")
     suspend fun getMyKatalog(
@@ -94,6 +100,7 @@ interface ApiService {
         @Part("harga_denda_perjam") hargaDendaPerjam: RequestBody,
         @Part("stok") stok: RequestBody,
         @Part("lokasi") lokasi: RequestBody,
+        @Part("additional_information") additionalInformation: RequestBody?,
         @Part foto_barang: MultipartBody.Part?,
         @Part("status") status: RequestBody? = null
     ): Response<KatalogCrudResponse>
@@ -112,6 +119,7 @@ interface ApiService {
         @Part("harga_denda_perjam") hargaDendaPerjam: RequestBody? = null,
         @Part("stok") stok: RequestBody? = null,
         @Part("lokasi") lokasi: RequestBody? = null,
+        @Part("additional_information") additionalInformation: RequestBody? = null,
         @Part foto_barang: MultipartBody.Part? = null,
         @Part("status") status: RequestBody? = null
     ): Response<KatalogCrudResponse>
@@ -121,6 +129,9 @@ interface ApiService {
         @Header("Authorization") token: String,
         @Path("id") id: Int
     ): Response<GenericResponse>
+
+    @GET("kategori")
+    suspend fun getKategori(): Response<KategoriListResponse>
 
 
     // ═══════════════════════════════════════

@@ -49,19 +49,14 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.l0124005.sewain_rpl.repository.AuthRepository
 import com.l0124005.sewain_rpl.ui.theme.MainActivity
 import com.l0124005.sewain_rpl.ui.theme.Sewain_rplTheme
-import com.l0124005.sewain_rpl.ui.theme.landing.VidalokaFont
-import com.l0124005.sewain_rpl.ui.theme.landing.VolkhovFont
+import com.l0124005.sewain_rpl.ui.theme.VidalokaFont
+import com.l0124005.sewain_rpl.ui.theme.VolkhovFont
+import com.l0124005.sewain_rpl.ui.theme.MonsterratFont
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.utils.SessionManager
 import com.l0124005.sewain_rpl.viewmodel.AuthViewModel
 import com.l0124005.sewain_rpl.viewmodel.AuthViewModelFactory
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
-import com.l0124005.sewain_rpl.R
-
-val MonsterratFont = FontFamily(Font(R.font.montserrat))
-
 
 // Warna diambil dari auth.css ( --blue: #6A87A1; --black: #000000; --bg: #f4f4f4; )
 private val AuthBlue = Color(0xFF6A87A1)

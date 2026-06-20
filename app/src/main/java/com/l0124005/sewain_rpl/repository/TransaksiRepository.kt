@@ -13,7 +13,7 @@ class TransaksiRepository {
     fun getRiwayatTransaksi(token: String): Flow<Resource<TransaksiListResponse>> = flow {
         emit(Resource.Loading())
         try {
-            val response = apiService.getRiwayatTransaksi("Bearer $token")
+            val response = apiService.getRiwayatTransaksi(token)
             if (response.isSuccessful && response.body() != null) {
                 emit(Resource.Success(response.body()!!))
             } else {
@@ -27,7 +27,7 @@ class TransaksiRepository {
     fun getDetailTransaksi(token: String, id: Int): Flow<Resource<TransaksiDetailResponse>> = flow {
         emit(Resource.Loading())
         try {
-            val response = apiService.getDetailTransaksi("Bearer $token", id)
+            val response = apiService.getDetailTransaksi(token, id)
             if (response.isSuccessful && response.body() != null) {
                 emit(Resource.Success(response.body()!!))
             } else {
@@ -41,7 +41,7 @@ class TransaksiRepository {
     fun checkout(token: String): Flow<Resource<CheckoutResponse>> = flow {
         emit(Resource.Loading())
         try {
-            val response = apiService.checkout("Bearer $token")
+            val response = apiService.checkout(token)
             if (response.isSuccessful && response.body() != null) {
                 emit(Resource.Success(response.body()!!))
             } else {
@@ -55,7 +55,7 @@ class TransaksiRepository {
     fun bayar(token: String, request: BayarRequest): Flow<Resource<BayarResponse>> = flow {
         emit(Resource.Loading())
         try {
-            val response = apiService.bayar("Bearer $token", request)
+            val response = apiService.bayar(token, request)
             if (response.isSuccessful && response.body() != null) {
                 emit(Resource.Success(response.body()!!))
             } else {
@@ -75,7 +75,7 @@ class TransaksiRepository {
     ): Flow<Resource<KembalikanResponse>> = flow {
         emit(Resource.Loading())
         try {
-            val response = apiService.kembalikanBarang("Bearer $token", id, fotoBukti, rating, komentar)
+            val response = apiService.kembalikanBarang(token, id, fotoBukti, rating, komentar)
             if (response.isSuccessful && response.body() != null) {
                 emit(Resource.Success(response.body()!!))
             } else {
@@ -90,7 +90,7 @@ class TransaksiRepository {
     fun getOwnerDashboard(token: String): Flow<Resource<OwnerDashboardResponse>> = flow {
         emit(Resource.Loading())
         try {
-            val response = apiService.getOwnerDashboard("Bearer $token")
+            val response = apiService.getOwnerDashboard(token)
             if (response.isSuccessful && response.body() != null) {
                 emit(Resource.Success(response.body()!!))
             } else {
@@ -108,7 +108,7 @@ class TransaksiRepository {
     ): Flow<Resource<VerifikasiPengembalianResponse>> = flow {
         emit(Resource.Loading())
         try {
-            val response = apiService.verifikasiPengembalian("Bearer $token", id, request)
+            val response = apiService.verifikasiPengembalian(token, id, request)
             if (response.isSuccessful && response.body() != null) {
                 emit(Resource.Success(response.body()!!))
             } else {

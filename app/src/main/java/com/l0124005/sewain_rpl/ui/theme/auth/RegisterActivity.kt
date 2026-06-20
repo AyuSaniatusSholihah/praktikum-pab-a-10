@@ -32,8 +32,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.l0124005.sewain_rpl.network.RegisterRequest
 import com.l0124005.sewain_rpl.repository.AuthRepository
 import com.l0124005.sewain_rpl.ui.theme.Sewain_rplTheme
-import com.l0124005.sewain_rpl.ui.theme.landing.VidalokaFont
-import com.l0124005.sewain_rpl.ui.theme.landing.VolkhovFont
+import com.l0124005.sewain_rpl.ui.theme.VidalokaFont
+import com.l0124005.sewain_rpl.ui.theme.VolkhovFont
+import com.l0124005.sewain_rpl.ui.theme.MonsterratFont
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.utils.SessionManager
 import com.l0124005.sewain_rpl.viewmodel.AuthViewModel
