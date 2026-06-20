@@ -388,7 +388,7 @@ internal fun ProfileContent(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = AccentBlue)
+                colors = CardDefaults.cardColors(containerColor = InputBlue)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     // Badge "+2.3%" -- sesuai .saldo-badge di web (background putih transparan, teks hijau gelap)
@@ -415,13 +415,13 @@ internal fun ProfileContent(
                                 fontFamily = VolkhovFont,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp,
-                                color = Color.White
+                                color = DarkNavy
                             )
                             Text(
                                 text = "Rp ${formatRupiah(user.saldo)}",
                                 fontFamily = AbrilFatfaceFont,
                                 fontSize = 22.sp,
-                                color = Color.White
+                                color = Color.Black
                             )
                         }
                         Box(
@@ -433,7 +433,7 @@ internal fun ProfileContent(
                             Icon(
                                 Icons.Default.AttachMoney,
                                 contentDescription = null,
-                                tint = Color.White,
+                                tint = DarkNavy,
                                 modifier = Modifier.size(22.dp)
                             )
                         }

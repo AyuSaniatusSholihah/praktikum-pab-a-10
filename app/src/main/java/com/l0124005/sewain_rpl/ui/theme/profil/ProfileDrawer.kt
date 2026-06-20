@@ -22,6 +22,7 @@ import com.l0124005.sewain_rpl.ui.theme.*
 
 private val LocalMidBlue = Color(0xFF4D6674)
 private val LocalDarkNavy = Color(0xFF21394F)
+private val ActiveMenuBlue = Color(0xFF78A5B5)
 
 @Composable
 fun ProfileDrawerContent(
@@ -118,7 +119,7 @@ private fun DrawerMenuItem(
     tint: Color = Color.White,
     onClick: () -> Unit
 ) {
-    val background = if (selected) Color.White.copy(alpha = 0.7f) else Color.Transparent
+    val background = if (selected) ActiveMenuBlue else Color.Transparent
     Row(
         modifier = Modifier
             .fillMaxWidth()
