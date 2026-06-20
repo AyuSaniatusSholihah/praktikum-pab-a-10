@@ -81,14 +81,14 @@ fun ProfileScreen(
     // ── State buat drawer ──
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    var isSaving by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) { viewModel.getProfile(token) }
 
     LaunchedEffect(profileState) {
-        if (profileState is Resource.Success &&
-            (profileState as Resource.Success<ProfileResponse>).data?.message == "Profile updated successfully"
-        ) {
-            Toast.makeText(context, "Profil berhasil diperbarui", Toast.LENGTH_SHORT).show()
+        if (isSaving && profileState is Resource.Success) {
+            Toast.makeText(context, "Profil berhasil diperbarui!", Toast.LENGTH_SHORT).show()
+            isSaving = false
             viewModel.resetStates()
             viewModel.getProfile(token)
         } else if (profileState is Resource.Error) {
@@ -171,11 +171,16 @@ fun ProfileScreen(
 
                                 var imagePart: MultipartBody.Part? = null
                                 imageUri?.let { uri ->
-                                    val file = uriToFile(context, uri)
-                                    val requestFile = file.readBytes().toRequestBody("image/*".toMediaTypeOrNull())
-                                    imagePart = MultipartBody.Part.createFormData("foto_profil", file.name, requestFile)
+                                    try {
+                                        val file = uriToFile(context, uri)
+                                        val requestFile = file.readBytes().toRequestBody("image/*".toMediaTypeOrNull())
+                                        imagePart = MultipartBody.Part.createFormData("foto_profil", file.name, requestFile)
+                                    } catch (e: Exception) {
+                                        Toast.makeText(context, "Gagal memproses foto", Toast.LENGTH_SHORT).show()
+                                    }
                                 }
 
+                                isSaving = true
                                 viewModel.updateProfile(token, namePart, null, phonePart, alamatPart, tanggalLahirPart, jenisKelaminPart, imagePart)
                             }
                         )

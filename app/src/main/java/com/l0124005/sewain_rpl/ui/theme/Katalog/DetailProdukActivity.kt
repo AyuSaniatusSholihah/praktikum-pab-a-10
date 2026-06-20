@@ -113,6 +113,14 @@ class DetailProdukActivity : ComponentActivity() {
                         startActivity(intent)
                         finish()
                     },
+                    onNavigateToCheckout = {
+                        val intent = Intent(this, MainActivity::class.java).apply {
+                            putExtra("TARGET_SCREEN", "CHECKOUT")
+                            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                        }
+                        startActivity(intent)
+                        finish()
+                    },
                     onNavigateToTransactions = {
                         val intent = Intent(this, MainActivity::class.java).apply {
                             putExtra("TARGET_SCREEN", "TRANSAKSI")
@@ -137,6 +145,7 @@ fun ProductDetailScreen(
     transaksiViewModel: TransaksiViewModel,
     onBack: () -> Unit = {},
     onNavigateToCart: () -> Unit = {},
+    onNavigateToCheckout: () -> Unit = {},
     onNavigateToTransactions: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -205,8 +214,8 @@ fun ProductDetailScreen(
 
     LaunchedEffect(checkoutState) {
         if (checkoutState is Resource.Success) {
-            Toast.makeText(context, "Sewa berhasil! Mengalihkan ke riwayat transaksi...", Toast.LENGTH_SHORT).show()
-            onNavigateToTransactions()
+            Toast.makeText(context, "Sewa berhasil! Mengalihkan ke checkout...", Toast.LENGTH_SHORT).show()
+            onNavigateToCheckout()
             transaksiViewModel.resetStates()
         } else if (checkoutState is Resource.Error) {
             Toast.makeText(context, "Checkout gagal: ${checkoutState?.message}", Toast.LENGTH_SHORT).show()

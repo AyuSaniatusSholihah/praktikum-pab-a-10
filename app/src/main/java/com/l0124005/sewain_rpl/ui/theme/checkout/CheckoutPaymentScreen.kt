@@ -176,9 +176,23 @@ fun CheckoutPaymentUI(
     var cvv by remember { mutableStateOf("") }
     var cardHolder by remember { mutableStateOf("") }
 
+    var showValidationDialog by remember { mutableStateOf(false) }
+    var validationMessage by remember { mutableStateOf("") }
 
     val shippingCost = if (shipping == ShippingMethod.DELIVERY) 40000L else 0L
 
+    if (showValidationDialog) {
+        AlertDialog(
+            onDismissRequest = { showValidationDialog = false },
+            title = { Text("Peringatan", fontWeight = FontWeight.Bold) },
+            text = { Text(validationMessage) },
+            confirmButton = {
+                TextButton(onClick = { showValidationDialog = false }) {
+                    Text("OK", color = CkColors.Blue)
+                }
+            }
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -297,11 +311,14 @@ fun CheckoutPaymentUI(
         Button(
             onClick = {
                 if (firstName.isBlank() || lastName.isBlank() || email.isBlank() || phone.isBlank()) {
-                    Toast.makeText(context, "Please fill in contact details", Toast.LENGTH_SHORT).show()
+                    validationMessage = "Harap isi semua data kontak terlebih dahulu."
+                    showValidationDialog = true
                 } else if (shipping == ShippingMethod.DELIVERY && (address.isBlank() || cityProvince.isBlank() || postalCode.isBlank())) {
-                    Toast.makeText(context, "Please fill in delivery address", Toast.LENGTH_SHORT).show()
+                    validationMessage = "Harap isi alamat pengiriman dengan lengkap."
+                    showValidationDialog = true
                 } else if (paymentType == PaymentType.CREDIT && (cardNumber.isBlank() || expDate.isBlank() || cvv.isBlank() || cardHolder.isBlank())) {
-                    Toast.makeText(context, "Please fill in credit card details", Toast.LENGTH_SHORT).show()
+                    validationMessage = "Harap isi detail kartu kredit dengan lengkap."
+                    showValidationDialog = true
                 } else {
                     onPayNow()
                 }
