@@ -14,8 +14,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -23,6 +21,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
 import com.l0124005.sewain_rpl.R
 import com.l0124005.sewain_rpl.ui.theme.Sewain_rplTheme
+import com.l0124005.sewain_rpl.ui.theme.VidalokaFont
+import com.l0124005.sewain_rpl.ui.theme.MontaguSlabFont
+import com.l0124005.sewain_rpl.ui.theme.VolkhovFont
 import com.l0124005.sewain_rpl.ui.theme.auth.LoginActivity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -52,28 +53,17 @@ private val verticalFadeBrush = Brush.verticalGradient(
     colors = listOf(
         Color(0xFFFFFFFF), // putih di paling atas
         Color(0xFFE0E0E0), // abu muda
-        Color(0xFF6A87A1), // abu-biru medium
-        Color(0xFF21394F)  // biru tua di paling bawah
+        Color(0xFF4A7A9B), // BluePrimary (Brand Blue)
+        Color(0xFF285473)  // NavyPrimary
     )
 )
-// TODO: pastikan file font sudah ditaruh di res/font dengan nama "vidaloka"
-// (contoh: res/font/vidaloka.ttf), lalu uncomment baris di bawah ini
-// dan ganti FontFamily.Serif pada VidalokaFont jadi FontFamily(Font(R.font.vidaloka))
-val VidalokaFont = FontFamily(Font(R.font.vidaloka_regular))
-val MontaguSlabFont = FontFamily(
-    Font(R.font.montaguslab_regular, FontWeight.Normal),
-    Font(R.font.montaguslab_regular, FontWeight.Medium),
-    Font(R.font.montaguslab_semibold, FontWeight.SemiBold),
-    Font(R.font.montaguslab_bold, FontWeight.Bold)
-)
-val VolkhovFont = FontFamily(Font(R.font.volkhov_regular))
 
 // Warna-warna ini diambil dari home.css agar konsisten dengan tema web
 private val ColorBgSection = Color(0xFFF5F5F5)   // --color-bg-soft / --color-bg-section
 private val ColorTextDark = Color(0xFF1A1A1A)    // --color-text
 private val ColorTextMuted = Color(0xFF6B6B6B)   // --color-text-muted
-private val ColorAccent = Color(0xFF6A87A1)      // warna span ".site-logo span" / brand accent
-private val ColorBtn = Color(0xFF4D6674)         // --color-icon-bg / tombol (.btn-rent / .nav-signup base)
+private val ColorAccent = Color(0xFF4A7A9B)      // warna span ".site-logo span" / brand accent (Biru)
+private val ColorBtn = Color(0xFF4A7A9B)         // Menggunakan Brand Blue untuk tombol
 
 class LandingActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -144,7 +134,7 @@ fun LandingScreen(onGetStarted: () -> Unit) {
                 Button(
                     onClick = onGetStarted,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF6A87A1),
+                        containerColor = ColorAccent,
                         contentColor = Color.White
                     ),
                     shape = RoundedCornerShape(50),
@@ -175,7 +165,7 @@ private fun buildLogoStyledText(): AnnotatedString {
         withStyle(style = SpanStyle(color = Color(0xFF484848))) {
             append("SEWA")
         }
-        withStyle(style = SpanStyle(color = Color(0xFF6A87A1))) {
+        withStyle(style = SpanStyle(color = ColorAccent)) {
             append("IN")
         }
     }

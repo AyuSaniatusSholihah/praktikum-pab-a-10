@@ -59,11 +59,8 @@ fun AddItemScreen(
     val kategoriResult by viewModel.kategori.observeAsState()
     val profileState by profileViewModel.profile.observeAsState()
 
-    // Pastikan token menggunakan format Bearer untuk Laravel Sanctum
-    val authToken = if (token.startsWith("Bearer ")) token else "Bearer $token"
-
     LaunchedEffect(Unit) {
-        profileViewModel.getProfile(authToken)
+        profileViewModel.getProfile(token)
         viewModel.getKategori()
     }
 
@@ -138,7 +135,7 @@ fun AddItemScreen(
                         }
                     }
 
-                    viewModel.createKatalog(authToken, catPart, namePart, descPart, sewaPart, jaminanPart, dendaPart, stokPart, locPart, addInfoPart, imagePart, statusPart)
+                    viewModel.createKatalog(token, catPart, namePart, descPart, sewaPart, jaminanPart, dendaPart, stokPart, locPart, addInfoPart, imagePart, statusPart)
                 },
                 isLoading = crudResult is Resource.Loading
             )

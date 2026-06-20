@@ -65,7 +65,11 @@ data class UserData(
     val foto_profil: String?,
     val is_banned: Boolean,
     val role: String,
-    val email_verified_at: String?
+    val email_verified_at: String?,
+    val tanggal_lahir: String? = null,
+    val jenis_kelamin: String? = null,
+    val total_disewa: Int? = null,
+    val jumlah_katalog: Int? = null
 )
 
 data class ProfileResponse(

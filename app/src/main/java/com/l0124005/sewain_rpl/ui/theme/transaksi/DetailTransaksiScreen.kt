@@ -22,6 +22,9 @@ import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
 import com.l0124005.sewain_rpl.network.ApiClient
 import com.l0124005.sewain_rpl.network.TransaksiData
+import com.l0124005.sewain_rpl.ui.theme.BluePrimary
+import com.l0124005.sewain_rpl.ui.theme.NavyPrimary
+import com.l0124005.sewain_rpl.ui.theme.SewainTopBar
 import com.l0124005.sewain_rpl.ui.theme.katalog.formatRupiah
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.viewmodel.TransaksiViewModel
@@ -44,13 +47,8 @@ fun DetailTransaksiScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Detail Transaksi", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
-                    }
-                }
+            SewainTopBar(
+                onNavigationClick = onBack
             )
         }
     ) { padding ->
@@ -141,7 +139,7 @@ fun TransaksiDetailContent(
                     Text(
                         "Lihat Detail Produk >", 
                         fontSize = 12.sp, 
-                        color = Color(0xFF1E5276), 
+                        color = NavyPrimary, 
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.align(Alignment.End)
                     )
@@ -169,7 +167,7 @@ fun TransaksiDetailContent(
                 onClick = { onPayClick(listOf(transaksi.id)) },
                 modifier = Modifier.fillMaxWidth().height(50.dp),
                 shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF5D8AA8))
+                colors = ButtonDefaults.buttonColors(containerColor = BluePrimary)
             ) {
                 Text("Bayar Sekarang", fontWeight = FontWeight.Bold, color = Color.White)
             }
@@ -180,7 +178,7 @@ fun TransaksiDetailContent(
 @Composable
 fun InfoSection(title: String, content: @Composable ColumnScope.() -> Unit) {
     Column {
-        Text(title, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF1E5276))
+        Text(title, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = NavyPrimary)
         Spacer(modifier = Modifier.height(8.dp))
         Card(
             modifier = Modifier.fillMaxWidth(),

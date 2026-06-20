@@ -83,14 +83,14 @@ class RentalsActivity : ComponentActivity() {
 // WARNA TEMA SEWAIN
 // ═══════════════════════════════════════
 
-private val TealPrimary    = Color(0xFF1D9E75)
-private val TealLight      = Color(0xFFE1F5EE)
-private val NavyPrimary    = Color(0xFF285473)
-private val BackgroundPage = Color(0xFFF8FAFB)
-private val CardWhite      = Color(0xFFFFFFFF)
-private val TextPrimary    = Color(0xFF1A1A1A)
-private val TextMuted      = Color(0xFF8A8A8A)
-private val BorderColor    = Color(0xFFE8E8E8)
+private val HomeBluePrimary    = BluePrimary
+private val HomeBlueLight      = Color(0xFFEEF3F7)
+private val HomeNavyPrimary    = NavyPrimary
+private val HomeBackgroundPage = Color(0xFFF8FAFB)
+private val HomeCardWhite      = Color(0xFFFFFFFF)
+private val HomeTextPrimary    = Color(0xFF1A1A1A)
+private val HomeTextMuted      = Color(0xFF8A8A8A)
+private val HomeBorderColor    = Color(0xFFE8E8E8)
 
 // ═══════════════════════════════════════
 // MAIN SCREEN
@@ -140,10 +140,10 @@ fun RentalsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(BackgroundPage)
+            .background(HomeBackgroundPage)
     ) {
         // ── Top Bar ──
-        RentalsTopBar()
+        com.l0124005.sewain_rpl.ui.theme.SewainTopBar()
 
         // ── Search Bar ──
         RentalsSearchBar(
@@ -166,7 +166,7 @@ fun RentalsScreen(
             when (val state = katalogState) {
                 is Resource.Loading -> {
                     CircularProgressIndicator(
-                        color    = TealPrimary,
+                        color    = HomeBluePrimary,
                         modifier = Modifier.align(Alignment.Center)
                     )
                 }
@@ -179,13 +179,13 @@ fun RentalsScreen(
                         Text(
                             text      = "😔 Gagal memuat data",
                             fontSize  = 14.sp,
-                            color     = TextMuted
+                            color     = HomeTextMuted
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text     = state.message ?: "Terjadi kesalahan",
                             fontSize = 12.sp,
-                            color    = TextMuted,
+                            color    = HomeTextMuted,
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(12.dp))
@@ -194,8 +194,8 @@ fun RentalsScreen(
                                 viewModel.getKategori()
                                 viewModel.getKatalogPublik()
                             },
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = TealPrimary),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, TealPrimary)
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = HomeBluePrimary),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, HomeBluePrimary)
                         ) {
                             Text("Coba Lagi")
                         }
@@ -246,7 +246,7 @@ private fun RentalsTopBar() {
                 fontSize   = 22.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Serif,
-                color      = TextPrimary,
+                color      = HomeTextPrimary,
                 letterSpacing = 1.sp
             )
             Text(
@@ -254,7 +254,7 @@ private fun RentalsTopBar() {
                 fontSize   = 22.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Serif,
-                color      = TealPrimary,
+                color      = HomeBluePrimary,
                 letterSpacing = 1.sp
             )
         }
@@ -264,20 +264,20 @@ private fun RentalsTopBar() {
             text       = "Rentals",
             fontSize   = 16.sp,
             fontWeight = FontWeight.SemiBold,
-            color      = TextPrimary
+            color      = HomeTextPrimary
         )
 
         // Icon filter
         Icon(
             imageVector        = Icons.Default.Tune,
             contentDescription = "Filter",
-            tint               = NavyPrimary,
+            tint               = HomeNavyPrimary,
             modifier           = Modifier.size(22.dp)
         )
     }
 
     // Divider tipis
-    HorizontalDivider(color = BorderColor, thickness = 0.5.dp)
+    HorizontalDivider(color = HomeBorderColor, thickness = 0.5.dp)
 }
 
 // ═══════════════════════════════════════
@@ -293,12 +293,12 @@ private fun RentalsSearchBar(
     OutlinedTextField(
         value            = query,
         onValueChange    = onQueryChange,
-        placeholder      = { Text("Cari barang sewa...", color = TextMuted, fontSize = 13.sp) },
+        placeholder      = { Text("Cari barang sewa...", color = HomeTextMuted, fontSize = 13.sp) },
         leadingIcon      = {
             Icon(
                 imageVector        = Icons.Default.Search,
                 contentDescription = "Cari",
-                tint               = TealPrimary,
+                tint               = HomeBluePrimary,
                 modifier           = Modifier.size(20.dp)
             )
         },
@@ -308,7 +308,7 @@ private fun RentalsSearchBar(
                     Icon(
                         imageVector        = Icons.Default.Close,
                         contentDescription = "Hapus",
-                        tint               = TextMuted,
+                        tint               = HomeTextMuted,
                         modifier           = Modifier.size(18.dp)
                     )
                 }
@@ -321,15 +321,15 @@ private fun RentalsSearchBar(
             .padding(horizontal = 16.dp, vertical = 10.dp)
             .height(50.dp),
         colors           = OutlinedTextFieldDefaults.colors(
-            focusedContainerColor   = CardWhite,
-            unfocusedContainerColor = CardWhite,
-            focusedBorderColor      = TealPrimary,
-            unfocusedBorderColor    = BorderColor,
-            cursorColor             = TealPrimary
+            focusedContainerColor   = HomeCardWhite,
+            unfocusedContainerColor = HomeCardWhite,
+            focusedBorderColor      = HomeBluePrimary,
+            unfocusedBorderColor    = HomeBorderColor,
+            cursorColor             = HomeBluePrimary
         ),
         textStyle = androidx.compose.ui.text.TextStyle(
             fontSize = 13.sp,
-            color    = TextPrimary
+            color    = HomeTextPrimary
         )
     )
 }
@@ -354,9 +354,9 @@ private fun KategoriFilterRow(
                 contentAlignment = Alignment.Center,
                 modifier         = Modifier
                     .clip(RoundedCornerShape(20.dp))
-                    .background(if (isActive) TealPrimary else CardWhite)
+                    .background(if (isActive) HomeBluePrimary else HomeCardWhite)
                     .let {
-                        if (!isActive) it.border(0.5.dp, BorderColor, RoundedCornerShape(20.dp))
+                        if (!isActive) it.border(0.5.dp, HomeBorderColor, RoundedCornerShape(20.dp))
                         else it
                     }
                     .clickable { onKategoriSelected(kat) }
@@ -366,7 +366,7 @@ private fun KategoriFilterRow(
                     text       = kat,
                     fontSize   = 12.sp,
                     fontWeight = FontWeight.Medium,
-                    color      = if (isActive) Color.White else TextMuted
+                    color      = if (isActive) Color.White else HomeTextMuted
                 )
             }
         }
@@ -415,8 +415,8 @@ private fun RentalCard(
             .fillMaxWidth()
             .clickable { onClick() },
         shape    = RoundedCornerShape(14.dp),
-        colors   = CardDefaults.cardColors(containerColor = CardWhite),
-        border   = androidx.compose.foundation.BorderStroke(0.5.dp, BorderColor),
+        colors   = CardDefaults.cardColors(containerColor = HomeCardWhite),
+        border   = androidx.compose.foundation.BorderStroke(0.5.dp, HomeBorderColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column {
@@ -425,7 +425,7 @@ private fun RentalCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(110.dp)
-                    .background(TealLight)
+                    .background(HomeBlueLight)
             ) {
                 if (!barang.foto_barang.isNullOrEmpty()) {
                     val imageUrl = if (barang.foto_barang.startsWith("http")) {
@@ -448,7 +448,7 @@ private fun RentalCard(
                         Icon(
                             imageVector        = Icons.Default.Inventory2,
                             contentDescription = null,
-                            tint               = TealPrimary,
+                            tint               = HomeBluePrimary,
                             modifier           = Modifier.size(36.dp)
                         )
                     }
@@ -461,7 +461,7 @@ private fun RentalCard(
                             .align(Alignment.TopEnd)
                             .padding(6.dp)
                             .clip(RoundedCornerShape(6.dp))
-                            .background(TealPrimary)
+                            .background(HomeBluePrimary)
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
                         Text(
@@ -480,7 +480,7 @@ private fun RentalCard(
                     text       = barang.nama_barang,
                     fontSize   = 12.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color      = TextPrimary,
+                    color      = HomeTextPrimary,
                     maxLines   = 1,
                     overflow   = TextOverflow.Ellipsis
                 )
@@ -492,14 +492,14 @@ private fun RentalCard(
                     Icon(
                         imageVector        = Icons.Default.LocationOn,
                         contentDescription = null,
-                        tint               = TealPrimary,
+                        tint               = HomeBluePrimary,
                         modifier           = Modifier.size(11.dp)
                     )
                     Spacer(modifier = Modifier.width(2.dp))
                     Text(
                         text     = barang.lokasi,
                         fontSize = 10.sp,
-                        color    = TextMuted,
+                        color    = HomeTextMuted,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -518,12 +518,12 @@ private fun RentalCard(
                             text       = "Rp ${formatHarga(barang.harga_sewa)}",
                             fontSize   = 13.sp,
                             fontWeight = FontWeight.Bold,
-                            color      = TealPrimary
+                            color      = HomeBluePrimary
                         )
                         Text(
                             text     = "/hari",
                             fontSize = 9.sp,
-                            color    = TextMuted
+                            color    = HomeTextMuted
                         )
                     }
 
@@ -532,7 +532,7 @@ private fun RentalCard(
                         modifier = Modifier
                             .size(32.dp)
                             .clip(RoundedCornerShape(8.dp))
-                            .background(TealPrimary)
+                            .background(HomeBluePrimary)
                     ) {
                         Icon(
                             imageVector = Icons.Default.AddShoppingCart,
@@ -563,13 +563,13 @@ private fun EmptyState(modifier: Modifier = Modifier) {
             text       = "Belum ada barang",
             fontSize   = 14.sp,
             fontWeight = FontWeight.SemiBold,
-            color      = TextPrimary
+            color      = HomeTextPrimary
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text     = "Coba ganti kata kunci\natau kategori lainnya",
             fontSize = 12.sp,
-            color    = TextMuted,
+            color    = HomeTextMuted,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
     }

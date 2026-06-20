@@ -55,6 +55,8 @@ interface ApiService {
         @Part("username") username: RequestBody? = null,
         @Part("phone_number") phoneNumber: RequestBody? = null,
         @Part("alamat") alamat: RequestBody? = null,
+        @Part("tanggal_lahir") tanggalLahir: RequestBody? = null,
+        @Part("jenis_kelamin") jenisKelamin: RequestBody? = null,
         @Part foto_profil: MultipartBody.Part? = null
     ): Response<ProfileResponse>
 

@@ -2,9 +2,24 @@ package com.l0124005.sewain_rpl.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.l0124005.sewain_rpl.R
+
+val VolkhovFont = FontFamily(Font(R.font.volkhov_regular))
+val MonsterratFont = FontFamily(Font(R.font.montserrat))
+val LatoFont = FontFamily(Font(R.font.lato_regular))
+
+val AbrilFatfaceFont = FontFamily(Font(R.font.abrilfatface_regular))
+val VidalokaFont = FontFamily(Font(R.font.vidaloka_regular))
+val MontaguSlabFont = FontFamily(
+    Font(R.font.montaguslab_regular, FontWeight.Normal),
+    Font(R.font.montaguslab_regular, FontWeight.Medium),
+    Font(R.font.montaguslab_semibold, FontWeight.SemiBold),
+    Font(R.font.montaguslab_bold, FontWeight.Bold)
+)
 
 // Set of Material typography styles to start with
 val Typography = Typography(

@@ -13,7 +13,7 @@ class ProfileRepository {
     fun getProfile(token: String): Flow<Resource<ProfileResponse>> = flow {
         emit(Resource.Loading())
         try {
-            val response = apiService.getProfile("Bearer $token")
+            val response = apiService.getProfile(token)
             if (response.isSuccessful && response.body() != null) {
                 emit(Resource.Success(response.body()!!))
             } else {
@@ -30,12 +30,13 @@ class ProfileRepository {
         username: RequestBody? = null,
         phoneNumber: RequestBody? = null,
         alamat: RequestBody? = null,
+        tanggalLahir: RequestBody? = null,
+        jenisKelamin: RequestBody? = null,
         fotoProfil: MultipartBody.Part? = null
     ): Flow<Resource<ProfileResponse>> = flow {
         emit(Resource.Loading())
         try {
-            val authToken = if (token.startsWith("Bearer ")) token else "Bearer $token"
-            val response = apiService.updateProfile(authToken, "PUT", name, username, phoneNumber, alamat, fotoProfil)
+            val response = apiService.updateProfile(token, "PUT", name, username, phoneNumber, alamat, tanggalLahir, jenisKelamin, fotoProfil)
             if (response.isSuccessful && response.body() != null) {
                 emit(Resource.Success(response.body()!!))
             } else {

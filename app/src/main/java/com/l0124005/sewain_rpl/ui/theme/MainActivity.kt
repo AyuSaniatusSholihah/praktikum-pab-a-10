@@ -54,6 +54,10 @@ import com.l0124005.sewain_rpl.ui.theme.auth.LoginActivity
 import com.l0124005.sewain_rpl.ui.theme.katalog.*
 import com.l0124005.sewain_rpl.ui.theme.landing.LandingActivity
 import com.l0124005.sewain_rpl.ui.theme.profil.ProfileScreen
+import com.l0124005.sewain_rpl.ui.theme.profil.MyWalletScreen
+import com.l0124005.sewain_rpl.ui.theme.profil.MyRentalsScreen
+import com.l0124005.sewain_rpl.ui.theme.profil.RentalsOwnerScreen
+import com.l0124005.sewain_rpl.ui.theme.admin.OwnerDashboardScreen
 import com.l0124005.sewain_rpl.ui.theme.transaksi.RiwayatTransaksiScreen
 import com.l0124005.sewain_rpl.ui.theme.transaksi.DetailTransaksiScreen
 import com.l0124005.sewain_rpl.ui.theme.keranjang.KeranjangScreen
@@ -62,6 +66,12 @@ import com.l0124005.sewain_rpl.utils.SessionManager
 import com.l0124005.sewain_rpl.utils.CurrencyUtils
 import com.l0124005.sewain_rpl.viewmodel.*
 import kotlinx.coroutines.launch
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.tooling.preview.Preview
+import com.l0124005.sewain_rpl.ui.theme.profil.ProfileDrawerContent
+import com.l0124005.sewain_rpl.ui.theme.VidalokaFont
 
 data class ScreenTarget(val screen: Screen, val id: Long = System.currentTimeMillis())
 
@@ -132,7 +142,7 @@ class MainActivity : ComponentActivity() {
 }
 
 enum class Screen {
-    Home, Rental, Keranjang, MyKatalog, Profile, RiwayatTransaksi, AddItem, EditItem, DetailTransaksi, Pembayaran, MyRental, RentalsOwner, CheckoutPayment, Confirm
+    Home, Rental, Keranjang, MyKatalog, Profile, RiwayatTransaksi, AddItem, EditItem, DetailTransaksi, Pembayaran, MyRental, RentalsOwner, CheckoutPayment, Confirm, MyWallet, Settings
 }
 
 @Composable
@@ -172,53 +182,44 @@ fun MainContainer(
     var selectedBarangForEdit by remember { mutableStateOf<CatalogData?>(null) }
     var selectedTransaksiId by remember { mutableStateOf<Int?>(null) }
     var selectedTransaksiIdsForPayment by remember { mutableStateOf<List<Int>>(emptyList()) }
+    var selectedItemsForCheckout by remember { mutableStateOf<List<com.l0124005.sewain_rpl.network.KeranjangItem>>(emptyList()) }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            ModalDrawerSheet {
-                Spacer(modifier = Modifier.height(16.dp))
-                NavigationDrawerItem(
-                    label = { Text("My Rentals") },
-                    selected = false,
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        currentScreen = Screen.MyRental
-                    },
-                    icon = { Icon(Icons.AutoMirrored.Filled.ListAlt, null) }
-                )
-                NavigationDrawerItem(
-                    label = { Text("Rentals Owner") },
-                    selected = false,
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        currentScreen = Screen.RentalsOwner
-                    },
-                    icon = { Icon(Icons.Default.Storefront, null) }
-                )
-                NavigationDrawerItem(
-                    label = { Text("My Wallet") },
-                    selected = false,
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        currentScreen = Screen.RiwayatTransaksi
-                    },
-                    icon = { Icon(Icons.Default.AccountBalanceWallet, null) }
-                )
-                Spacer(modifier = Modifier.weight(1f))
-                NavigationDrawerItem(
-                    label = { Text("Logout") },
-                    selected = false,
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        onLogout()
-                    },
-                    icon   = { Icon(Icons.AutoMirrored.Filled.Logout, null) }
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-            }
+            val profileState by profileViewModel.profile.observeAsState()
+            val userName = (profileState as? Resource.Success)?.data?.data?.name ?: "User"
+
+            ProfileDrawerContent(
+                userName = userName,
+                currentScreen = currentScreen.name,
+                onProfileClick = {
+                    scope.launch { drawerState.close() }
+                    currentScreen = Screen.Profile
+                },
+                onMyRentalsClick = {
+                    scope.launch { drawerState.close() }
+                    currentScreen = Screen.MyRental
+                },
+                onRentalsOwnerClick = {
+                    scope.launch { drawerState.close() }
+                    currentScreen = Screen.RentalsOwner
+                },
+                onMyWalletClick = {
+                    scope.launch { drawerState.close() }
+                    currentScreen = Screen.MyWallet
+                },
+                onLogoutClick = {
+                    scope.launch { drawerState.close() }
+                    onLogout()
+                },
+                onSettingsClick = {
+                    scope.launch { drawerState.close() }
+                    currentScreen = Screen.Settings
+                }
+            )
         },
-        gesturesEnabled = currentScreen in listOf(Screen.Home, Screen.Rental, Screen.Keranjang, Screen.MyKatalog, Screen.Profile)
+        gesturesEnabled = currentScreen == Screen.Profile
     ) {
         Scaffold(
             bottomBar = {
@@ -263,7 +264,8 @@ fun MainContainer(
                     token = token,
                     viewModel = keranjangViewModel,
                     onBack = { currentScreen = Screen.Home },
-                    onCheckout = {
+                    onCheckout = { selectedItems ->
+                        selectedItemsForCheckout = selectedItems
                         currentScreen = Screen.CheckoutPayment
                     }
                 )
@@ -273,25 +275,33 @@ fun MainContainer(
                         keranjangViewModel = keranjangViewModel,
                         profileViewModel = profileViewModel,
                         transaksiViewModel = transaksiViewModel,
+                        selectedItems = selectedItemsForCheckout,
                         onEditProfile = {
                             currentScreen = Screen.Profile
+                        },
+                        onBack = {
+                            currentScreen = Screen.Keranjang
                         }
                     )
                 }
                 Screen.Confirm -> {
                     // Tampilkan Confirm screen setelah checkout sukses (data dari Laravel)
                     val checkoutResponse = (checkoutState as? Resource.Success)?.data
-                    if (checkoutResponse != null) {
-                        val confirmedState = com.l0124005.sewain_rpl.ui.theme.checkout.mapCheckoutResponseToState(checkoutResponse)
+                    val confirmedState = checkoutResponse?.let { com.l0124005.sewain_rpl.ui.theme.checkout.mapCheckoutResponseToState(it) }
+
+                    if (confirmedState != null) {
                         com.l0124005.sewain_rpl.ui.theme.checkout.PaymentConfirmedScreen(
-                            state = confirmedState,
-                            onBackToHome = {
+                            orderNumber = confirmedState.orderNumber,
+                            items = confirmedState.items,
+                            shippingCost = confirmedState.shippingCost,
+                            customer = confirmedState.customer,
+                            onBackHome = {
                                 transaksiViewModel.resetCheckoutState()
                                 currentScreen = Screen.Home
                             }
                         )
                     } else {
-                        // Jika data tidak ada (misal setelah refresh), kembali ke Home
+                        // Jika data tidak ada (misal setelah refresh atau error mapping), kembali ke Home
                         LaunchedEffect(Unit) {
                             currentScreen = Screen.Home
                         }
@@ -346,25 +356,33 @@ fun MainContainer(
                     onEditProfile = { /* TODO */ },
                     onMyRentalClick = { currentScreen = Screen.MyRental },
                     onRentalOwnerClick = { currentScreen = Screen.RentalsOwner },
-                    onTransaksiClick = { currentScreen = Screen.RiwayatTransaksi },
-                    onRiwayatTransaksiClick = { currentScreen = Screen.RiwayatTransaksi }
+                    onMyWalletClick = { currentScreen = Screen.MyWallet },
+                    onSettingsClick = { currentScreen = Screen.Settings }
                 )
                 Screen.MyRental -> {
-                    com.l0124005.sewain_rpl.ui.theme.profile.MyRentalsScreen(
+                    MyRentalsScreen(
                         viewModel = transaksiViewModel,
+                        profileViewModel = profileViewModel,
                         token = token,
                         onBack = { currentScreen = Screen.Profile },
-                        onDetailClick = { id ->
-                            selectedTransaksiId = id
-                            currentScreen = Screen.DetailTransaksi
-                        }
+                        onRentalsOwnerClick = { currentScreen = Screen.RentalsOwner },
+                        onMyWalletClick = { currentScreen = Screen.MyWallet },
+                        onLogoutClick = onLogout,
+                        onSettingsClick = { currentScreen = Screen.Settings }
                     )
                 }
                 Screen.RentalsOwner -> {
-                    com.l0124005.sewain_rpl.ui.theme.profile.RentalsOwnerScreen(
+                    RentalsOwnerScreen(
                         viewModel = transaksiViewModel,
+                        profileViewModel = profileViewModel,
                         token = token,
-                        onBack = { currentScreen = Screen.Profile }
+                        onBack = { currentScreen = Screen.Profile },
+                        onLogout = onLogout,
+                        onProfileClick = { currentScreen = Screen.Profile },
+                        onMyRentalClick = { currentScreen = Screen.MyRental },
+                        onWalletClick = { currentScreen = Screen.MyWallet },
+                        onRentalClick = { /* TODO */ },
+                        onSettingsClick = { currentScreen = Screen.Settings }
                     )
                 }
                 Screen.RiwayatTransaksi -> RiwayatTransaksiScreen(
@@ -376,6 +394,22 @@ fun MainContainer(
                         currentScreen = Screen.DetailTransaksi
                     }
                 )
+                Screen.MyWallet -> MyWalletScreen(
+                    viewModel = profileViewModel,
+                    transaksiViewModel = transaksiViewModel,
+                    token = token,
+                    onBack = { currentScreen = Screen.Profile },
+                    onLogout = onLogout,
+                    onMyRentalClick = { currentScreen = Screen.MyRental },
+                    onRentalOwnerClick = { currentScreen = Screen.RentalsOwner },
+                    onSettingsClick = { currentScreen = Screen.Settings }
+                )
+                Screen.Settings -> {
+                    // Placeholder for Settings Screen
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("Settings Screen (Placeholder)")
+                    }
+                }
                 Screen.DetailTransaksi -> selectedTransaksiId?.let { id ->
                     DetailTransaksiScreen(
                         transaksiId = id,
@@ -449,47 +483,11 @@ fun HomeScreenContent(
 
 
 @Composable
-private fun HomeTopBar(onLogout: () -> Unit, onMenuClick: () -> Unit) {
-    Surface(color = Color.White, shadowElevation = 1.dp) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onMenuClick) {
-                Icon(Icons.Default.Menu, "Menu", Modifier.size(24.dp))
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = "SEWAIN",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Serif
-            )
-            Spacer(modifier = Modifier.weight(1f))
-            Text(
-                text = "Sign\nin",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Medium,
-                color = Color.Gray,
-                modifier = Modifier.clickable { onLogout() }.padding(end = 12.dp)
-            )
-            Button(
-                onClick = { onLogout() },
-                colors = ButtonDefaults.buttonColors(containerColor = ButtonGray),
-                shape = RoundedCornerShape(8.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                modifier = Modifier.height(32.dp)
-            ) {
-                Text("Sign Up", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
-            }
-        }
-    }
+fun HomeTopBar(onLogout: () -> Unit, onMenuClick: () -> Unit) {
+    SewainTopBar()
 }
-
 @Composable
-private fun HeroCollage(onRentNow: () -> Unit) {
+fun HeroCollage(onRentNow: () -> Unit) {
     val gray = Color(0xFFF1F1F1)
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -498,12 +496,12 @@ private fun HeroCollage(onRentNow: () -> Unit) {
                 Box(modifier = Modifier.fillMaxWidth().height(80.dp).clip(RoundedCornerShape(12.dp)).background(gray))
                 Spacer(Modifier.height(8.dp))
                 Text("ALL YOU", fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                Text("can", fontSize = 12.sp, fontStyle = FontStyle.Italic, color = AccentBlue)
-                Text("RENT", fontSize = 28.sp, fontWeight = FontWeight.Black, color = Color(0xFF4A7A9B), fontFamily = FontFamily.Serif)
+                Text("can", fontSize = 12.sp, fontStyle = FontStyle.Italic, color = BluePrimary)
+                Text("RENT", fontSize = 28.sp, fontWeight = FontWeight.Black, color = NavyPrimary, fontFamily = FontFamily.Serif)
                 Spacer(Modifier.height(8.dp))
                 Button(
                     onClick = onRentNow,
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
+                    colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary),
                     shape = RoundedCornerShape(8.dp),
                     modifier = Modifier.height(30.dp),
                     contentPadding = PaddingValues(horizontal = 12.dp)
@@ -514,12 +512,12 @@ private fun HeroCollage(onRentNow: () -> Unit) {
             Box(modifier = Modifier.weight(1f).height(170.dp).clip(RoundedCornerShape(12.dp)).background(gray))
         }
         Spacer(Modifier.height(10.dp))
-        Box(modifier = Modifier.fillMaxWidth().height(80.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFF607D8B)))
+        Box(modifier = Modifier.fillMaxWidth().height(80.dp).clip(RoundedCornerShape(12.dp)).background(NavyPrimary))
     }
 }
 
 @Composable
-private fun SearchCard() {
+fun SearchCard() {
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -552,7 +550,7 @@ private fun SearchFieldItem(label: String, value: String, icon: ImageVector, has
     Column(modifier = Modifier.padding(vertical = 10.dp)) {
         Text(label, fontSize = 11.sp, color = Color.Gray)
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, null, Modifier.size(16.dp), tint = AccentBlue)
+            Icon(icon, null, Modifier.size(16.dp), tint = BluePrimary)
             Spacer(Modifier.width(8.dp))
             Text(value, fontSize = 14.sp, modifier = Modifier.weight(1f))
             if (hasArrow) Icon(Icons.Default.KeyboardArrowDown, null, Modifier.size(18.dp), tint = Color.Gray)
@@ -561,7 +559,7 @@ private fun SearchFieldItem(label: String, value: String, icon: ImageVector, has
 }
 
 @Composable
-private fun BrandLogosSection() {
+fun BrandLogosSection() {
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Text("FUJIFILM", fontSize = 28.sp, fontWeight = FontWeight.Black)
         Spacer(Modifier.height(20.dp))
@@ -579,7 +577,7 @@ private fun BrandLogosSection() {
 }
 
 @Composable
-private fun AboutUsSection() {
+fun AboutUsSection() {
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Text("About us", fontSize = 26.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Serif)
         Spacer(modifier = Modifier.height(16.dp))
@@ -603,7 +601,7 @@ private fun FeaturesSection() {
 private fun FeatureItem(icon: ImageVector, title: String, desc: String) {
     Column(modifier = Modifier.width(100.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(modifier = Modifier.size(48.dp).clip(CircleShape).background(ButtonGray.copy(alpha = 0.15f)), contentAlignment = Alignment.Center) {
-            Icon(icon, null, tint = PrimaryBlue, modifier = Modifier.size(24.dp))
+            Icon(icon, null, tint = NavyPrimary, modifier = Modifier.size(24.dp))
         }
         Spacer(modifier = Modifier.height(10.dp))
         Text(title, fontSize = 10.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, lineHeight = 12.sp)
@@ -613,7 +611,7 @@ private fun FeatureItem(icon: ImageVector, title: String, desc: String) {
 }
 
 @Composable
-private fun CategoriesSection(kategoriState: Resource<KategoriListResponse>?) {
+fun CategoriesSection(kategoriState: Resource<KategoriListResponse>?) {
     val categories = (kategoriState as? Resource.Success)?.data?.data ?: emptyList()
 
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -664,7 +662,7 @@ private fun RentItemsSection(
         
         when (katalogState) {
             is Resource.Loading -> {
-                CircularProgressIndicator(color = PrimaryBlue)
+                CircularProgressIndicator(color = NavyPrimary)
             }
             is Resource.Success -> {
                 val items = katalogState.data?.data?.take(4) ?: emptyList()
@@ -708,7 +706,7 @@ private fun RentItemsSection(
 }
 
 @Composable
-private fun HomeRentalCard(
+fun HomeRentalCard(
     barang: CatalogData,
     onProductClick: (Int) -> Unit,
     onAddToCart: (CatalogData) -> Unit,
@@ -747,7 +745,7 @@ private fun HomeRentalCard(
                         .align(Alignment.BottomEnd)
                         .padding(4.dp)
                         .size(28.dp)
-                        .background(PrimaryBlue, CircleShape)
+                        .background(BluePrimary, CircleShape)
                 ) {
                     Icon(
                         imageVector = Icons.Default.AddShoppingCart,
@@ -764,13 +762,13 @@ private fun HomeRentalCard(
                 Text(" ${barang.lokasi}", fontSize = 10.sp, color = Color.Gray)
             }
             Spacer(Modifier.height(4.dp))
-            Text("Rp ${CurrencyUtils.formatRupiah(barang.harga_sewa)}/hari", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = PrimaryBlue)
+            Text("Rp ${CurrencyUtils.formatRupiah(barang.harga_sewa)}/hari", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = NavyPrimary)
         }
     }
 }
 
 @Composable
-private fun TestimonialsSection() {
+fun TestimonialsSection() {
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Text("This Is What Our Customers Say", textAlign = TextAlign.Center, fontSize = 26.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Serif)
         Spacer(modifier = Modifier.height(24.dp))
@@ -809,35 +807,62 @@ private fun HomeBottomNavigation(
             onClick = { onScreenSelected(Screen.Home) },
             icon = { Icon(Icons.Default.Home, null) },
             label = { Text("Home", fontSize = 10.sp) },
-            colors = NavigationBarItemDefaults.colors(selectedIconColor = Color.White, unselectedIconColor = Color.Gray, selectedTextColor = Color.White, unselectedTextColor = Color.Gray, indicatorColor = Color.Transparent)
+            colors = NavigationBarItemDefaults.colors(selectedIconColor = BluePrimary, unselectedIconColor = Color.Gray, selectedTextColor = BluePrimary, unselectedTextColor = Color.Gray, indicatorColor = Color.Transparent)
         )
         NavigationBarItem(
             selected = currentScreen == Screen.Rental,
             onClick = { onScreenSelected(Screen.Rental) },
             icon = { Icon(Icons.Default.Search, null) },
             label = { Text("Rental", fontSize = 10.sp) },
-            colors = NavigationBarItemDefaults.colors(selectedIconColor = Color.White, unselectedIconColor = Color.Gray, selectedTextColor = Color.White, unselectedTextColor = Color.Gray, indicatorColor = Color.Transparent)
+            colors = NavigationBarItemDefaults.colors(selectedIconColor = BluePrimary, unselectedIconColor = Color.Gray, selectedTextColor = BluePrimary, unselectedTextColor = Color.Gray, indicatorColor = Color.Transparent)
         )
         NavigationBarItem(
             selected = currentScreen == Screen.Keranjang,
             onClick = { onScreenSelected(Screen.Keranjang) },
             icon = { Icon(Icons.Default.ShoppingCart, null) },
             label = { Text("Keranjang", fontSize = 10.sp) },
-            colors = NavigationBarItemDefaults.colors(selectedIconColor = Color.White, unselectedIconColor = Color.Gray, selectedTextColor = Color.White, unselectedTextColor = Color.Gray, indicatorColor = Color.Transparent)
+            colors = NavigationBarItemDefaults.colors(selectedIconColor = BluePrimary, unselectedIconColor = Color.Gray, selectedTextColor = BluePrimary, unselectedTextColor = Color.Gray, indicatorColor = Color.Transparent)
         )
         NavigationBarItem(
             selected = currentScreen == Screen.MyKatalog,
             onClick = { onScreenSelected(Screen.MyKatalog) },
             icon = { Icon(Icons.Default.Store, null) },
             label = { Text("My Katalog", fontSize = 10.sp) },
-            colors = NavigationBarItemDefaults.colors(selectedIconColor = Color.White, unselectedIconColor = Color.Gray, selectedTextColor = Color.White, unselectedTextColor = Color.Gray, indicatorColor = Color.Transparent)
+            colors = NavigationBarItemDefaults.colors(selectedIconColor = BluePrimary, unselectedIconColor = Color.Gray, selectedTextColor = BluePrimary, unselectedTextColor = Color.Gray, indicatorColor = Color.Transparent)
         )
         NavigationBarItem(
             selected = currentScreen == Screen.Profile || currentScreen == Screen.RiwayatTransaksi || currentScreen == Screen.DetailTransaksi || currentScreen == Screen.Pembayaran,
             onClick = { onScreenSelected(Screen.Profile) },
             icon = { Icon(Icons.Default.Person, null) },
             label = { Text("Me", fontSize = 10.sp) },
-            colors = NavigationBarItemDefaults.colors(selectedIconColor = Color.White, unselectedIconColor = Color.Gray, selectedTextColor = Color.White, unselectedTextColor = Color.Gray, indicatorColor = Color.Transparent)
+            colors = NavigationBarItemDefaults.colors(selectedIconColor = BluePrimary, unselectedIconColor = Color.Gray, selectedTextColor = BluePrimary, unselectedTextColor = Color.Gray, indicatorColor = Color.Transparent)
         )
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun HomeScreenPreview() {
+    Sewain_rplTheme {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.White)
+                .verticalScroll(rememberScrollState())
+        ) {
+            HomeTopBar(onLogout = {}, onMenuClick = {})
+            HeroCollage(onRentNow = {})
+            Spacer(modifier = Modifier.height(20.dp))
+            SearchCard()
+            Spacer(modifier = Modifier.height(28.dp))
+            BrandLogosSection()
+            Spacer(modifier = Modifier.height(32.dp))
+            AboutUsSection()
+            Spacer(modifier = Modifier.height(48.dp))
+            CategoriesSection(kategoriState = null)
+            Spacer(modifier = Modifier.height(48.dp))
+            TestimonialsSection()
+            Spacer(modifier = Modifier.height(100.dp))
+        }
     }
 }
