@@ -36,6 +36,9 @@ import kotlinx.coroutines.launch
 // ── Warna tema -- SAMA PERSIS dengan ProfileScreen.kt biar konsisten ──
 private val PemasukanGreen = Color(0xFF34ED4A) // sesuai .pemasukan-badge di web (rgba 52,237,74)
 private val PembayaranRed  = Color(0xFFF83220) // sesuai .pembayaran-badge di web (rgba 248,50,32)
+private val LocalMidBlue = Color(0xFF4D6674)
+private val LocalDarkNavy = Color(0xFF21394F)
+private val LocalAccentBlue = Color(0xFF6A87A1)
 
 // ── Tipe transaksi wallet ──
 enum class WalletTxnType { PEMASUKAN, PEMBAYARAN }
@@ -193,7 +196,7 @@ private fun MyWalletContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(24.dp))
-                .background(NavyPrimary)
+                .background(LocalMidBlue)
                 .padding(20.dp)
         ) {
             // ── Card konten dalam warna #21394F (.dash-content-card) ──
@@ -201,7 +204,7 @@ private fun MyWalletContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(20.dp))
-                    .background(DarkNavy)
+                    .background(LocalDarkNavy)
                     .padding(24.dp)
             ) {
                 // ── Judul "My Wallet" + subjudul ──
@@ -365,7 +368,7 @@ private fun WalletSaldoCard(saldo: Double) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(InputBlue)
+            .background(LocalAccentBlue)
             .padding(20.dp)
     ) {
         Row(
@@ -432,13 +435,13 @@ private fun WalletTransactionCard(item: WalletTransaction, modifier: Modifier = 
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(16.dp))
-            .background(DarkNavy.copy(alpha = 0.001f)) // transparent placeholder, real bg dari Box foto + info di bawah
+            .background(LocalDarkNavy.copy(alpha = 0.001f)) // transparent placeholder, real bg dari Box foto + info di bawah
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
-                .background(Color(0xFF2D4A61))
+                .background(LocalDarkNavy)
         ) {
             // ── Foto + badge ──
             Box(

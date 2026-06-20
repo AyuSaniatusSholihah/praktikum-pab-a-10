@@ -20,6 +20,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.l0124005.sewain_rpl.ui.theme.*
 
+private val LocalMidBlue = Color(0xFF4D6674)
+private val LocalDarkNavy = Color(0xFF21394F)
+
 @Composable
 fun ProfileDrawerContent(
     userName: String,
@@ -32,7 +35,7 @@ fun ProfileDrawerContent(
     onSettingsClick: () -> Unit
 ) {
     ModalDrawerSheet(
-        drawerContainerColor = DarkNavy,
+        drawerContainerColor = LocalMidBlue,
         modifier = Modifier.width(260.dp)
     ) {
         Row(
@@ -115,7 +118,7 @@ private fun DrawerMenuItem(
     tint: Color = Color.White,
     onClick: () -> Unit
 ) {
-    val background = if (selected) Color.White.copy(alpha = 0.1f) else Color.Transparent
+    val background = if (selected) Color.White.copy(alpha = 0.7f) else Color.Transparent
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -129,13 +132,13 @@ private fun DrawerMenuItem(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = if (selected) BluePrimary else tint,
+            tint = if (selected) LocalDarkNavy else tint,
             modifier = Modifier.size(20.dp)
         )
         Spacer(Modifier.width(16.dp))
         Text(
             text = label,
-            color = if (selected) BluePrimary else Color.White,
+            color = if (selected) LocalDarkNavy else Color.White,
             fontSize = 14.sp,
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
         )

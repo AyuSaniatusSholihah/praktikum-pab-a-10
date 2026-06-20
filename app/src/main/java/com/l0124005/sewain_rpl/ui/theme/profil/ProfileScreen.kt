@@ -56,12 +56,12 @@ import java.io.File
 import java.io.FileOutputStream
 
 // ── Warna tema ──
-val DarkNavy   = Color(0xFF285473) // Menggunakan NavyPrimary
-val MidBlue    = Color(0xFF4A7A9B) // Menggunakan BluePrimary
+val DarkNavy   = Color(0xFF21394F) // Menggunakan NavyPrimary
+val MidBlue    = Color(0xFF4D6674) // Menggunakan BluePrimary
 val InputBlue  = Color(0xFFB2C9DD)
 val TextLight  = Color(0xFFE6E8EF)
 val TextMuted  = Color(0xFFA1A2A7)
-val AccentBlue = Color(0xFF4A7A9B) // Menggunakan BluePrimary
+val AccentBlue = Color(0xFF6A87A1) // Menggunakan BluePrimary
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -153,7 +153,7 @@ fun ProfileScreen(
                             modifier = Modifier
                                 .align(Alignment.Center)
                                 .padding(top = 100.dp),
-                            color = BluePrimary
+                            color = AccentBlue
                         )
                     }
                     is Resource.Success -> {
@@ -250,7 +250,7 @@ internal fun ProfileContent(
             .fillMaxWidth()
             .padding(16.dp)
             .clip(RoundedCornerShape(24.dp))
-            .background(NavyPrimary)
+            .background(MidBlue)
             .padding(20.dp)
     ) {
         // ── Mini header: foto kecil + nama ──
@@ -303,7 +303,7 @@ internal fun ProfileContent(
                     modifier = Modifier
                         .size(24.dp)
                         .clip(CircleShape)
-                        .background(BluePrimary),
+                        .background(MidBlue),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -388,7 +388,7 @@ internal fun ProfileContent(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = BluePrimary.copy(alpha = 0.25f))
+                colors = CardDefaults.cardColors(containerColor = AccentBlue)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     // Badge "+2.3%" -- sesuai .saldo-badge di web (background putih transparan, teks hijau gelap)
@@ -468,7 +468,7 @@ internal fun ProfileContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = BluePrimary),
+                colors = ButtonDefaults.buttonColors(containerColor = MidBlue),
                 shape = RoundedCornerShape(24.dp)
             ) {
                 Text(
