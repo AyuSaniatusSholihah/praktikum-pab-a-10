@@ -23,6 +23,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.l0124005.sewain_rpl.network.CheckoutResponse
+import com.l0124005.sewain_rpl.ui.theme.MonsterratFont
+import com.l0124005.sewain_rpl.ui.theme.VolkhovFont
 import com.l0124005.sewain_rpl.utils.CurrencyUtils
 
 @Composable
@@ -68,7 +70,7 @@ fun PaymentConfirmedScreen(
 
                 ReceiptInfoRow("Order ID", state.orderId)
                 ReceiptInfoRow("Date", state.date)
-                
+
                 Spacer(modifier = Modifier.height(16.dp))
                 DashedLine()
                 Spacer(modifier = Modifier.height(16.dp))
@@ -138,7 +140,7 @@ data class ConfirmedItem(val name: String, val price: Long, val qty: Int, val su
 
 fun mapCheckoutResponseToState(response: CheckoutResponse): PaymentConfirmedState {
     val listTransaksi = response.data?.transaksi ?: emptyList()
-    
+
     val items = listTransaksi.map { t ->
         ConfirmedItem(
             name = t.barang?.nama_barang ?: "Produk",
@@ -161,7 +163,7 @@ fun mapCheckoutResponseToState(response: CheckoutResponse): PaymentConfirmedStat
 
 @Preview(showBackground = true)
 @Composable
-fun PaymentConfirmedScreenPreview() {
+fun PaymentConfirmedScreenPreviewDetail() {
     val dummyState = PaymentConfirmedState(
         orderId = "#SW-2026-001",
         date = "30 July 2026",

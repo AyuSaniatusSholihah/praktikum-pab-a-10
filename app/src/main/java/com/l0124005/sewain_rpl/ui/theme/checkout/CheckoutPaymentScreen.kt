@@ -158,7 +158,7 @@ fun CheckoutPaymentScreen(
             SummaryProductCard(item = item, shippingCost = shippingCost)
             Spacer(Modifier.height(16.dp))
         }
-        SummaryTotalRow(grandTotal = totalAll(items, shippingCost))
+        SummaryTotalRow(grandTotal = items.sumOf { (it.harga * it.qty) + it.jaminanBase } + shippingCost)
         Spacer(Modifier.height(40.dp))
     }
 }
@@ -172,7 +172,7 @@ private fun CkTextField(value: String, onValueChange: (String) -> Unit, placehol
 
 @Composable
 private fun ShippingToggleButton(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Box(modifier = modifier.border(1.5.dp, if (selected) CkColors.Blue else CkColors.Border).background(if (selected) Color(0xFFF0F5F9) else Color.White).clickableNoRipple(onClick).padding(vertical = 10.dp), contentAlignment = Alignment.Center) {
+    Box(modifier = modifier.border(1.5.dp, if (selected) CkColors.Blue else CkColors.Border).background(if (selected) Color(0xFFF0F5F9) else Color.White).clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { onClick() }.padding(vertical = 10.dp), contentAlignment = Alignment.Center) {
         Text(label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (selected) CkColors.Blue else CkColors.Dark)
     }
 }
@@ -216,12 +216,6 @@ fun SummaryTotalRow(grandTotal: Long) {
         Text("Total", fontWeight = FontWeight.Bold, fontSize = 15.sp)
         Text(CurrencyUtils.formatRupiah(grandTotal), fontWeight = FontWeight.Bold, color = CkColors.Blue)
     }
-}
-
-fun totalAll(items: List<CartItem>, shippingCost: Long): Long = items.sumOf { (it.harga * it.qty) + it.jaminanBase } + shippingCost
-
-fun Modifier.clickableNoRipple(onClick: () -> Unit): Modifier = composed {
-    Modifier.clickable(indication = null, interactionSource = remember { MutableInteractionSource() }, onClick = onClick)
 }
 
 data class CartItem(val id: Int, val nama: String, val harga: Long, val qty: Int, val imageUrl: String, val tglMulai: String, val tglSelesai: String, val jaminanBase: Long)

@@ -299,7 +299,7 @@ fun OtpScreenContent(
             // "Didn't receive a code? Resend Now" — meniru .auth-links
             Text(
                 text = buildAnnotatedString {
-                    withStyle(style = SpanStyle(color = AuthBlack)) {
+                    withStyle(style = SpanStyle(color = AuthBlack, fontWeight = FontWeight.Medium)) {
                         append("Didn't receive a code? ")
                     }
                     withStyle(style = SpanStyle(color = AuthBlue, fontWeight = FontWeight.Bold)) {
