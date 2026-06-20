@@ -47,10 +47,13 @@ import com.l0124005.sewain_rpl.ui.theme.profil.ProfileScreen
 import com.l0124005.sewain_rpl.ui.theme.transaksi.RiwayatTransaksiScreen
 import com.l0124005.sewain_rpl.ui.theme.transaksi.DetailTransaksiScreen
 import com.l0124005.sewain_rpl.ui.theme.keranjang.KeranjangScreen
+import com.l0124005.sewain_rpl.ui.theme.Checkout.*
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.utils.SessionManager
 import com.l0124005.sewain_rpl.utils.CurrencyUtils
 import com.l0124005.sewain_rpl.viewmodel.*
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -97,7 +100,7 @@ class MainActivity : ComponentActivity() {
 }
 
 enum class Screen {
-    Home, Rental, Keranjang, MyKatalog, Profile, RiwayatTransaksi, AddItem, EditItem, DetailTransaksi, Pembayaran, MyRental, ProductDetail
+    Home, Rental, Keranjang, MyKatalog, Profile, RiwayatTransaksi, AddItem, EditItem, DetailTransaksi, Pembayaran, MyRental, ProductDetail, CheckoutPayment, CheckoutConfirm
 }
 
 @Composable
@@ -114,6 +117,10 @@ fun MainContainer(
     var selectedProductId by remember { mutableStateOf<Int?>(null) }
     var selectedTransaksiId by remember { mutableStateOf<Int?>(null) }
     var selectedTransaksiIdsForPayment by remember { mutableStateOf<List<Int>>(emptyList()) }
+
+    // Checkout States
+    var itemsForCheckout by remember { mutableStateOf<List<CartItem>>(emptyList()) }
+    var confirmedPaymentState by remember { mutableStateOf<PaymentConfirmedState?>(null) }
 
     Scaffold(
         bottomBar = {
@@ -149,12 +156,65 @@ fun MainContainer(
                     token = token,
                     viewModel = keranjangViewModel,
                     onBack = { currentScreen = Screen.Home },
-                    onCheckout = {
-                        // Logika checkout bisa diarahkan ke pembayaran jika perlu
-                        // Untuk sekarang tetap di keranjang atau ke riwayat
-                        currentScreen = Screen.RiwayatTransaksi
+                    onCheckout = { items ->
+                        itemsForCheckout = items.map { kItem ->
+                            CartItem(
+                                id = kItem.id,
+                                nama = kItem.barang.nama_barang,
+                                harga = kItem.barang.harga_sewa.toLong(),
+                                qty = kItem.jumlah,
+                                imageUrl = if (kItem.barang.foto_barang != null) "${ApiClient.IMAGE_BASE_URL}${kItem.barang.foto_barang}" else "https://placehold.co/200",
+                                tglMulai = formatTanggalLengkap(kItem.tanggal_sewa),
+                                tglSelesai = formatTanggalLengkap(kItem.tanggal_kembali_rencana),
+                                dendaPerJam = kItem.barang.harga_denda_perjam.toLong(),
+                                jaminanBase = kItem.barang.harga_jaminan.toLong()
+                            )
+                        }
+                        currentScreen = Screen.CheckoutPayment
                     }
                 )
+                Screen.CheckoutPayment -> {
+                    val scrollState = rememberScrollState()
+                    Column(modifier = Modifier.verticalScroll(scrollState)) {
+                        CheckoutPaymentScreen(
+                            items = itemsForCheckout,
+                            onPay = { formData ->
+                                confirmedPaymentState = PaymentConfirmedState(
+                                    orderNumber = (1000..9999).random().toString(),
+                                    items = itemsForCheckout.map {
+                                        RentedItem(
+                                            imageUrl = it.imageUrl,
+                                            name = it.nama,
+                                            pricePerDay = it.harga,
+                                            qty = it.qty,
+                                            startDate = it.tglMulai,
+                                            endDate = it.tglSelesai,
+                                            durationDays = it.durasiHari(),
+                                            subtotal = it.subtotal(it.durasiHari()),
+                                            shipping = if (formData.shipping == ShippingMethod.DELIVERY) 40000L else 0L,
+                                            deposit = it.jaminan(),
+                                            total = it.subtotal(it.durasiHari()) + it.jaminan() + (if (formData.shipping == ShippingMethod.DELIVERY) 40000L else 0L),
+                                            lateFeeNote = "Rp ${CurrencyUtils.formatRupiah(it.dendaPerJam)}/jam"
+                                        )
+                                    },
+                                    customer = CustomerInfo(
+                                        name = "${formData.firstName} ${formData.lastName}",
+                                        address = if (formData.shipping == ShippingMethod.DELIVERY) "${formData.address}, ${formData.cityProvince} ${formData.postalCode}" else "Ambil Sendiri",
+                                        shippingMethod = if (formData.shipping == ShippingMethod.DELIVERY) "Delivery" else "COD (Ambil Sendiri)",
+                                        paymentDate = SimpleDateFormat("EEEE, dd MMMM yyyy — HH:mm a", Locale.forLanguageTag("id-ID")).format(java.util.Date())
+                                    )
+                                )
+                                currentScreen = Screen.CheckoutConfirm
+                            }
+                        )
+                    }
+                }
+                Screen.CheckoutConfirm -> confirmedPaymentState?.let { state ->
+                    PaymentConfirmedScreen(
+                        state = state,
+                        onBackToHome = { currentScreen = Screen.Home }
+                    )
+                }
                 Screen.ProductDetail -> selectedProductId?.let { id ->
                     DetailProdukScreen(
                         productId = id,
@@ -239,6 +299,16 @@ fun MainContainer(
                 }
             }
         }
+    }
+}
+
+fun formatTanggalLengkap(tgl: String): String {
+    return try {
+        val input = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        val output = SimpleDateFormat("dd MMMM yyyy", Locale.forLanguageTag("id-ID"))
+        output.format(input.parse(tgl)!!)
+    } catch (e: Exception) {
+        tgl
     }
 }
 
