@@ -305,7 +305,7 @@ private fun CartRow(
 
             // Harga/hari
             Text(
-                text       = "${CurrencyUtils.formatRupiah(item.barang.harga_sewa.toLong())}/hari",
+                text       = "Rp ${CurrencyUtils.formatRupiah(item.barang.harga_sewa.toLong())}/hari",
                 fontFamily = MonsterratFont,
                 fontWeight = FontWeight.SemiBold,
                 fontSize   = 11.sp,
@@ -368,7 +368,7 @@ private fun CartRow(
             Spacer(Modifier.height(4.dp))
 
             Text(
-                text       = "Subtotal: ${CurrencyUtils.formatRupiah(item.subtotal.toLong())}",
+                text       = "Subtotal: Rp ${CurrencyUtils.formatRupiah(item.subtotal.toLong())}",
                 fontSize   = 11.sp,
                 fontFamily = MonsterratFont,
                 fontWeight = FontWeight.SemiBold,
@@ -458,7 +458,7 @@ private fun CheckoutSection(
                 )
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
-                        text       = CurrencyUtils.formatRupiah(total),
+                        text       = "Rp ${CurrencyUtils.formatRupiah(total)}",
                         fontFamily = CartFonts.Heading,
                         fontWeight = FontWeight.Bold,
                         fontSize   = 20.sp,

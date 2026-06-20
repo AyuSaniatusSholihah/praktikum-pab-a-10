@@ -136,6 +136,7 @@ class MainActivity : ComponentActivity() {
         return when (str) {
             "KERANJANG" -> Screen.Keranjang
             "TRANSAKSI" -> Screen.RiwayatTransaksi
+            "CHECKOUT"  -> Screen.CheckoutPayment
             else -> Screen.Home
         }
     }
@@ -214,8 +215,10 @@ fun MainContainer(
                     onLogout()
                 },
                 onSettingsClick = {
-                    scope.launch { drawerState.close() }
-                    currentScreen = Screen.Settings
+                    scope.launch {
+                        drawerState.close()
+                        Toast.makeText(context, "Fitur Settings dalam pengembangan", Toast.LENGTH_SHORT).show()
+                    }
                 }
             )
         },
