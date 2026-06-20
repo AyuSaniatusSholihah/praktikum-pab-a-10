@@ -38,6 +38,9 @@ import com.l0124005.sewain_rpl.viewmodel.ProfileViewModel
 import com.l0124005.sewain_rpl.viewmodel.TransaksiViewModel
 import kotlinx.coroutines.launch
 
+private val LocalMidBlue = Color(0xFF4D6674)
+private val LocalDarkNavy = Color(0xFF21394F)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RentalsOwnerScreen(
@@ -175,14 +178,14 @@ fun RentalsOwnerContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(24.dp))
-                    .background(NavyPrimary)
+                    .background(LocalMidBlue)
                     .padding(20.dp)
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(20.dp))
-                        .background(DarkNavy)
+                        .background(LocalDarkNavy)
                         .padding(20.dp)
                 ) {
                     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.TopEnd) {
@@ -296,7 +299,7 @@ private fun RentalCard(item: TransaksiData, onClick: () -> Unit, modifier: Modif
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(DarkNavy)
+            .background(LocalDarkNavy)
             .clickable { onClick() }
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {

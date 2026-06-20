@@ -39,7 +39,9 @@ import com.l0124005.sewain_rpl.viewmodel.TransaksiViewModel
 import kotlinx.coroutines.launch
 
 // ── Warna tema -- SAMA PERSIS dengan ProfileScreen.kt / MyWalletScreen.kt biar konsisten ──
-private val CardBlue   = Color(0xFF2D4A61)
+private val CardBlue   = Color(0xFF21394F)
+private val LocalMidBlue = Color(0xFF4D6674)
+private val LocalDarkNavy = Color(0xFF21394F)
 
 // ── Warna badge status ──
 private val StatusActiveBlue    = Color(0xFF438CFA) 
@@ -194,14 +196,14 @@ private fun MyRentalsContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(24.dp))
-                    .background(NavyPrimary)
+                    .background(LocalMidBlue)
                     .padding(20.dp)
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(20.dp))
-                        .background(DarkNavy)
+                        .background(LocalDarkNavy)
                         .padding(24.dp)
                 ) {
                     Text(
