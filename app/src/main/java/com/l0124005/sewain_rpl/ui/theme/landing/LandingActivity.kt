@@ -53,8 +53,8 @@ private val verticalFadeBrush = Brush.verticalGradient(
     colors = listOf(
         Color(0xFFFFFFFF), // putih di paling atas
         Color(0xFFE0E0E0), // abu muda
-        Color(0xFF4A7A9B), // BluePrimary (Brand Blue)
-        Color(0xFF285473)  // NavyPrimary
+        Color(0xFF6A87A1), // AuthBlue
+        Color(0xFF21394F)  // Navy Primary
     )
 )
 
@@ -62,8 +62,8 @@ private val verticalFadeBrush = Brush.verticalGradient(
 private val ColorBgSection = Color(0xFFF5F5F5)   // --color-bg-soft / --color-bg-section
 private val ColorTextDark = Color(0xFF1A1A1A)    // --color-text
 private val ColorTextMuted = Color(0xFF6B6B6B)   // --color-text-muted
-private val ColorAccent = Color(0xFF4A7A9B)      // warna span ".site-logo span" / brand accent (Biru)
-private val ColorBtn = Color(0xFF4A7A9B)         // Menggunakan Brand Blue untuk tombol
+private val ColorAccent = Color(0xFF6A87A1)      // warna span ".site-logo span" / brand accent (Biru)
+private val ColorBtn = Color(0xFF6A87A1)         // Menggunakan Brand Blue untuk tombol
 
 class LandingActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
