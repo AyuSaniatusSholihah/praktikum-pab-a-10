@@ -32,6 +32,7 @@ import com.l0124005.sewain_rpl.ui.theme.katalog.*
 import com.l0124005.sewain_rpl.utils.CurrencyUtils
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
+import com.l0124005.sewain_rpl.ui.theme.Checkout.CartItem
 
 
 
@@ -220,7 +221,7 @@ fun CheckoutPaymentScreen(
             color = CkColors.Dark,
             modifier = Modifier.padding(bottom = 12.dp)
         )
-        items.forEach { item ->
+        for (item in items) {
             SummaryProductCard(item = item, shippingCost = shippingCost)
             Spacer(Modifier.height(16.dp))
         }
@@ -241,8 +242,14 @@ fun CheckoutPaymentScreen(
     }
 }
 
-fun totalAll(items: List<CartItem>, shippingCost: Long): Long =
-    items.sumOf { it.subtotal(it.durasiHari()) + it.jaminan() } + shippingCost
+fun totalAll(items: List<CartItem>, shippingCost: Long): Long {
+    var total: Long = 0
+    for (item in items) {
+        val durasi = item.durasiHari()
+        total += item.subtotal(durasi) + item.jaminan()
+    }
+    return total + shippingCost
+}
 
 data class CheckoutFormData(
     val firstName: String,

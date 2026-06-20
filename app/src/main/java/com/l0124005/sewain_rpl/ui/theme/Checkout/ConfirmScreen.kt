@@ -1,4 +1,4 @@
-package com.l0124005.sewain_rpl.ui.theme.checkout
+package com.l0124005.sewain_rpl.ui.theme.Checkout
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
