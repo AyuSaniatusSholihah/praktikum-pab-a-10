@@ -38,6 +38,12 @@ import com.l0124005.sewain_rpl.ui.theme.MonsterratFont
 import com.l0124005.sewain_rpl.ui.theme.VolkhovFont
 import com.l0124005.sewain_rpl.utils.CurrencyUtils
 
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import com.l0124005.sewain_rpl.ui.theme.checkout.CheckoutFormData
+import com.l0124005.sewain_rpl.ui.theme.checkout.ShippingMethod
+
 // ── Tema warna & font (Sync dengan CheckoutPaymentScreen) ─────
 // Already defined in CheckoutPaymentScreen.kt in the same package
 
@@ -50,7 +56,10 @@ data class CustomerInfo(
     val tanggalPembayaran: String
 )
 
-fun mapCheckoutResponseToState(response: com.l0124005.sewain_rpl.network.CheckoutResponse): PaymentConfirmedState? {
+fun mapCheckoutResponseToState(
+    response: com.l0124005.sewain_rpl.network.CheckoutResponse,
+    formData: CheckoutFormData? = null
+): PaymentConfirmedState? {
     val data = response.data ?: return null
     val firstTx = data.transaksi.firstOrNull() ?: return null
     
@@ -79,10 +88,13 @@ fun mapCheckoutResponseToState(response: com.l0124005.sewain_rpl.network.Checkou
         tanggalPembayaran = currentDateTime
     )
 
+    // Hitung total ongkir jika ada
+    val totalShipping = if (formData?.shipping == ShippingMethod.DELIVERY) 40000L else 0L
+
     return PaymentConfirmedState(
         orderNumber = firstTx.pembayaran_id?.toString() ?: firstTx.id.toString(),
         items = items,
-        shippingCost = 0L, // Backend mungkin belum kirim ongkir spesifik per transaksi
+        shippingCost = totalShipping,
         customer = customer
     )
 }
