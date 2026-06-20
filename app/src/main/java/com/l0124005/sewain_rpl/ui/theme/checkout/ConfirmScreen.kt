@@ -38,6 +38,12 @@ import com.l0124005.sewain_rpl.ui.theme.MonsterratFont
 import com.l0124005.sewain_rpl.ui.theme.VolkhovFont
 import com.l0124005.sewain_rpl.utils.CurrencyUtils
 
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import com.l0124005.sewain_rpl.ui.theme.checkout.CheckoutFormData
+import com.l0124005.sewain_rpl.ui.theme.checkout.ShippingMethod
+
 // ── Tema warna & font (Sync dengan CheckoutPaymentScreen) ─────
 // Already defined in CheckoutPaymentScreen.kt in the same package
 
@@ -50,7 +56,10 @@ data class CustomerInfo(
     val tanggalPembayaran: String
 )
 
-fun mapCheckoutResponseToState(response: com.l0124005.sewain_rpl.network.CheckoutResponse): PaymentConfirmedState? {
+fun mapCheckoutResponseToState(
+    response: com.l0124005.sewain_rpl.network.CheckoutResponse,
+    formData: CheckoutFormData? = null
+): PaymentConfirmedState? {
     val data = response.data ?: return null
     val firstTx = data.transaksi.firstOrNull() ?: return null
     
@@ -68,18 +77,35 @@ fun mapCheckoutResponseToState(response: com.l0124005.sewain_rpl.network.Checkou
         )
     }
 
+    // Gunakan formData jika tersedia untuk info yang lebih akurat/lengkap dari input user
+    val customerName = if (formData != null) "${formData.firstName} ${formData.lastName}" else firstTx.user?.name ?: "-"
+    val paymentMethod = if (formData != null) "${formData.paymentType} — ${formData.paymentDetail}" else firstTx.pembayaran?.metode ?: "Transfer"
+    val shippingMethod = if (formData != null) formData.shipping.name else if (firstTx.user?.alamat.isNullOrBlank()) "COD" else "Delivery"
+    val address = if (formData != null && formData.shipping == ShippingMethod.DELIVERY) {
+        "${formData.address}, ${formData.cityProvince}, ${formData.postalCode}"
+    } else {
+        firstTx.user?.alamat ?: "-"
+    }
+
+    // Format tanggal pembayaran real-time
+    val sdf = SimpleDateFormat("EEEE, d MMMM yyyy — hh:mm a", Locale("id", "ID"))
+    val currentTimestamp = sdf.format(Date())
+
     val customer = CustomerInfo(
-        nama = firstTx.user?.name ?: "-",
-        metodePembayaran = firstTx.pembayaran?.metode ?: "Transfer",
-        metodePengiriman = if (firstTx.user?.alamat.isNullOrBlank()) "COD" else "Delivery",
-        alamat = firstTx.user?.alamat ?: "-",
-        tanggalPembayaran = firstTx.pembayaran?.tanggal_bayar ?: "-"
+        nama = customerName,
+        metodePembayaran = paymentMethod,
+        metodePengiriman = shippingMethod,
+        alamat = address,
+        tanggalPembayaran = currentTimestamp
     )
+
+    // Hitung total ongkir jika ada
+    val totalShipping = if (formData?.shipping == ShippingMethod.DELIVERY) 40000L else 0L
 
     return PaymentConfirmedState(
         orderNumber = firstTx.pembayaran_id?.toString() ?: firstTx.id.toString(),
         items = items,
-        shippingCost = 0L, // Backend mungkin belum kirim ongkir spesifik per transaksi
+        shippingCost = totalShipping,
         customer = customer
     )
 }

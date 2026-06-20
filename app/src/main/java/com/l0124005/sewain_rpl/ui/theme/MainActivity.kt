@@ -183,6 +183,7 @@ fun MainContainer(
     var selectedTransaksiId by remember { mutableStateOf<Int?>(null) }
     var selectedTransaksiIdsForPayment by remember { mutableStateOf<List<Int>>(emptyList()) }
     var selectedItemsForCheckout by remember { mutableStateOf<List<com.l0124005.sewain_rpl.network.KeranjangItem>>(emptyList()) }
+    var pendingCheckoutFormData by remember { mutableStateOf<com.l0124005.sewain_rpl.ui.theme.checkout.CheckoutFormData?>(null) }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -281,13 +282,18 @@ fun MainContainer(
                         },
                         onBack = {
                             currentScreen = Screen.Keranjang
+                        },
+                        onCheckoutStarted = { formData ->
+                            pendingCheckoutFormData = formData
                         }
                     )
                 }
                 Screen.Confirm -> {
                     // Tampilkan Confirm screen setelah checkout sukses (data dari Laravel)
                     val checkoutResponse = (checkoutState as? Resource.Success)?.data
-                    val confirmedState = checkoutResponse?.let { com.l0124005.sewain_rpl.ui.theme.checkout.mapCheckoutResponseToState(it) }
+                    val confirmedState = checkoutResponse?.let { 
+                        com.l0124005.sewain_rpl.ui.theme.checkout.mapCheckoutResponseToState(it, pendingCheckoutFormData) 
+                    }
 
                     if (confirmedState != null) {
                         com.l0124005.sewain_rpl.ui.theme.checkout.PaymentConfirmedScreen(
@@ -297,6 +303,7 @@ fun MainContainer(
                             customer = confirmedState.customer,
                             onBackHome = {
                                 transaksiViewModel.resetCheckoutState()
+                                pendingCheckoutFormData = null
                                 currentScreen = Screen.Home
                             }
                         )

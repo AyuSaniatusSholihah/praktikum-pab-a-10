@@ -105,7 +105,8 @@ fun CheckoutPaymentScreen(
     transaksiViewModel: TransaksiViewModel,
     selectedItems: List<KeranjangItem> = emptyList(),
     onEditProfile: () -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onCheckoutStarted: (CheckoutFormData) -> Unit = {}
 ) {
     // Ambil data profil untuk pre-fill
     val profileState by profileViewModel.profile.observeAsState()
@@ -131,7 +132,9 @@ fun CheckoutPaymentScreen(
         items = displayItems,
         userData = userData,
         isLoading = isLoading,
-        onPayNow = {
+        onPayNow = { formData ->
+            // Data form sudah siap digunakan untuk integrasi ke API checkout
+            onCheckoutStarted(formData)
             transaksiViewModel.checkout(token)
         },
         onBack = onBack
@@ -143,7 +146,7 @@ fun CheckoutPaymentUI(
     items: List<CartItem>,
     userData: UserData? = null,
     isLoading: Boolean = false,
-    onPayNow: () -> Unit,
+    onPayNow: (CheckoutFormData) -> Unit,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -171,6 +174,9 @@ fun CheckoutPaymentUI(
 
 
     var paymentType by remember { mutableStateOf(PaymentType.CREDIT) }
+    var selectedBank by remember { mutableStateOf(bankOptions.first()) }
+    var selectedEwallet by remember { mutableStateOf(ewalletOptions.first()) }
+    
     var cardNumber by remember { mutableStateOf("") }
     var expDate by remember { mutableStateOf("") }
     var cvv by remember { mutableStateOf("") }
@@ -286,8 +292,16 @@ fun CheckoutPaymentUI(
                 cardHolder, { cardHolder = it }
             )
             PaymentType.QRIS -> QrisPanel(nominal = totalAll(items, shippingCost))
-            PaymentType.TRANSFER -> BankTransferPanel(nominal = totalAll(items, shippingCost))
-            PaymentType.EWALLET -> EwalletPanel(nominal = totalAll(items, shippingCost))
+            PaymentType.TRANSFER -> BankTransferPanel(
+                nominal = totalAll(items, shippingCost),
+                selectedBank = selectedBank,
+                onBankSelected = { selectedBank = it }
+            )
+            PaymentType.EWALLET -> EwalletPanel(
+                nominal = totalAll(items, shippingCost),
+                selectedEwallet = selectedEwallet,
+                onEwalletSelected = { selectedEwallet = it }
+            )
         }
 
 
@@ -303,7 +317,29 @@ fun CheckoutPaymentUI(
                 } else if (paymentType == PaymentType.CREDIT && (cardNumber.isBlank() || expDate.isBlank() || cvv.isBlank() || cardHolder.isBlank())) {
                     Toast.makeText(context, "Please fill in credit card details", Toast.LENGTH_SHORT).show()
                 } else {
-                    onPayNow()
+                    val detail = when(paymentType) {
+                        PaymentType.TRANSFER -> selectedBank.name
+                        PaymentType.EWALLET -> selectedEwallet.name
+                        PaymentType.CREDIT -> "Credit Card"
+                        PaymentType.QRIS -> "QRIS"
+                    }
+                    val formData = CheckoutFormData(
+                        firstName = firstName,
+                        lastName = lastName,
+                        email = email,
+                        phone = phone,
+                        shipping = shipping,
+                        address = address,
+                        cityProvince = cityProvince,
+                        postalCode = postalCode,
+                        paymentType = paymentType,
+                        paymentDetail = detail,
+                        cardNumber = cardNumber,
+                        expDate = expDate,
+                        cvv = cvv,
+                        cardHolder = cardHolder
+                    )
+                    onPayNow(formData)
                 }
             },
             enabled = !isLoading && items.isNotEmpty(),
@@ -438,6 +474,7 @@ data class CheckoutFormData(
     val cityProvince: String,
     val postalCode: String,
     val paymentType: PaymentType,
+    val paymentDetail: String,
     val cardNumber: String,
     val expDate: String,
     val cvv: String,
@@ -675,8 +712,11 @@ private fun QrisPanel(nominal: Long) {
 
 
 @Composable
-private fun BankTransferPanel(nominal: Long) {
-    var selectedBank by remember { mutableStateOf(bankOptions.first()) }
+private fun BankTransferPanel(
+    nominal: Long,
+    selectedBank: BankOption,
+    onBankSelected: (BankOption) -> Unit
+) {
     var dropdownOpen by remember { mutableStateOf(false) }
 
 
@@ -715,7 +755,7 @@ private fun BankTransferPanel(nominal: Long) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickableNoRipple { selectedBank = opt; dropdownOpen = false }
+                                .clickableNoRipple { onBankSelected(opt); dropdownOpen = false }
                                 .padding(horizontal = 14.dp, vertical = 10.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
@@ -743,8 +783,11 @@ private fun BankTransferPanel(nominal: Long) {
 
 
 @Composable
-private fun EwalletPanel(nominal: Long) {
-    var selectedEwallet by remember { mutableStateOf(ewalletOptions.first()) }
+private fun EwalletPanel(
+    nominal: Long,
+    selectedEwallet: EwalletOption,
+    onEwalletSelected: (EwalletOption) -> Unit
+) {
     var dropdownOpen by remember { mutableStateOf(false) }
 
 
@@ -783,7 +826,7 @@ private fun EwalletPanel(nominal: Long) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickableNoRipple { selectedEwallet = opt; dropdownOpen = false }
+                                .clickableNoRipple { onEwalletSelected(opt); dropdownOpen = false }
                                 .padding(horizontal = 14.dp, vertical = 10.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
@@ -1030,8 +1073,8 @@ private fun SummaryDateBox(label: String, value: String, modifier: Modifier = Mo
 private fun SummaryRow(label: String, value: String, bold: Boolean = false, italic: Boolean = false) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,  // ← ganti spacedBy jadi SpaceBetween
-        verticalAlignment = Alignment.CenterVertically      // ← tambah ini
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             label,
@@ -1040,7 +1083,7 @@ private fun SummaryRow(label: String, value: String, bold: Boolean = false, ital
             fontWeight = if (bold) FontWeight.Bold else FontWeight.SemiBold,
             fontStyle = if (italic) FontStyle.Italic else FontStyle.Normal,
             color = CkColors.Dark,
-            modifier = Modifier.weight(2f)   // ← ganti width(110.dp) jadi weight(1f)
+            modifier = Modifier.weight(2f)
         )
         Text(
             value,
@@ -1049,8 +1092,8 @@ private fun SummaryRow(label: String, value: String, bold: Boolean = false, ital
             fontWeight = if (bold) FontWeight.Bold else FontWeight.SemiBold,
             fontStyle = if (italic) FontStyle.Italic else FontStyle.Normal,
             color = CkColors.Dark,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Start,  // ← tambah ini
-            modifier = Modifier.weight(1f)   // ← tambah weight(1f)
+            textAlign = androidx.compose.ui.text.style.TextAlign.End,
+            modifier = Modifier.weight(1f)
         )
     }
 }
