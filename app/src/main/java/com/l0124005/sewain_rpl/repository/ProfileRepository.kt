@@ -34,7 +34,8 @@ class ProfileRepository {
     ): Flow<Resource<ProfileResponse>> = flow {
         emit(Resource.Loading())
         try {
-            val response = apiService.updateProfile("Bearer $token", "PUT", name, username, phoneNumber, alamat, fotoProfil)
+            val authToken = if (token.startsWith("Bearer ")) token else "Bearer $token"
+            val response = apiService.updateProfile(authToken, "PUT", name, username, phoneNumber, alamat, fotoProfil)
             if (response.isSuccessful && response.body() != null) {
                 emit(Resource.Success(response.body()!!))
             } else {

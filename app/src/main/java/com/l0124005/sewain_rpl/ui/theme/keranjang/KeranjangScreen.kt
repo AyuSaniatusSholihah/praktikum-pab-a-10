@@ -33,6 +33,7 @@ import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.viewmodel.KeranjangViewModel
 import com.l0124005.sewain_rpl.network.KeranjangItem
 import com.l0124005.sewain_rpl.network.CatalogData
+import com.l0124005.sewain_rpl.network.UpdateKeranjangRequest
 import com.l0124005.sewain_rpl.utils.CurrencyUtils
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -191,7 +192,9 @@ fun KeranjangScreen(
                                         else checkedIds - item.id
                                     },
                                     onRemove    = { viewModel.removeKeranjangItem(token, item.id) },
-                                    onQtyChange = { /* tambahkan update qty ke viewModel jika ada */ }
+                                    onQtyChange = { newQty ->
+                                        viewModel.updateKeranjangItem(token, item.id, UpdateKeranjangRequest(jumlah = newQty))
+                                    }
                                 )
                                 HorizontalDivider(color = CartColors.DividerRow, thickness = 1.dp)
                             }

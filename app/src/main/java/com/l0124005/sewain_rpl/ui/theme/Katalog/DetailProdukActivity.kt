@@ -255,7 +255,13 @@ fun ProductDetailScreen(
                 }
                 is Resource.Success -> {
                     val product = detailState!!.data!!.data
-                    val mainImage = if (product.foto_barang != null) "${ApiClient.IMAGE_BASE_URL}${product.foto_barang}" else null
+                    val mainImage = if (!product.foto_barang.isNullOrEmpty()) {
+                        if (product.foto_barang.startsWith("http")) {
+                            product.foto_barang
+                        } else {
+                            "${ApiClient.IMAGE_BASE_URL}${product.foto_barang}"
+                        }
+                    } else null
                     val photos = if (mainImage != null) listOf(mainImage) else emptyList()
                     val tabs = listOf("Deskripsi", "Info Tambahan", "Ulasan")
 

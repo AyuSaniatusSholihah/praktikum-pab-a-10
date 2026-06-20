@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.l0124005.sewain_rpl.network.ApiClient
 import com.l0124005.sewain_rpl.network.UserData
+import com.l0124005.sewain_rpl.network.ProfileResponse
 import com.l0124005.sewain_rpl.ui.theme.katalog.formatRupiah
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.viewmodel.ProfileViewModel
@@ -59,7 +60,7 @@ fun ProfileScreen(
     }
 
     LaunchedEffect(profileState) {
-        if (profileState is Resource.Success && profileState?.message == "Profile updated successfully") {
+        if (profileState is Resource.Success && (profileState as Resource.Success<ProfileResponse>).data?.message == "Profile updated successfully") {
             Toast.makeText(context, "Profil berhasil diperbarui", Toast.LENGTH_SHORT).show()
             viewModel.resetStates()
             viewModel.getProfile(token)

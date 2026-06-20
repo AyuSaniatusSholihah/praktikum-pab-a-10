@@ -36,8 +36,9 @@ class ProfileViewModel(private val repository: ProfileRepository) : ViewModel() 
         alamat: RequestBody? = null,
         fotoProfil: MultipartBody.Part? = null
     ) {
+        val authToken = if (token.startsWith("Bearer ")) token else "Bearer $token"
         viewModelScope.launch {
-            repository.updateProfile(token, name, username, phoneNumber, alamat, fotoProfil).collect {
+            repository.updateProfile(authToken, name, username, phoneNumber, alamat, fotoProfil).collect {
                 _profile.value = it
             }
         }
