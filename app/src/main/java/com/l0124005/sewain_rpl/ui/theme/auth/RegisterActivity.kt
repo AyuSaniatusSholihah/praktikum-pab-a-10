@@ -296,7 +296,7 @@ fun SignUpScreenContent(
             // "Already have an account? Login"
             Text(
                 text = buildAnnotatedString {
-                    withStyle(style = SpanStyle(color = AuthBlack, fontWeight = FontWeight.Normal)) {
+                    withStyle(style = SpanStyle(color = AuthBlack, fontWeight = FontWeight.SemiBold)) {
                         append("Already have an account? ")
                     }
                     withStyle(style = SpanStyle(color = AuthBlue, fontWeight = FontWeight.Bold)) {

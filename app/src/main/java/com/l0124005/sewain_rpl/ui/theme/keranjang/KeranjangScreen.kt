@@ -30,6 +30,8 @@ import coil.compose.AsyncImage
 import com.l0124005.sewain_rpl.R
 import com.l0124005.sewain_rpl.network.ApiClient
 import com.l0124005.sewain_rpl.ui.theme.MonsterratFont
+import com.l0124005.sewain_rpl.ui.theme.NavyPrimary
+import com.l0124005.sewain_rpl.ui.theme.BluePrimary
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.viewmodel.KeranjangViewModel
 import com.l0124005.sewain_rpl.network.KeranjangItem
@@ -44,7 +46,7 @@ import androidx.compose.ui.text.font.FontFamily
 
 // ── Tema warna sesuai CSS SEWAIN ──────────────────────────────
 object CartColors {
-    val Blue        = Color(0xFF6A87A1)
+    val Blue        = BluePrimary
     val Black       = Color(0xFF000000)
     val Dark        = Color(0xFF484848)
     val Gray        = Color(0xFF8A8A8A)
@@ -52,8 +54,8 @@ object CartColors {
     val BorderRow   = Color(0x63000000)
     val DividerRow  = Color(0xFFEDEDED)
     val ThumbBg     = Color(0xFFEDEDED)
-    val DurBg       = Color(0xFFEEF3F7)
-    val DurText     = Color(0xFF4A6E82)
+    val DurBg       = Color(0xFFEEF3F7) // Tetap soft blue-gray agar kontras teks Navy terjaga
+    val DurText     = NavyPrimary
     val FooterBg    = Color(0xFFFFFFFF)
 }
 
@@ -107,38 +109,14 @@ fun KeranjangScreen(
         Column(modifier = Modifier.fillMaxSize()) {
 
             // ── Header ──
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.White)
-                    .padding(horizontal = 16.dp, vertical = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                        tint = CartColors.Black
-                    )
-                }
-                Text(
-                    text       = "Shopping Cart",
-                    fontFamily = CartFonts.Heading,
-                    fontWeight = FontWeight.Bold,
-                    fontSize   = 24.sp,
-                    color      = CartColors.Black,
-                    modifier   = Modifier.weight(1f),
-                    textAlign  = TextAlign.Center
-                )
-                Spacer(modifier = Modifier.width(48.dp))
-            }
+            com.l0124005.sewain_rpl.ui.theme.SewainTopBar()
 
             HorizontalDivider(color = CartColors.DividerRow, thickness = 1.dp)
 
             when (val state = keranjangState) {
                 is Resource.Loading -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = CartColors.Blue)
+                        CircularProgressIndicator(color = BluePrimary)
                     }
                 }
 
@@ -514,8 +492,8 @@ private fun CheckoutSection(
                     text       = "Checkout",
                     color      = Color.White,
                     fontFamily = MonsterratFont,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize   = 15.sp
+                    fontWeight = FontWeight.Bold,
+                    fontSize   = 17.sp
                 )
             }
         }
@@ -582,7 +560,7 @@ fun KeranjangScreenPreview() {
                     modifier        = Modifier.size(20.dp)
                 )
                 Spacer(Modifier.width(10.dp))
-                Text("Pilih semua", fontSize = 13.sp, color = CartColors.Gray)
+                Text("Pilih semua", fontSize = 13.sp, color = CartColors.Gray, fontFamily = MonsterratFont, fontWeight = FontWeight.SemiBold)
             }
             HorizontalDivider(color = CartColors.DividerRow)
             Column(modifier = Modifier.padding(horizontal = 28.dp)) {

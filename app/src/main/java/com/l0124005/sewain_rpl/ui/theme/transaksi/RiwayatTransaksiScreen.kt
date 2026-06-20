@@ -21,6 +21,8 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.l0124005.sewain_rpl.network.ApiClient
 import com.l0124005.sewain_rpl.network.TransaksiData
+import com.l0124005.sewain_rpl.ui.theme.BluePrimary
+import com.l0124005.sewain_rpl.ui.theme.NavyPrimary
 import com.l0124005.sewain_rpl.ui.theme.katalog.formatRupiah
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.viewmodel.TransaksiViewModel
@@ -41,20 +43,16 @@ fun RiwayatTransaksiScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Riwayat Transaksi") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                }
-            )
+            com.l0124005.sewain_rpl.ui.theme.SewainTopBar()
         }
     ) { padding ->
         Box(modifier = Modifier.padding(padding).fillMaxSize()) {
             when (transaksiListState) {
                 is Resource.Loading -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                    CircularProgressIndicator(
+                        color = BluePrimary,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
                 }
                 is Resource.Success -> {
                     val data = transaksiListState?.data?.data ?: emptyList()
@@ -140,9 +138,9 @@ fun getStatusColor(status: String): Color {
     return when (status.lowercase()) {
         "pending" -> Color.Gray
         "menunggu pembayaran" -> Color(0xFFFFA500)
-        "dibayar", "disewa" -> Color.Blue
-        "dikembalikan" -> Color.Green
-        "selesai" -> Color(0xFF006400)
+        "dibayar", "disewa" -> NavyPrimary
+        "dikembalikan" -> BluePrimary
+        "selesai" -> BluePrimary
         "dibatalkan" -> Color.Red
         else -> Color.Black
     }

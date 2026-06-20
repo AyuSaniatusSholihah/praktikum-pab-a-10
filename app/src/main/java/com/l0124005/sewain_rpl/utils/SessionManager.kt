@@ -13,19 +13,24 @@ class SessionManager(context: Context) {
     }
 
     /**
-     * Simpan token akses
+     * Simpan token akses (Raw Token)
      */
     fun saveToken(token: String) {
         val editor = prefs.edit()
-        editor.putString(USER_TOKEN, "Bearer $token")
+        editor.putString(USER_TOKEN, token) // Simpan raw token saja
         editor.apply()
     }
 
     /**
-     * Ambil token akses
+     * Ambil token akses dengan prefix Bearer
      */
     fun getToken(): String {
-        return prefs.getString(USER_TOKEN, "") ?: ""
+        val token = prefs.getString(USER_TOKEN, "") ?: ""
+        return if (token.isNotEmpty() && !token.startsWith("Bearer ")) {
+            "Bearer $token"
+        } else {
+            token
+        }
     }
 
     /**

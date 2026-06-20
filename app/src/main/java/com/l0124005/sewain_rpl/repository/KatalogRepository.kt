@@ -51,7 +51,8 @@ class KatalogRepository {
             if (response.isSuccessful && response.body() != null) {
                 emit(Resource.Success(response.body()!!))
             } else {
-                emit(Resource.Error(response.message(), code = response.code()))
+                val errorMsg = response.errorBody()?.string() ?: response.message()
+                emit(Resource.Error("Error $id: $errorMsg", code = response.code()))
             }
         } catch (e: Exception) {
             emit(Resource.Error(e.message ?: "An error occurred"))
@@ -65,7 +66,8 @@ class KatalogRepository {
             if (response.isSuccessful && response.body() != null) {
                 emit(Resource.Success(response.body()!!))
             } else {
-                emit(Resource.Error(response.message(), code = response.code()))
+                val errorMsg = response.errorBody()?.string() ?: response.message()
+                emit(Resource.Error("Error $id: $errorMsg", code = response.code()))
             }
         } catch (e: Exception) {
             emit(Resource.Error(e.message ?: "An error occurred"))

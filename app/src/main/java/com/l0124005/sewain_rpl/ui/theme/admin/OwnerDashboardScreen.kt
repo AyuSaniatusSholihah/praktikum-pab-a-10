@@ -18,7 +18,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.l0124005.sewain_rpl.ui.theme.BluePrimary
 import com.l0124005.sewain_rpl.ui.theme.katalog.formatRupiah
+import com.l0124005.sewain_rpl.ui.theme.SewainTopBar
 import com.l0124005.sewain_rpl.ui.theme.transaksi.TransaksiItem
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.viewmodel.TransaksiViewModel
@@ -39,14 +41,14 @@ fun OwnerDashboardScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Dashboard Pemilik", fontWeight = FontWeight.Bold) })
+            SewainTopBar()
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = onManageKatalog,
                 icon = { Icon(Icons.Default.Inventory, contentDescription = null) },
                 text = { Text("Kelola Katalog") },
-                containerColor = Color(0xFF5D8AA8),
+                containerColor = BluePrimary,
                 contentColor = Color.White
             )
         }
@@ -116,7 +118,7 @@ fun StatCard(title: String, value: String, icon: androidx.compose.ui.graphics.ve
         colors = CardDefaults.cardColors(containerColor = Color(0xFFF0F4F8))
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Icon(icon, contentDescription = null, tint = Color(0xFF5D8AA8))
+            Icon(icon, contentDescription = null, tint = BluePrimary)
             Spacer(modifier = Modifier.height(8.dp))
             Text(title, fontSize = 12.sp, color = Color.Gray)
             Text(value, fontWeight = FontWeight.Bold, fontSize = 16.sp)

@@ -23,6 +23,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -37,10 +39,29 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 
+import androidx.compose.ui.tooling.preview.Preview
+import com.l0124005.sewain_rpl.ui.theme.*
+import com.l0124005.sewain_rpl.network.KatalogListResponse
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.withStyle
+import com.l0124005.sewain_rpl.ui.theme.VidalokaFont
 private val BackgroundPage = Color(0xFFF8FAFB)
 private val CardWhite      = Color(0xFFFFFFFF)
 private val BorderColor    = Color(0xFFE8E8E8)
 
+// Range harga -- disamakan persis dengan priceRanges di rentals.html
+private data class HargaRange(val label: String, val min: Long, val max: Long)
+
+private val hargaRanges = listOf(
+    HargaRange("Rp 0 - Rp 100.000", 0, 100_000),
+    HargaRange("Rp 100.000 - Rp 250.000", 100_000, 250_000),
+    HargaRange("Rp 250.000 - Rp 500.000", 250_000, 500_000),
+    HargaRange("Rp 500.000 - Rp 750.000", 500_000, 750_000),
+    HargaRange("Rp 750.000 - Rp 1.000.000", 750_000, 1_000_000),
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductScreen(
     token: String,
@@ -49,9 +70,11 @@ fun ProductScreen(
     onItemClick: (Int) -> Unit
 ) {
     val context = LocalContext.current
-    var searchQuery    by remember { mutableStateOf("") }
-    var activeKategori by remember { mutableStateOf("Semua") }
-    
+    var searchQuery     by remember { mutableStateOf("") }
+    var activeKategori  by remember { mutableStateOf("Semua") }
+    var activeHarga     by remember { mutableStateOf<HargaRange?>(null) }
+    var showFilterSheet by remember { mutableStateOf(false) }
+
     val katalogState by viewModel.katalogPublik.observeAsState()
     val kategoriResult by viewModel.kategori.observeAsState()
 
@@ -69,20 +92,20 @@ fun ProductScreen(
         viewModel.getKatalogPublik(search = if (searchQuery.isEmpty()) null else searchQuery, kategoriId = kategoriId)
     }
 
+    val availableCategories = (kategoriResult as? Resource.Success)?.data?.data?.map { it.nama_kategori } ?: emptyList()
+    val fullCategories = listOf("Semua") + availableCategories
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(BackgroundPage)
     ) {
-        ProductTopBar()
+        ProductTopBar(onFilterClick = { showFilterSheet = true })
 
         ProductSearchBar(
             query = searchQuery,
             onQueryChange = { searchQuery = it }
         )
-
-        val availableCategories = (kategoriResult as? Resource.Success)?.data?.data?.map { it.nama_kategori } ?: emptyList()
-        val fullCategories = listOf("Semua") + availableCategories
 
         KategoriFilterRow(
             categories = fullCategories,
@@ -94,14 +117,23 @@ fun ProductScreen(
             when (katalogState) {
                 is Resource.Loading -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = Primary)
+                        CircularProgressIndicator(color = BluePrimary)
                     }
                 }
                 is Resource.Success -> {
-                    val products = katalogState?.data?.data ?: emptyList()
+                    val allProducts = katalogState?.data?.data ?: emptyList()
+
+                    // Filter harga dilakukan di sisi klien (sama seperti getFiltered() di rentals.html).
+                    // PENTING: ganti `item.harga` di bawah ini kalau nama field di CatalogData kamu
+                    // bukan "harga" (misalnya harga_sewa / harga_per_hari).
+                    val products = allProducts.filter { item ->
+                        val harga = item.harga_sewa
+                        activeHarga == null || (harga >= activeHarga!!.min && harga <= activeHarga!!.max)
+                    }
+
                     if (products.isEmpty()) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("Tidak ada barang ditemukan")
+                            Text("Tidak ada barang ditemukan", color = TextMuted)
                         }
                     } else {
                         ProductGrid(
@@ -139,51 +171,31 @@ fun ProductScreen(
             }
         }
     }
+
+    if (showFilterSheet) {
+        FilterBottomSheet(
+            categories = availableCategories,
+            activeKategori = activeKategori,
+            activeHarga = activeHarga,
+            onKategoriSelected = { activeKategori = it },
+            onHargaSelected = { activeHarga = it },
+            onReset = {
+                activeKategori = "Semua"
+                activeHarga = null
+            },
+            onApply = { showFilterSheet = false },
+            onDismiss = { showFilterSheet = false }
+        )
+    }
 }
 
 @Composable
-private fun ProductTopBar() {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = "SEWA",
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = Volkhov,
-                color = Black,
-                letterSpacing = 1.sp
-            )
-            Text(
-                text = "IN",
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = Volkhov,
-                color = Primary,
-                letterSpacing = 1.sp
-            )
-        }
-
-        Text(
-            text = "Rentals",
-            fontSize = 16.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = Black
-        )
-
-        Icon(
-            imageVector = Icons.Default.Tune,
-            contentDescription = "Filter",
-            tint = Primary,
-            modifier = Modifier.size(22.dp)
-        )
-    }
-    HorizontalDivider(color = BorderColor, thickness = 0.5.dp)
+private fun ProductTopBar(onFilterClick: () -> Unit) {
+    SewainTopBar(
+        actionIcon = Icons.Default.Tune,
+        actionTint = NavyPrimary,
+        onActionClick = { onFilterClick() }
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -200,7 +212,7 @@ private fun ProductSearchBar(
             Icon(
                 imageVector = Icons.Default.Search,
                 contentDescription = "Cari",
-                tint = Primary,
+                tint = BluePrimary,
                 modifier = Modifier.size(20.dp)
             )
         },
@@ -225,7 +237,7 @@ private fun ProductSearchBar(
         colors = OutlinedTextFieldDefaults.colors(
             focusedContainerColor = CardWhite,
             unfocusedContainerColor = CardWhite,
-            focusedBorderColor = Primary,
+            focusedBorderColor = BluePrimary,
             unfocusedBorderColor = BorderColor,
         )
     )
@@ -247,7 +259,7 @@ private fun KategoriFilterRow(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .clip(RoundedCornerShape(20.dp))
-                    .background(if (isActive) Primary else CardWhite)
+                    .background(if (isActive) BluePrimary else CardWhite)
                     .clickable { onKategoriSelected(kat) }
                     .border(
                         width = if (isActive) 0.dp else 0.5.dp,
@@ -285,6 +297,225 @@ private fun ProductGrid(
                 product = item,
                 onClick = { onItemClick(item.id) },
                 onAddToCart = { onAddToCart(item) }
+            )
+        }
+    }
+}
+
+/**
+ * Bottom sheet filter -- konten & gaya disamakan dengan section ".filters-section"
+ * di rentals.html (judul Volkhov bold, daftar harga, grid kategori).
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FilterBottomSheet(
+    categories: List<String>,
+    activeKategori: String,
+    activeHarga: HargaRange?,
+    onKategoriSelected: (String) -> Unit,
+    onHargaSelected: (HargaRange?) -> Unit,
+    onReset: () -> Unit,
+    onApply: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = CardWhite
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 28.dp)
+        ) {
+            Text(
+                text = "Filters",
+                fontFamily = Volkhov,
+                fontWeight = FontWeight.Bold,
+                fontSize = 24.sp,
+                color = Black,
+                modifier = Modifier.padding(bottom = 18.dp)
+            )
+
+            // ---- Harga ----
+            Text(
+                text = "Harga",
+                fontFamily = Volkhov,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                color = Black,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            hargaRanges.forEach { range ->
+                val isActive = range == activeHarga
+                Text(
+                    text = range.label,
+                    fontSize = 14.sp,
+                    fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal,
+                    color = if (isActive) Black else TextMuted,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onHargaSelected(if (isActive) null else range) }
+                        .padding(vertical = 6.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(18.dp))
+
+            // ---- Kategori ----
+            Text(
+                text = "Kategori",
+                fontFamily = Volkhov,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                color = Black,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            categories.chunked(3).forEach { row ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    row.forEach { kat ->
+                        val isActive = kat == activeKategori
+                        Text(
+                            text = kat,
+                            fontSize = 14.sp,
+                            fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal,
+                            color = if (isActive) Black else TextMuted,
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable { onKategoriSelected(if (isActive) "Semua" else kat) }
+                                .padding(vertical = 6.dp)
+                        )
+                    }
+                    repeat(3 - row.size) {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onReset,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(14.dp),
+                    border = BorderStroke(1.dp, BorderColor),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Black)
+                ) {
+                    Text("Reset")
+                }
+                Button(
+                    onClick = onApply,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = BluePrimary, contentColor = White)
+                ) {
+                    Text("Terapkan")
+                }
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun ProductScreenFullPreview() {
+    Sewain_rplTheme {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(BackgroundPage)
+        ) {
+            // Rentals Top Bar
+            ProductTopBar(onFilterClick = {})
+
+            // Search Bar
+            ProductSearchBar(
+                query = "",
+                onQueryChange = {}
+            )
+
+            // Category Filter
+            val dummyCats = listOf("Semua", "Kamera", "Tenda", "Musik", "Elektronik")
+            KategoriFilterRow(
+                categories = dummyCats,
+                aktif = "Semua",
+                onKategoriSelected = {}
+            )
+
+            // Dummy Data untuk Grid
+            val dummyItems = listOf(
+                CatalogData(
+                    id = 1,
+                    user_id = 1,
+                    kategori_id = 1,
+                    nama_barang = "Kamera Sony A7 II",
+                    deskripsi = "Kamera Mirrorless Full Frame",
+                    harga_sewa = 150000.0,
+                    harga_jaminan = 500000.0,
+                    harga_denda_perjam = 20000.0,
+                    stok = 1,
+                    lokasi = "Surakarta",
+                    foto_barang = null,
+                    status = "tersedia"
+                ),
+                CatalogData(
+                    id = 2,
+                    user_id = 1,
+                    kategori_id = 2,
+                    nama_barang = "Tenda Camping 4P",
+                    deskripsi = "Tenda kapasitas 4 orang anti badai",
+                    harga_sewa = 75000.0,
+                    harga_jaminan = 200000.0,
+                    harga_denda_perjam = 10000.0,
+                    stok = 2,
+                    lokasi = "Solo",
+                    foto_barang = null,
+                    status = "tersedia"
+                ),
+                CatalogData(
+                    id = 3,
+                    user_id = 1,
+                    kategori_id = 1,
+                    nama_barang = "Lensa Sony 50mm",
+                    deskripsi = "Lensa fix bokeh",
+                    harga_sewa = 50000.0,
+                    harga_jaminan = 150000.0,
+                    harga_denda_perjam = 5000.0,
+                    stok = 3,
+                    lokasi = "Klaten",
+                    foto_barang = null,
+                    status = "tersedia"
+                ),
+                CatalogData(
+                    id = 4,
+                    user_id = 1,
+                    kategori_id = 3,
+                    nama_barang = "Gitar Akustik Yamaha",
+                    deskripsi = "Gitar akustik suara jernih",
+                    harga_sewa = 40000.0,
+                    harga_jaminan = 100000.0,
+                    harga_denda_perjam = 4000.0,
+                    stok = 1,
+                    lokasi = "Boyolali",
+                    foto_barang = null,
+                    status = "tersedia"
+                )
+            )
+
+            // Product Grid
+            ProductGrid(
+                items = dummyItems,
+                onItemClick = {},
+                onAddToCart = {}
             )
         }
     }

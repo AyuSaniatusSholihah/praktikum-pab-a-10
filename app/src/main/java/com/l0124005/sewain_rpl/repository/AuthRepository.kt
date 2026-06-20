@@ -81,7 +81,7 @@ class AuthRepository(private val session: SessionManager) {
 
     suspend fun logout(): Resource<String> {
         return try {
-            val token = "Bearer ${session.getToken()}"
+            val token = session.getToken() // Sudah mengandung "Bearer " dari SessionManager
             api.logout(token)
             session.clearSession()
             Resource.Success("Logout berhasil")

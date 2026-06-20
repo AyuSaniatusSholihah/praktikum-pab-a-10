@@ -34,11 +34,12 @@ class ProfileViewModel(private val repository: ProfileRepository) : ViewModel() 
         username: RequestBody? = null,
         phoneNumber: RequestBody? = null,
         alamat: RequestBody? = null,
+        tanggalLahir: RequestBody? = null,
+        jenisKelamin: RequestBody? = null,
         fotoProfil: MultipartBody.Part? = null
     ) {
-        val authToken = if (token.startsWith("Bearer ")) token else "Bearer $token"
         viewModelScope.launch {
-            repository.updateProfile(authToken, name, username, phoneNumber, alamat, fotoProfil).collect {
+            repository.updateProfile(token, name, username, phoneNumber, alamat, tanggalLahir, jenisKelamin, fotoProfil).collect {
                 _profile.value = it
             }
         }

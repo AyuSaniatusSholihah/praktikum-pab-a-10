@@ -30,7 +30,9 @@ import coil.compose.AsyncImage
 import androidx.compose.runtime.livedata.observeAsState
 import com.l0124005.sewain_rpl.network.ApiClient
 import com.l0124005.sewain_rpl.network.CatalogData
+import com.l0124005.sewain_rpl.ui.theme.SewainTopBar
 import com.l0124005.sewain_rpl.ui.theme.Sewain_rplTheme
+import com.l0124005.sewain_rpl.ui.theme.BluePrimary
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.viewmodel.KatalogViewModel
 import com.l0124005.sewain_rpl.viewmodel.ProfileViewModel
@@ -91,12 +93,12 @@ fun MyKatalogScreen(
             .background(White)
     ) {
         // ── Top Bar ──
-        MyKatalogTopBar(onBack = onBack)
+        SewainTopBar()
 
         when (val state = myKatalogState) {
             is Resource.Loading -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = Primary)
+                    CircularProgressIndicator(color = BluePrimary)
                 }
             }
             is Resource.Error -> {

@@ -53,8 +53,8 @@ private val verticalFadeBrush = Brush.verticalGradient(
     colors = listOf(
         Color(0xFFFFFFFF), // putih di paling atas
         Color(0xFFE0E0E0), // abu muda
-        Color(0xFF6A87A1), // abu-biru medium
-        Color(0xFF21394F)  // biru tua di paling bawah
+        Color(0xFF4A7A9B), // BluePrimary (Brand Blue)
+        Color(0xFF285473)  // NavyPrimary
     )
 )
 
@@ -62,8 +62,8 @@ private val verticalFadeBrush = Brush.verticalGradient(
 private val ColorBgSection = Color(0xFFF5F5F5)   // --color-bg-soft / --color-bg-section
 private val ColorTextDark = Color(0xFF1A1A1A)    // --color-text
 private val ColorTextMuted = Color(0xFF6B6B6B)   // --color-text-muted
-private val ColorAccent = Color(0xFF6A87A1)      // warna span ".site-logo span" / brand accent
-private val ColorBtn = Color(0xFF4D6674)         // --color-icon-bg / tombol (.btn-rent / .nav-signup base)
+private val ColorAccent = Color(0xFF4A7A9B)      // warna span ".site-logo span" / brand accent (Biru)
+private val ColorBtn = Color(0xFF4A7A9B)         // Menggunakan Brand Blue untuk tombol
 
 class LandingActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -134,7 +134,7 @@ fun LandingScreen(onGetStarted: () -> Unit) {
                 Button(
                     onClick = onGetStarted,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF6A87A1),
+                        containerColor = ColorAccent,
                         contentColor = Color.White
                     ),
                     shape = RoundedCornerShape(50),
@@ -165,7 +165,7 @@ private fun buildLogoStyledText(): AnnotatedString {
         withStyle(style = SpanStyle(color = Color(0xFF484848))) {
             append("SEWA")
         }
-        withStyle(style = SpanStyle(color = Color(0xFF6A87A1))) {
+        withStyle(style = SpanStyle(color = ColorAccent)) {
             append("IN")
         }
     }

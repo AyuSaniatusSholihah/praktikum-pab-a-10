@@ -1,6 +1,9 @@
 package com.l0124005.sewain_rpl.ui.theme.profil
 
+import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,7 +13,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -19,28 +21,49 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.l0124005.sewain_rpl.network.ApiClient
-import com.l0124005.sewain_rpl.network.UserData
 import com.l0124005.sewain_rpl.network.ProfileResponse
-import com.l0124005.sewain_rpl.ui.theme.katalog.formatRupiah
+import com.l0124005.sewain_rpl.network.UserData
+import com.l0124005.sewain_rpl.ui.theme.AbrilFatfaceFont
+import com.l0124005.sewain_rpl.ui.theme.MontaguSlabFont
+import com.l0124005.sewain_rpl.ui.theme.NavyPrimary
+import com.l0124005.sewain_rpl.ui.theme.SewainTopBar
+import com.l0124005.sewain_rpl.ui.theme.Sewain_rplTheme
+import com.l0124005.sewain_rpl.ui.theme.BluePrimary
+import com.l0124005.sewain_rpl.ui.theme.VolkhovFont
+import com.l0124005.sewain_rpl.utils.CurrencyUtils.formatRupiah
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.viewmodel.ProfileViewModel
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody.Companion.toRequestBody
+import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.rememberDrawerState
+import kotlinx.coroutines.launch
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
+import java.io.File
+import java.io.FileOutputStream
 
-private val DarkNavy = Color(0xFF1F2A33)
-private val InputBlue = Color(0xFF8AA9BD)
+// ── Warna tema ──
+val DarkNavy   = Color(0xFF285473) // Menggunakan NavyPrimary
+val MidBlue    = Color(0xFF4A7A9B) // Menggunakan BluePrimary
+val InputBlue  = Color(0xFFB2C9DD)
+val TextLight  = Color(0xFFE6E8EF)
+val TextMuted  = Color(0xFFA1A2A7)
+val AccentBlue = Color(0xFF4A7A9B) // Menggunakan BluePrimary
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     viewModel: ProfileViewModel,
@@ -49,18 +72,22 @@ fun ProfileScreen(
     onEditProfile: () -> Unit,
     onMyRentalClick: () -> Unit,
     onRentalOwnerClick: () -> Unit,
-    onTransaksiClick: () -> Unit,
-    onRiwayatTransaksiClick: () -> Unit
+    onMyWalletClick: () -> Unit,
+    onSettingsClick: () -> Unit = {}
 ) {
     val profileState by viewModel.profile.observeAsState()
     val context = LocalContext.current
 
-    LaunchedEffect(Unit) {
-        viewModel.getProfile(token)
-    }
+    // ── State buat drawer ──
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) { viewModel.getProfile(token) }
 
     LaunchedEffect(profileState) {
-        if (profileState is Resource.Success && (profileState as Resource.Success<ProfileResponse>).data?.message == "Profile updated successfully") {
+        if (profileState is Resource.Success &&
+            (profileState as Resource.Success<ProfileResponse>).data?.message == "Profile updated successfully"
+        ) {
             Toast.makeText(context, "Profil berhasil diperbarui", Toast.LENGTH_SHORT).show()
             viewModel.resetStates()
             viewModel.getProfile(token)
@@ -70,191 +97,205 @@ fun ProfileScreen(
         }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.White)
-            .verticalScroll(rememberScrollState())
+    // ── Ambil nama user buat ditampilin di drawer header ──
+    val userName = (profileState as? Resource.Success<ProfileResponse>)?.data?.data?.name ?: "User"
+
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ProfileDrawerContent(
+                userName = userName,
+                currentScreen = "Profile",
+                onProfileClick = { scope.launch { drawerState.close() } },
+                onMyRentalsClick = {
+                    scope.launch { drawerState.close() }
+                    onMyRentalClick()
+                },
+                onRentalsOwnerClick = {
+                    scope.launch { drawerState.close() }
+                    onRentalOwnerClick()
+                },
+                onMyWalletClick = {
+                    scope.launch { drawerState.close() }
+                    onMyWalletClick()
+                },
+                onLogoutClick = {
+                    scope.launch { drawerState.close() }
+                    onLogout()
+                },
+                onSettingsClick = {
+                    scope.launch { drawerState.close() }
+                    onSettingsClick()
+                }
+            )
+        }
     ) {
-        when (profileState) {
-            is Resource.Loading -> {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = DarkNavy)
-            }
-            is Resource.Success -> {
-                val user = profileState?.data?.data
-                if (user != null) {
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        ProfileHeaderSection(
-                            name = user.name,
-                            foto = user.foto_profil,
-                            onMyRentalClick = onMyRentalClick,
-                            onRentalOwnerClick = onRentalOwnerClick,
-                            onWalletClick = onTransaksiClick
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        ProfileFormSection(
-                            user = user,
-                            onLogout = onLogout,
-                            onEditPhoto = onEditProfile,
-                            onSave = { updatedUser ->
-                                val namePart = updatedUser.name.toRequestBody("text/plain".toMediaTypeOrNull())
-                                val usernamePart = updatedUser.username?.toRequestBody("text/plain".toMediaTypeOrNull())
-                                val phonePart = updatedUser.phone_number?.toRequestBody("text/plain".toMediaTypeOrNull())
-                                val alamatPart = updatedUser.alamat?.toRequestBody("text/plain".toMediaTypeOrNull())
-                                
-                                viewModel.updateProfile(token, namePart, usernamePart, phonePart, alamatPart)
-                            },
-                            onWalletClick = onTransaksiClick
+        // ── Konten utama ──
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.White)
+        ) {
+            SewainTopBar(
+                navigationIcon = Icons.Default.Menu,
+                onNavigationClick = { scope.launch { drawerState.open() } }
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .background(Color.White)
+            ) {
+                when (profileState) {
+                    is Resource.Loading -> {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .padding(top = 100.dp),
+                            color = BluePrimary
                         )
                     }
+                    is Resource.Success -> {
+                        val user = (profileState as Resource.Success<ProfileResponse>).data?.data
+                        if (user != null) {
+                            ProfileContent(
+                            user = user,
+                            onLogout = onLogout,
+                            onSave = { updatedUser, imageUri ->
+                                val namePart = updatedUser.name.toRequestBody("text/plain".toMediaTypeOrNull())
+                                val phonePart = updatedUser.phone_number?.toRequestBody("text/plain".toMediaTypeOrNull())
+                                val alamatPart = updatedUser.alamat?.toRequestBody("text/plain".toMediaTypeOrNull())
+                                val tanggalLahirPart = updatedUser.tanggal_lahir?.toRequestBody("text/plain".toMediaTypeOrNull())
+                                val jenisKelaminPart = updatedUser.jenis_kelamin?.toRequestBody("text/plain".toMediaTypeOrNull())
+
+                                var imagePart: MultipartBody.Part? = null
+                                imageUri?.let { uri ->
+                                    val file = uriToFile(context, uri)
+                                    val requestFile = file.readBytes().toRequestBody("image/*".toMediaTypeOrNull())
+                                    imagePart = MultipartBody.Part.createFormData("foto_profil", file.name, requestFile)
+                                }
+
+                                viewModel.updateProfile(token, namePart, null, phonePart, alamatPart, tanggalLahirPart, jenisKelaminPart, imagePart)
+                            }
+                        )
+                        }
+                    }
+                    is Resource.Error -> {
+                        Text(
+                            text = "Error: ${profileState?.message}",
+                            color = Color.Red,
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .padding(top = 100.dp)
+                        )
+                    }
+                    else -> {}
                 }
             }
-            is Resource.Error -> {
-                Text(
-                    text = "Error: ${profileState?.message}",
-                    color = Color.Red,
-                    modifier = Modifier.align(Alignment.Center)
-                )
-            }
-            else -> {}
         }
     }
 }
 
+// ── Komponen 1 item menu di drawer ──
 @Composable
-private fun ProfileHeaderSection(
-    name: String,
-    foto: String?,
-    onMyRentalClick: () -> Unit,
-    onRentalOwnerClick: () -> Unit,
-    onWalletClick: () -> Unit
+private fun DrawerMenuItem(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    selected: Boolean = false,
+    tint: Color = Color.White,
+    onClick: () -> Unit
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .background(if (selected) AccentBlue.copy(alpha = 0.25f) else Color.Transparent)
+            .padding(horizontal = 20.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, contentDescription = label, tint = tint, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(16.dp))
+        Text(
+            text = label,
+            fontFamily = VolkhovFont,
+            fontSize = 14.sp,
+            color = tint
+        )
+    }
+}
 
-    Box(
+@Composable
+internal fun ProfileContent(
+    user: UserData,
+    onLogout: () -> Unit,
+    onSave: (UserData, Uri?) -> Unit
+) {
+    var name          by remember { mutableStateOf(user.name) }
+    var phone         by remember { mutableStateOf(user.phone_number ?: "") }
+    var tanggalLahir  by remember { mutableStateOf(user.tanggal_lahir ?: "") }
+    var jenisKelamin  by remember { mutableStateOf(user.jenis_kelamin ?: "Laki-laki") }
+    var alamat        by remember { mutableStateOf(user.alamat ?: "") }
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        selectedImageUri = uri
+    }
+
+    // ── Panel luar warna #4D6674 ──
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
             .clip(RoundedCornerShape(24.dp))
-            .background(DarkNavy)
+            .background(NavyPrimary)
             .padding(20.dp)
     ) {
+        // ── Mini header: foto kecil + nama ──
         Row(verticalAlignment = Alignment.CenterVertically) {
-            val profileImageUrl = remember(foto) {
-                if (!foto.isNullOrEmpty()) {
-                    if (foto.startsWith("http")) {
-                        foto
-                    } else {
-                        // Jika path tidak diawali profiles/ dan bukan URL lengkap
-                        val path = if (foto.startsWith("profiles/")) foto else "profiles/$foto"
-                        "${ApiClient.IMAGE_BASE_URL}$path"
-                    }
-                } else {
-                    "https://ui-avatars.com/api/?name=$name"
-                }
-            }
-
             AsyncImage(
-                model = profileImageUrl,
+                model = buildPhotoUrl(user.foto_profil, user.name),
                 contentDescription = null,
                 modifier = Modifier
-                    .size(60.dp)
-                    .clip(CircleShape)
-                    .border(2.dp, Color.White, CircleShape),
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .border(2.dp, Color.White.copy(alpha = 0.3f), RoundedCornerShape(6.dp)),
                 contentScale = ContentScale.Crop
             )
-            Spacer(modifier = Modifier.width(16.dp))
-            Text(name, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.weight(1f))
-            
-            // Hamburger Menu
-            Box {
-                IconButton(onClick = { expanded = true }) {
-                    Icon(
-                        imageVector = Icons.Default.Menu,
-                        contentDescription = "Menu",
-                        tint = Color.White
-                    )
-                }
-                DropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false },
-                    modifier = Modifier.background(Color.White)
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("My Rentals") },
-                        onClick = { 
-                            expanded = false
-                            onMyRentalClick() 
-                        },
-                        leadingIcon = { Icon(Icons.AutoMirrored.Filled.ListAlt, null) }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Rentals Owner") },
-                        onClick = { 
-                            expanded = false
-                            onRentalOwnerClick() 
-                        },
-                        leadingIcon = { Icon(Icons.Default.Storefront, null) }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("My Wallet") },
-                        onClick = { 
-                            expanded = false
-                            onWalletClick() 
-                        },
-                        leadingIcon = { Icon(Icons.Default.AccountBalanceWallet, null) }
-                    )
-                }
-            }
+            Spacer(Modifier.width(14.dp))
+            Text(
+                text = user.name,
+                fontFamily = VolkhovFont,
+                fontWeight = FontWeight.Bold,
+                fontSize = 15.sp,
+                color = Color.White
+            )
         }
-    }
-}
 
-@Composable
-private fun ProfileFormSection(
-    user: UserData,
-    onLogout: () -> Unit,
-    onEditPhoto: () -> Unit,
-    onSave: (UserData) -> Unit,
-    onWalletClick: () -> Unit
-) {
-    var name by remember { mutableStateOf(user.name) }
-    var username by remember { mutableStateOf(user.username ?: "") }
-    var phone by remember { mutableStateOf(user.phone_number ?: "") }
-    var alamat by remember { mutableStateOf(user.alamat ?: "") }
+        Spacer(Modifier.height(20.dp))
 
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
-            .background(DarkNavy)
-            .padding(24.dp)
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            // Profile Picture Center
-            Box(contentAlignment = Alignment.BottomEnd) {
-                val profileImageUrl = remember(user.foto_profil) {
-                    if (!user.foto_profil.isNullOrEmpty()) {
-                        if (user.foto_profil.startsWith("http")) {
-                            user.foto_profil
-                        } else {
-                            val path = if (user.foto_profil.startsWith("profiles/")) user.foto_profil else "profiles/${user.foto_profil}"
-                            "${ApiClient.IMAGE_BASE_URL}$path"
-                        }
-                    } else {
-                        "https://ui-avatars.com/api/?name=${user.name}"
-                    }
-                }
-
+        // ── Inner card warna #21394F ──
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(DarkNavy)
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // ── Avatar besar + tombol edit ──
+            Box(
+                contentAlignment = Alignment.BottomEnd,
+                modifier = Modifier.clickable { launcher.launch("image/*") }
+            ) {
                 AsyncImage(
-                    model = profileImageUrl,
+                    model = selectedImageUri ?: buildPhotoUrl(user.foto_profil, user.name),
                     contentDescription = null,
                     modifier = Modifier
                         .size(80.dp)
                         .clip(CircleShape)
-                        .background(Color.White)
                         .border(2.dp, Color.White, CircleShape),
                     contentScale = ContentScale.Crop
                 )
@@ -262,121 +303,504 @@ private fun ProfileFormSection(
                     modifier = Modifier
                         .size(24.dp)
                         .clip(CircleShape)
-                        .background(Color.Gray.copy(alpha = 0.8f))
-                        .clickable { onEditPhoto() },
+                        .background(BluePrimary),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.Edit, null, Modifier.size(14.dp), tint = Color.White)
+                    Icon(
+                        Icons.Default.Edit,
+                        contentDescription = null,
+                        modifier = Modifier.size(13.dp),
+                        tint = Color.White
+                    )
                 }
             }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            Text("Hello, ${user.name}!", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Serif)
-            Text("Here is your quick overview", color = Color.Gray, fontSize = 12.sp)
-            
-            Spacer(modifier = Modifier.height(28.dp))
-            
-            ProfileTextField("Name Account", name) { name = it }
-            ProfileTextField("Email", user.email, enabled = false) {}
-            ProfileTextField("Nomor Telepon", phone) { phone = it }
-            ProfileTextField("Username", username) { username = it }
-            ProfileTextField("Alamat", alamat, isSingleLine = false) { alamat = it }
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            // Wallet Card
+
+            Spacer(Modifier.height(14.dp))
+
+            // ── Greeting ──
+            Text(
+                text = "Hello, ${user.name}!",
+                fontFamily = AbrilFatfaceFont,
+                fontSize = 22.sp,
+                color = TextLight
+            )
+            Text(
+                text = "Here is your quick overview",
+                fontFamily = VolkhovFont,
+                fontSize = 13.sp,
+                color = TextMuted
+            )
+
+            Spacer(Modifier.height(28.dp))
+
+            // ====================================================
+            // KOLOM KIRI (.profile-left di web), urutan sama persis:
+            // Name -> Email -> Password -> Nomor Telepon ->
+            // Tanggal Lahir -> Jenis Kelamin -> Alamat
+            // ====================================================
+            ProfileField(
+                label = "Name Account User",
+                value = name
+            ) { name = it }
+
+            ProfileField(
+                label = "Email",
+                value = user.email,
+                enabled = false
+            ) {}
+
+            ProfileField(
+                label = "Password",
+                value = "••••••••",
+                enabled = false
+            ) {}
+
+            ProfileField(
+                label = "Nomor Telepon",
+                value = phone
+            ) { phone = it }
+
+            ProfileField(
+                label = "Tanggal Lahir",
+                value = tanggalLahir
+            ) { tanggalLahir = it }
+
+            // Jenis Kelamin = <select> di web -> dropdown di Compose
+            ProfileGenderField(
+                label = "Jenis Kelamin",
+                value = jenisKelamin,
+                onValueChange = { jenisKelamin = it }
+            )
+
+            ProfileField(
+                label = "Alamat",
+                value = alamat,
+                multiline = true
+            ) { alamat = it }
+
+            Spacer(Modifier.height(24.dp))
+
+            // ====================================================
+            // KOLOM KANAN (.profile-right di web), urutan sama persis:
+            // Saldo card -> Total Disewa -> Jumlah Katalog Barang -> SAVE
+            // (Status Akun & Role dihapus -- tidak ada di web)
+            // ====================================================
             Card(
-                modifier = Modifier.fillMaxWidth().clickable { onWalletClick() },
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = InputBlue.copy(alpha = 0.2f))
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = BluePrimary.copy(alpha = 0.25f))
             ) {
-                Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Saldo", color = Color.White, fontSize = 12.sp)
-                        Text("Rp ${formatRupiah(user.saldo)}", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Black)
+                Column(modifier = Modifier.padding(16.dp)) {
+                    // Badge "+2.3%" -- sesuai .saldo-badge di web (background putih transparan, teks hijau gelap)
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color.White.copy(alpha = 0.5f))
+                            .padding(horizontal = 10.dp, vertical = 3.dp)
+                    ) {
+                        Text(
+                            text = "+2.3%",
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 11.sp,
+                            color = Color(0xFF1D4734)
+                        )
                     }
-                    Box(modifier = Modifier.size(32.dp).background(Color.White.copy(alpha = 0.1f), CircleShape), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.AttachMoney, null, tint = Color.White, modifier = Modifier.size(20.dp))
+
+                    Spacer(Modifier.height(10.dp))
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Saldo",
+                                fontFamily = VolkhovFont,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = Color.White
+                            )
+                            Text(
+                                text = "Rp ${formatRupiah(user.saldo)}",
+                                fontFamily = AbrilFatfaceFont,
+                                fontSize = 22.sp,
+                                color = Color.White
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(Color.White.copy(alpha = 0.12f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.AttachMoney,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
                     }
                 }
             }
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            StatItem("Status Akun", if (user.is_banned) "Banned" else "Aktif")
-            StatItem("Role", user.role.uppercase())
-            
-            Spacer(modifier = Modifier.height(40.dp))
-            
+
+            Spacer(Modifier.height(20.dp))
+
+            // Total Disewa & Jumlah Katalog Barang -- sesuai .profile-stat di web
+            // TODO: ganti dengan data asli dari backend (user.total_disewa, user.jumlah_katalog)
+            StatRow(label = "Total Disewa", value = "${user.total_disewa ?: 0} Kali")
+            Spacer(Modifier.height(10.dp))
+            StatRow(label = "Jumlah Katalog Barang", value = "${user.jumlah_katalog ?: 0} Barang")
+
+            Spacer(Modifier.height(32.dp))
+
+            // ── Tombol SAVE -- warna #4D6674 sesuai .btn-save-profile di web ──
             Button(
-                onClick = { 
-                    onSave(user.copy(name = name, username = username, phone_number = phone, alamat = alamat))
+                onClick = {
+                    onSave(
+                        user.copy(
+                            name = name,
+                            phone_number = phone,
+                            tanggal_lahir = tanggalLahir,
+                            jenis_kelamin = jenisKelamin,
+                            alamat = alamat
+                        ),
+                        selectedImageUri
+                    )
                 },
-                modifier = Modifier.fillMaxWidth().height(48.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = InputBlue),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = BluePrimary),
                 shape = RoundedCornerShape(24.dp)
             ) {
-                Text("SAVE", fontWeight = FontWeight.Bold, color = DarkNavy)
+                Text(
+                    text = "SAVE",
+                    fontFamily = MontaguSlabFont,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
+                    color = Color.White
+                )
             }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            Text("Logout", color = Color.Red.copy(alpha = 0.8f), modifier = Modifier.clickable { onLogout() }.padding(8.dp))
-            Spacer(modifier = Modifier.height(20.dp))
+
+            Spacer(Modifier.height(12.dp))
+            // Logout DIHAPUS dari sini. Di web, Logout ada di sidebar (.dash-logout),
+            // bukan di dalam card profil. Pasang tombol logout di composable sidebar kamu,
+            // panggil onLogout() di sana.
         }
     }
 }
 
+// ── Field dengan label Abril Fatface + input pill InputBlue ──
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ProfileTextField(
-    label: String, 
-    value: String, 
+private fun ProfileField(
+    label: String,
+    value: String,
     enabled: Boolean = true,
-    isSingleLine: Boolean = true,
+    multiline: Boolean = false,
     onValueChange: (String) -> Unit
 ) {
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-        Text(label, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Serif)
-        Spacer(modifier = Modifier.height(8.dp))
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        Text(
+            text = label,
+            fontFamily = AbrilFatfaceFont,
+            fontSize = 18.sp,
+            color = TextLight,
+            letterSpacing = 1.sp
+        )
+        Spacer(Modifier.height(6.dp))
         TextField(
             value = value,
             onValueChange = onValueChange,
             enabled = enabled,
+            singleLine = !multiline,
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = if (isSingleLine) 48.dp else 100.dp)
-                .clip(RoundedCornerShape(24.dp)),
+                .then(
+                    if (multiline) Modifier.heightIn(min = 90.dp)
+                    else Modifier.height(50.dp)
+                )
+                .clip(
+                    if (multiline) RoundedCornerShape(14.dp)
+                    else RoundedCornerShape(999.dp)
+                ),
             colors = TextFieldDefaults.colors(
-                focusedContainerColor = InputBlue,
+                focusedContainerColor   = InputBlue,
                 unfocusedContainerColor = InputBlue,
-                disabledContainerColor = InputBlue.copy(alpha = 0.5f),
-                focusedIndicatorColor = Color.Transparent,
+                disabledContainerColor  = InputBlue, // sama persis, tidak dipudarkan -- samain sama web
+                focusedIndicatorColor   = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
-                disabledIndicatorColor = Color.Transparent,
-                focusedTextColor = DarkNavy,
-                unfocusedTextColor = DarkNavy,
-                disabledTextColor = DarkNavy.copy(alpha = 0.6f)
+                disabledIndicatorColor  = Color.Transparent,
+                focusedTextColor        = DarkNavy,
+                unfocusedTextColor      = DarkNavy,
+                disabledTextColor       = DarkNavy // sama persis, tidak dipudarkan
             ),
-            singleLine = isSingleLine,
-            textStyle = TextStyle(fontSize = 14.sp)
+            textStyle = TextStyle(
+                fontFamily = MontaguSlabFont,
+                fontSize = 14.sp,
+                color = DarkNavy
+            )
         )
     }
 }
 
+// ── Dropdown Jenis Kelamin -- versi Compose dari <select> di web ──
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun StatItem(label: String, value: String) {
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-        Text(label, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Serif)
-        Spacer(modifier = Modifier.height(8.dp))
+private fun ProfileGenderField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val options = listOf("Laki-laki", "Perempuan")
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        Text(
+            text = label,
+            fontFamily = AbrilFatfaceFont,
+            fontSize = 18.sp,
+            color = TextLight,
+            letterSpacing = 1.sp
+        )
+        Spacer(Modifier.height(6.dp))
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = !expanded }
+        ) {
+            TextField(
+                value = value,
+                onValueChange = {},
+                readOnly = true,
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                modifier = Modifier
+                    .menuAnchor()
+                    .fillMaxWidth()
+                    .height(50.dp)
+                    .clip(RoundedCornerShape(999.dp)),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor   = InputBlue,
+                    unfocusedContainerColor = InputBlue,
+                    focusedIndicatorColor   = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    focusedTextColor        = DarkNavy,
+                    unfocusedTextColor      = DarkNavy
+                ),
+                textStyle = TextStyle(
+                    fontFamily = MontaguSlabFont,
+                    fontSize = 14.sp,
+                    color = DarkNavy
+                )
+            )
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                options.forEach { option ->
+                    DropdownMenuItem(
+                        text = { Text(option, fontFamily = MontaguSlabFont) },
+                        onClick = {
+                            onValueChange(option)
+                            expanded = false
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ── Stat row dengan label Abril + value pill InputBlue ──
+@Composable
+private fun StatRow(label: String, value: String) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+    ) {
+        Text(
+            text = label,
+            fontFamily = AbrilFatfaceFont,
+            fontSize = 18.sp,
+            color = TextLight,
+            letterSpacing = 1.sp
+        )
+        Spacer(Modifier.height(6.dp))
         Box(
             modifier = Modifier
-                .width(110.dp)
-                .height(36.dp)
-                .clip(RoundedCornerShape(18.dp))
+                .fillMaxWidth(0.6f)
+                .height(40.dp)
+                .clip(RoundedCornerShape(999.dp))
                 .background(InputBlue),
             contentAlignment = Alignment.Center
         ) {
-            Text(value, color = DarkNavy, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Text(
+                text = value,
+                fontFamily = MontaguSlabFont,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+                color = DarkNavy
+            )
+        }
+    }
+}
+
+private fun buildPhotoUrl(foto: String?, name: String): String {
+    return if (!foto.isNullOrEmpty()) {
+        if (foto.startsWith("http")) foto
+        else {
+            val path = if (foto.startsWith("profiles/")) foto else "profiles/$foto"
+            "${ApiClient.IMAGE_BASE_URL}$path"
+        }
+    } else {
+        "https://ui-avatars.com/api/?name=$name"
+    }
+}
+
+fun uriToFile(context: android.content.Context, uri: Uri): File {
+    val contentResolver = context.contentResolver
+    val myFile = File.createTempFile("temp_image", ".jpg", context.cacheDir)
+    val inputStream = contentResolver.openInputStream(uri)
+    val outputStream = FileOutputStream(myFile)
+    val buffer = ByteArray(1024)
+    var length: Int
+    while (inputStream?.read(buffer).also { length = it ?: -1 } != -1) {
+        outputStream.write(buffer, 0, length)
+    }
+    outputStream.close()
+    inputStream?.close()
+    return myFile
+}
+
+// ── Preview ──
+@Preview(showBackground = true, widthDp = 390, heightDp = 2600)
+@Composable
+fun ProfileScreenPreview() {
+    val dummyUser = UserData(
+        id = 1,
+        name = "Camping Groups Bandung",
+        username = "campinggroups",
+        email = "campinggroups.bandung@gmail.com",
+        phone_number = "0853-9017-6483",
+        alamat = "Jl. Ir. H. Juanda No. 50, Bandung",
+        saldo = 1872000.0,
+        foto_profil = null,
+        is_banned = false,
+        role = "user",
+        email_verified_at = null,
+        tanggal_lahir = "2000-01-01",
+        jenis_kelamin = "Laki-laki",
+        total_disewa = 5,
+        jumlah_katalog = 10
+    )
+
+    Sewain_rplTheme {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = Color.White
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight()
+            ) {
+                SewainTopBar()
+                ProfileContent(
+                    user = dummyUser,
+                    onLogout = {},
+                    onSave = { _, _ -> }
+                )
+            }
+        }
+    }
+}
+
+// ── Preview khusus buat liat tampilan DRAWER ──
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(showBackground = true, widthDp = 390, heightDp = 700, name = "Drawer Terbuka")
+@Composable
+fun ProfileDrawerPreview() {
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Open) // langsung kebuka
+    val userName = "Camping Groups Bandung"
+
+    Sewain_rplTheme {
+        ModalNavigationDrawer(
+            drawerState = drawerState,
+            drawerContent = {
+                ModalDrawerSheet(
+                    drawerContainerColor = DarkNavy,
+                    modifier = Modifier.width(260.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(Color(0xFFB2B9B9)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.Person, contentDescription = null, tint = Color.White)
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Text(
+                            text = userName,
+                            fontFamily = VolkhovFont,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = Color.White
+                        )
+                    }
+
+                    Divider(color = Color.White.copy(alpha = 0.1f))
+                    Spacer(Modifier.height(8.dp))
+
+                    DrawerMenuItem(icon = Icons.Default.Person, label = "Profile", selected = true) {}
+                    DrawerMenuItem(icon = Icons.Default.List, label = "My Rentals") {}
+                    DrawerMenuItem(icon = Icons.Default.Store, label = "Rentals Owner") {}
+                    DrawerMenuItem(icon = Icons.Default.AccountBalanceWallet, label = "My Wallet") {}
+                    DrawerMenuItem(icon = Icons.Default.Settings, label = "Settings") {}
+
+                    Spacer(Modifier.weight(1f))
+                    Divider(color = Color.White.copy(alpha = 0.1f))
+
+                    DrawerMenuItem(
+                        icon = Icons.AutoMirrored.Filled.Logout,
+                        label = "Log Out",
+                        tint = Color(0xFFE57373)
+                    ) {}
+
+                    Spacer(Modifier.height(12.dp))
+                }
+            }
+        ) {
+            // Konten belakang drawer (boleh simple aja buat preview)
+            Column(modifier = Modifier.fillMaxSize().background(Color.White)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(DarkNavy)
+                        .padding(horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = {}) {
+                        Icon(Icons.Default.Menu, contentDescription = "Menu", tint = Color.White)
+                    }
+                    Box(modifier = Modifier.weight(1f)) {
+                        SewainTopBar()
+                    }
+                }
+            }
         }
     }
 }

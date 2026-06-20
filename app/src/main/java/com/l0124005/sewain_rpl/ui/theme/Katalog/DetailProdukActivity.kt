@@ -2,12 +2,15 @@ package com.l0124005.sewain_rpl.ui.theme.katalog
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.*
@@ -34,6 +37,7 @@ import com.l0124005.sewain_rpl.repository.KatalogRepository
 import com.l0124005.sewain_rpl.repository.KeranjangRepository
 import com.l0124005.sewain_rpl.repository.TransaksiRepository
 import com.l0124005.sewain_rpl.ui.theme.MainActivity
+import com.l0124005.sewain_rpl.ui.theme.SewainTopBar
 import com.l0124005.sewain_rpl.ui.theme.Sewain_rplTheme
 import com.l0124005.sewain_rpl.utils.CurrencyUtils
 import com.l0124005.sewain_rpl.utils.Resource
@@ -47,15 +51,19 @@ import com.l0124005.sewain_rpl.viewmodel.TransaksiViewModelFactory
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.launch
+import androidx.compose.ui.tooling.preview.Preview
+import com.l0124005.sewain_rpl.network.CatalogData
+import com.l0124005.sewain_rpl.network.KategoriData
 
 // ============================================================
-// WARNA TEMA — SEWAIN
+// WARNA TEMA — SEWAIN (disamakan dengan brand colors)
 // ============================================================
 object DetailColors {
-    val Primary      = com.l0124005.sewain_rpl.ui.theme.katalog.Primary
+    val Primary      = com.l0124005.sewain_rpl.ui.theme.BluePrimary
     val Black        = com.l0124005.sewain_rpl.ui.theme.katalog.Black
     val White        = com.l0124005.sewain_rpl.ui.theme.katalog.White
-    val Surface      = Color(0xFFF8F8F8)
+    val Surface      = Color(0xFFEDEDED) // .product-main-img background di product.css
     val Border       = Color(0xFFE4E4E4)
     val TextMuted    = com.l0124005.sewain_rpl.ui.theme.katalog.TextMuted
     val TextDark     = com.l0124005.sewain_rpl.ui.theme.katalog.TextDark
@@ -63,9 +71,12 @@ object DetailColors {
     val StockRed     = Color(0xFFD8262C)
     val PriceOld     = Color(0xFF666666)
     val InfoBg       = Color(0xFFF5F5F5)
+    // Warna khusus tombol "Sewa Sekarang" -- Disesuaikan ke brand NavyPrimary
+    val Accent       = com.l0124005.sewain_rpl.ui.theme.NavyPrimary
 }
 
 data class DetailSpecItem(val label: String, val value: String)
+data class DetailReview(val nama: String, val tanggal: String, val rating: Int, val komentar: String)
 
 class DetailProdukActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -151,19 +162,29 @@ fun ProductDetailScreen(
 
     LaunchedEffect(productId) {
         if (productId != -1) {
+            Log.d("DetailProduk", "Mencoba ambil detail ID: $productId melalui katalog-publik")
             fallbackTried = false
             katalogViewModel.resetStates()
-            // Mencoba ambil secara publik dulu (umum)
             katalogViewModel.getKatalogPublikDetail(productId)
+        } else {
+            Log.e("DetailProduk", "ID Produk tidak valid: $productId")
         }
     }
 
-    // Listener tambahan untuk menangani 404 (Data baru yang belum muncul di publik)
+    // Listener untuk menangani 404 atau error lainnya
     LaunchedEffect(detailState) {
-        if (detailState is Resource.Error && detailState?.code == 404 && !fallbackTried) {
-            // Jika 404 di publik, coba ambil dari endpoint privat (milik sendiri)
-            fallbackTried = true
-            katalogViewModel.getMyKatalogDetail(token, productId)
+        val state = detailState
+        if (state is Resource.Error) {
+            Log.e("DetailProduk", "Error terdeteksi: Code=${state.code}, Message=${state.message}")
+            
+            // Jika 404 di publik, coba jalur privat (katalog/{id})
+            if (state.code == 404 && !fallbackTried) {
+                Log.d("DetailProduk", "404 Not Found di publik. Mencoba fallback ke getMyKatalogDetail dengan ID: $productId")
+                fallbackTried = true
+                katalogViewModel.getMyKatalogDetail(token, productId)
+            }
+        } else if (state is Resource.Success) {
+            Log.d("DetailProduk", "Detail produk berhasil dimuat untuk ID: $productId")
         }
     }
 
@@ -265,6 +286,12 @@ fun ProductDetailScreen(
                     val photos = if (mainImage != null) listOf(mainImage) else emptyList()
                     val tabs = listOf("Deskripsi", "Info Tambahan", "Ulasan")
 
+                    // TODO: kalau backend kamu sudah punya field harga sebelum diskon
+                    // (misalnya product.harga_lama), pakai itu di sini. Untuk sementara
+                    // dihitung otomatis 10% di atas harga sewa, cuma biar tampilan harga
+                    // coret-nya kebentuk -- bukan data asli, ganti begitu field-nya ada.
+                    val hargaLama = (product.harga_sewa * 1.1).toLong()
+
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -283,7 +310,7 @@ fun ProductDetailScreen(
                                 text = (product.kategori?.nama_kategori ?: "SEWAIN").uppercase(Locale.getDefault()),
                                 fontFamily = Volkhov,
                                 fontWeight = FontWeight.SemiBold,
-                                fontSize = 12.sp,
+                                fontSize = 13.sp,
                                 letterSpacing = 2.sp,
                                 color = DetailColors.TextMuted
                             )
@@ -291,15 +318,19 @@ fun ProductDetailScreen(
                             Text(
                                 text = product.nama_barang,
                                 fontFamily = Volkhov,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 22.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 24.sp,
                                 color = DetailColors.Black,
-                                lineHeight = 30.sp
+                                lineHeight = 32.sp
                             )
 
                             Spacer(Modifier.height(10.dp))
 
                             DetailRatingRow(rating = 4.5f, reviewCount = 0)
+
+                            Spacer(Modifier.height(8.dp))
+
+                            DetailViewingNowRow()
 
                             Spacer(Modifier.height(14.dp))
 
@@ -311,6 +342,16 @@ fun ProductDetailScreen(
                                     fontSize = 22.sp,
                                     color = DetailColors.Black
                                 )
+                                if (hargaLama > product.harga_sewa) {
+                                    Spacer(Modifier.width(10.dp))
+                                    Text(
+                                        text = "Rp ${CurrencyUtils.formatRupiah(hargaLama)}",
+                                        fontSize = 14.sp,
+                                        color = DetailColors.PriceOld,
+                                        textDecoration = TextDecoration.LineThrough,
+                                        modifier = Modifier.padding(bottom = 3.dp)
+                                    )
+                                }
                             }
 
                             Spacer(Modifier.height(22.dp))
@@ -371,7 +412,7 @@ fun ProductDetailScreen(
                                     DetailSpecItem("Denda Keterlambatan", "Rp ${CurrencyUtils.formatRupiah(product.harga_denda_perjam)}/jam"),
                                     DetailSpecItem("Kategori", product.kategori?.nama_kategori ?: "Umum")
                                 ), ownerName = "Owner #${product.user_id}", ownerDenda = "Rp ${CurrencyUtils.formatRupiah(product.harga_denda_perjam)}")
-                                2 -> Text("Belum ada ulasan.", modifier = Modifier.padding(vertical = 16.dp), color = DetailColors.TextMuted)
+                                2 -> DetailReviewSection(reviews = emptyList())
                             }
 
                             Spacer(Modifier.height(32.dp))
@@ -405,49 +446,100 @@ fun ProductDetailScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetailTopBar(onBack: () -> Unit, onCartClick: () -> Unit) {
-    TopAppBar(
-        title = {
-            Text(
-                text = buildAnnotatedString {
-                    append("SEWA")
-                    withStyle(SpanStyle(color = DetailColors.Primary)) { append("IN") }
-                },
-                fontFamily = Volkhov,
-                fontWeight = FontWeight.Bold,
-                fontSize = 20.sp,
-                color = DetailColors.Black
-            )
-        },
-        navigationIcon = {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali", tint = DetailColors.Black)
-            }
-        },
-        actions = {
-            IconButton(onClick = {}) { Icon(Icons.Outlined.Share, null, tint = DetailColors.Black) }
-            IconButton(onClick = onCartClick) { Icon(Icons.Outlined.ShoppingCart, null, tint = DetailColors.Black) }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(containerColor = DetailColors.White)
+    SewainTopBar(
+        actionIcon = Icons.Outlined.ShoppingCart,
+        onActionClick = onCartClick
     )
 }
 
+// ============================================================
+// GALERI FOTO -- bisa di-swipe (HorizontalPager) + thumbnail.
+// Butuh androidx.compose.foundation versi 1.6+ untuk HorizontalPager
+// di package androidx.compose.foundation.pager (bukan accompanist).
+// ============================================================
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun DetailMainImageSection(photos: List<String>, selectedIndex: Int, onThumbSelected: (Int) -> Unit) {
+    val pageCount = if (photos.isEmpty()) 1 else photos.size
+    val pagerState = rememberPagerState(initialPage = selectedIndex) { pageCount }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(pagerState.currentPage) {
+        if (photos.isNotEmpty() && pagerState.currentPage != selectedIndex) {
+            onThumbSelected(pagerState.currentPage)
+        }
+    }
+    LaunchedEffect(selectedIndex) {
+        if (photos.isNotEmpty() && pagerState.currentPage != selectedIndex) {
+            pagerState.animateScrollToPage(selectedIndex)
+        }
+    }
+
     Column {
-        Box(modifier = Modifier.fillMaxWidth().aspectRatio(1.2f).background(DetailColors.Surface)) {
-            val imageToShow = photos.getOrNull(selectedIndex)
-            if (imageToShow != null) {
-                AsyncImage(model = imageToShow, contentDescription = "Foto produk", contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-            } else {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .clip(RoundedCornerShape(8.dp))
+                .background(DetailColors.Surface)
+        ) {
+            if (photos.isEmpty()) {
                 Icon(Icons.Default.Image, null, Modifier.size(64.dp).align(Alignment.Center), tint = Color.LightGray)
+            } else {
+                HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
+                    AsyncImage(
+                        model = photos[page],
+                        contentDescription = "Foto produk ${page + 1}",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+                if (photos.size > 1) {
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        photos.indices.forEach { i ->
+                            val isActive = i == pagerState.currentPage
+                            Box(
+                                modifier = Modifier
+                                    .size(if (isActive) 7.dp else 5.dp)
+                                    .clip(CircleShape)
+                                    .background(if (isActive) DetailColors.Black else DetailColors.White.copy(alpha = 0.7f))
+                            )
+                        }
+                    }
+                }
             }
         }
         if (photos.size > 1) {
             Spacer(Modifier.height(12.dp))
-            Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 photos.forEachIndexed { i, url ->
-                    val isActive = i == selectedIndex
-                    Box(modifier = Modifier.size(72.dp).clip(RoundedCornerShape(6.dp)).border(width = if (isActive) 2.dp else 0.dp, color = if (isActive) DetailColors.Black else Color.Transparent, shape = RoundedCornerShape(6.dp)).clickable { onThumbSelected(i) }.background(DetailColors.Surface)) {
+                    val isActive = i == pagerState.currentPage
+                    Box(
+                        modifier = Modifier
+                            .size(72.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .border(
+                                width = if (isActive) 2.dp else 0.dp,
+                                color = if (isActive) DetailColors.Black else Color.Transparent,
+                                shape = RoundedCornerShape(6.dp)
+                            )
+                            .clickable {
+                                scope.launch { pagerState.animateScrollToPage(i) }
+                                onThumbSelected(i)
+                            }
+                            .background(DetailColors.Surface)
+                    ) {
                         AsyncImage(model = url, contentDescription = "Thumbnail ${i + 1}", contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                     }
                 }
@@ -467,6 +559,22 @@ fun DetailRatingRow(rating: Float, reviewCount: Int) {
     }
 }
 
+// "X orang sedang melihat ini" -- samain sama .viewing-now di product.css
+@Composable
+fun DetailViewingNowRow() {
+    val viewerCount = remember { (5..24).random() }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            imageVector = Icons.Outlined.Visibility,
+            contentDescription = null,
+            tint = DetailColors.TextMuted,
+            modifier = Modifier.size(14.dp)
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(text = "$viewerCount orang sedang melihat ini", fontSize = 12.sp, color = DetailColors.TextMuted)
+    }
+}
+
 @Composable
 fun DetailDateSelectorRow(dateStart: String, dateEnd: String, onDateStartClick: () -> Unit, onDateEndClick: () -> Unit) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -478,7 +586,7 @@ fun DetailDateSelectorRow(dateStart: String, dateEnd: String, onDateStartClick: 
 @Composable
 fun DetailDateBox(label: String, value: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Column(modifier = modifier.clip(RoundedCornerShape(8.dp)).border(0.5.dp, DetailColors.Border, RoundedCornerShape(8.dp)).clickable(onClick = onClick).padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(text = label, fontWeight = FontWeight.Bold, fontSize = 11.sp, color = DetailColors.Black)
+        Text(text = label, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = DetailColors.Black)
         Spacer(Modifier.height(4.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Outlined.CalendarToday, null, tint = DetailColors.Black, modifier = Modifier.size(14.dp))
@@ -493,9 +601,9 @@ fun DetailStockSection(stock: Int) {
     Column {
         Text(text = buildAnnotatedString {
             append("Tersedia ")
-            withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = DetailColors.TextDark)) { append("$stock") }
+            withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = DetailColors.PriceOld)) { append("$stock") }
             append(" item")
-        }, fontSize = 13.sp, color = DetailColors.PriceOld)
+        }, fontSize = 14.sp, color = DetailColors.PriceOld)
         Spacer(Modifier.height(6.dp))
         Box(modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)).background(DetailColors.Border)) {
             val fraction = if (stock > 0) 1f else 0f
@@ -534,7 +642,7 @@ fun DetailActionLinkItem(icon: androidx.compose.ui.graphics.vector.ImageVector, 
     Row(modifier = Modifier.clickable(onClick = onClick), verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, contentDescription = label, tint = DetailColors.Black, modifier = Modifier.size(17.dp))
         Spacer(Modifier.width(5.dp))
-        Text(text = label, fontSize = 13.sp, color = DetailColors.Black)
+        Text(text = label, fontSize = 13.5.sp, color = DetailColors.Black)
     }
 }
 
@@ -553,7 +661,7 @@ fun DetailInfoRow(icon: androidx.compose.ui.graphics.vector.ImageVector, boldTex
         Icon(icon, null, tint = DetailColors.Black, modifier = Modifier.size(16.dp))
         Spacer(Modifier.width(8.dp))
         Text(text = buildAnnotatedString {
-            withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontFamily = Volkhov, fontSize = 13.sp)) { append(boldText) }
+            withStyle(SpanStyle(fontWeight = FontWeight.ExtraBold, fontFamily = Volkhov, fontSize = 14.sp)) { append(boldText) }
             if (text.isNotEmpty()) append(" $text")
         }, fontSize = 13.sp, color = DetailColors.Black)
     }
@@ -563,15 +671,38 @@ fun DetailInfoRow(icon: androidx.compose.ui.graphics.vector.ImageVector, boldTex
 fun DetailPaymentBox() {
     Box(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(DetailColors.Surface).padding(14.dp), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
-                listOf("VISA", "MASTERCARD", "BCA", "BNI", "MANDIRI", "BRI", "GOPAY", "OVO", "DANA").forEach { method ->
-                    Box(modifier = Modifier.clip(RoundedCornerShape(4.dp)).border(0.5.dp, DetailColors.Border, RoundedCornerShape(4.dp)).background(DetailColors.White).padding(horizontal = 8.dp, vertical = 4.dp)) {
+            // Daftar metode pembayaran -- disamakan dengan .payment-icons di product.css
+            FlowRowPayment(
+                methods = listOf(
+                    "VISA", "MASTERCARD", "AMEX", "JCB", "DISCOVER", "PAYPAL",
+                    "BCA", "BNI", "MANDIRI", "BRI", "BSI",
+                    "GOPAY", "OVO", "DANA", "SHOPEEPAY"
+                )
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(text = "Pembayaran dijamin aman & terpercaya", fontFamily = Volkhov, fontWeight = FontWeight.Medium, fontSize = 13.sp, color = DetailColors.Black, textAlign = TextAlign.Center)
+        }
+    }
+}
+
+@Composable
+private fun FlowRowPayment(methods: List<String>) {
+    // Dibagi 3 per baris biar rapi di layar HP (FlowRow belum stabil di semua versi Compose)
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        methods.chunked(3).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                row.forEach { method ->
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .border(0.5.dp, DetailColors.Border, RoundedCornerShape(4.dp))
+                            .background(DetailColors.White)
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
                         Text(text = method, fontWeight = FontWeight.Bold, fontSize = 9.sp, color = DetailColors.TextDark)
                     }
                 }
             }
-            Spacer(Modifier.height(8.dp))
-            Text(text = "Pembayaran dijamin aman & terpercaya", fontFamily = Volkhov, fontSize = 12.sp, color = DetailColors.Black, textAlign = TextAlign.Center)
         }
     }
 }
@@ -584,7 +715,8 @@ fun DetailTabSection(tabs: List<String>, selectedTab: Int, onTabChange: (Int) ->
             Box(modifier = Modifier.weight(1f).clickable { onTabChange(i) }.padding(vertical = 12.dp).drawBehind {
                 if (isActive) { drawLine(color = DetailColors.Black, start = Offset(0f, size.height), end = Offset(size.width, size.height), strokeWidth = 2.dp.toPx()) }
             }, contentAlignment = Alignment.Center) {
-                Text(text = tab, fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal, fontSize = 13.sp, color = if (isActive) DetailColors.Black else DetailColors.TextMuted, textAlign = TextAlign.Center)
+                // Di product.css semua tab bold (700), yang beda cuma warnanya -- bukan ketebalannya
+                Text(text = tab, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = if (isActive) DetailColors.Black else DetailColors.TextMuted, textAlign = TextAlign.Center)
             }
         }
     }
@@ -609,6 +741,68 @@ fun DetailAdditionalInfoContent(specs: List<DetailSpecItem>, ownerName: String, 
     }
 }
 
+// Tab "Ulasan" -- gaya kartu ulasan disamakan dengan tabs.rev di product_detail.html
+// (avatar bulat, nama, tanggal, bintang, komentar). Diisi list kosong dulu karena
+// belum ada endpoint review; begitu API-nya ada tinggal isi `reviews`.
+@Composable
+fun DetailReviewSection(reviews: List<DetailReview>) {
+    if (reviews.isEmpty()) {
+        Text("Belum ada ulasan.", modifier = Modifier.padding(vertical = 16.dp), color = DetailColors.TextMuted)
+        return
+    }
+    Column {
+        reviews.forEachIndexed { i, review ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 14.dp)
+                    .let {
+                        if (i > 0) it.drawBehind {
+                            drawLine(Color(0xFFF0F0F0), Offset(0f, 0f), Offset(size.width, 0f), 1.dp.toPx())
+                        } else it
+                    }
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(DetailColors.Surface),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = review.nama.take(1).uppercase(),
+                        fontFamily = Volkhov,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        color = DetailColors.TextDark
+                    )
+                }
+                Spacer(Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text(text = review.nama, fontFamily = Volkhov, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = DetailColors.Black)
+                            Text(text = "Penyewa Terverifikasi", fontSize = 11.sp, color = DetailColors.TextMuted)
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(text = review.tanggal, fontSize = 11.sp, color = DetailColors.TextMuted)
+                            Row {
+                                repeat(review.rating) { Text("★", color = DetailColors.Star, fontSize = 13.sp) }
+                                repeat(5 - review.rating) { Text("☆", color = DetailColors.Star, fontSize = 13.sp) }
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    Text(text = review.komentar, fontSize = 12.5.sp, color = DetailColors.Black, lineHeight = 18.sp)
+                }
+            }
+        }
+    }
+}
+
 @Composable
 fun DetailBottomActionBar(onAddToCart: () -> Unit, onRentNow: () -> Unit, isLoading: Boolean) {
     Surface(shadowElevation = 8.dp, color = DetailColors.White) {
@@ -616,9 +810,156 @@ fun DetailBottomActionBar(onAddToCart: () -> Unit, onRentNow: () -> Unit, isLoad
             OutlinedButton(onClick = onAddToCart, modifier = Modifier.weight(1f).height(48.dp), shape = RoundedCornerShape(8.dp), border = BorderStroke(1.dp, DetailColors.Black), colors = ButtonDefaults.outlinedButtonColors(contentColor = DetailColors.TextDark), enabled = !isLoading) {
                 Text(text = "Keranjang", fontFamily = Volkhov, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
             }
-            Button(onClick = onRentNow, modifier = Modifier.weight(2f).height(48.dp), shape = RoundedCornerShape(8.dp), colors = ButtonDefaults.buttonColors(containerColor = DetailColors.Primary, contentColor = DetailColors.Black), border = BorderStroke(0.5.dp, DetailColors.Black), enabled = !isLoading) {
+            // Warna tombol "Sewa Sekarang" disamakan dengan brand Navy
+            Button(onClick = onRentNow, modifier = Modifier.weight(2f).height(48.dp), shape = RoundedCornerShape(8.dp), colors = ButtonDefaults.buttonColors(containerColor = DetailColors.Accent, contentColor = DetailColors.White), border = BorderStroke(0.5.dp, DetailColors.Black), enabled = !isLoading) {
                 if (isLoading) { CircularProgressIndicator(modifier = Modifier.size(24.dp), color = DetailColors.Black) } else { Text(text = "Sewa Sekarang!", fontFamily = Volkhov, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
             }
+        }
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true, heightDp = 10000)
+@Composable
+fun DetailProdukPreview() {
+    // Dummy foto biar galeri swipe-nya kelihatan di preview (URL contoh, bukan data asli)
+    val dummyPhotos = listOf(
+        "https://images.example.com/tenda-1.jpg",
+        "https://images.example.com/tenda-2.jpg",
+        "https://images.example.com/tenda-3.jpg"
+    )
+    var selectedThumb by remember { mutableStateOf(0) }
+
+    Sewain_rplTheme {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .background(DetailColors.White)
+        ) {
+            // TOP BAR
+            DetailTopBar(onBack = {}, onCartClick = {})
+
+            // GAMBAR UTAMA -- bisa di-swipe + indikator titik + thumbnail
+            DetailMainImageSection(
+                photos = dummyPhotos,
+                selectedIndex = selectedThumb,
+                onThumbSelected = { selectedThumb = it }
+            )
+
+            Spacer(Modifier.height(20.dp))
+
+            Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+                // Kategori & Nama
+                Text(
+                    text = "CAMPING",
+                    fontFamily = Volkhov,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 13.sp,
+                    letterSpacing = 2.sp,
+                    color = DetailColors.TextMuted
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = "ALLTREK Tenda Camping Tentastic Outdoor 1 Bedroom + 1 Guest Room",
+                    fontFamily = Volkhov,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 24.sp,
+                    color = DetailColors.Black,
+                    lineHeight = 32.sp
+                )
+
+                Spacer(Modifier.height(10.dp))
+
+                DetailRatingRow(rating = 4f, reviewCount = 4)
+
+                Spacer(Modifier.height(8.dp))
+
+                DetailViewingNowRow()
+
+                Spacer(Modifier.height(14.dp))
+
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        text = "Rp 450.000/hari",
+                        fontFamily = Volkhov,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 22.sp,
+                        color = DetailColors.Black
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        text = "Rp 500.000",
+                        fontSize = 14.sp,
+                        color = DetailColors.PriceOld,
+                        textDecoration = TextDecoration.LineThrough,
+                        modifier = Modifier.padding(bottom = 3.dp)
+                    )
+                }
+
+                Spacer(Modifier.height(22.dp))
+
+                DetailDateSelectorRow(
+                    dateStart = "30 Mei 2026",
+                    dateEnd = "30 Mei 2027",
+                    onDateStartClick = {},
+                    onDateEndClick = {}
+                )
+
+                Spacer(Modifier.height(20.dp))
+
+                DetailStockSection(stock = 9)
+
+                Spacer(Modifier.height(20.dp))
+
+                DetailQuantitySection(
+                    qty = 1,
+                    maxStock = 9,
+                    onMinus = {},
+                    onPlus = {}
+                )
+
+                Spacer(Modifier.height(24.dp))
+
+                DetailActionLinks()
+
+                Spacer(Modifier.height(20.dp))
+
+                HorizontalDivider(color = DetailColors.Border, thickness = 0.5.dp)
+                Spacer(Modifier.height(16.dp))
+
+                DetailInfoItems()
+
+                Spacer(Modifier.height(20.dp))
+
+                DetailPaymentBox()
+
+                Spacer(Modifier.height(28.dp))
+
+                DetailTabSection(
+                    tabs = listOf("Deskripsi", "Info Tambahan", "Ulasan"),
+                    selectedTab = 0,
+                    onTabChange = {}
+                )
+
+                Spacer(Modifier.height(16.dp))
+
+                Text(
+                    text = "Tenda yang cocok untuk kalian yang ingin mencoba camping bersama keluarga! Tentastic merupakan tenda keluarga yang terdiri atas 2 ruangan (Living Room dan Bedroom).",
+                    fontSize = 14.sp,
+                    color = DetailColors.Black,
+                    lineHeight = 22.sp,
+                    textAlign = TextAlign.Justify
+                )
+
+                Spacer(Modifier.height(32.dp))
+            }
+
+            // BOTTOM BAR
+            DetailBottomActionBar(
+                onAddToCart = {},
+                onRentNow = {},
+                isLoading = false
+            )
         }
     }
 }

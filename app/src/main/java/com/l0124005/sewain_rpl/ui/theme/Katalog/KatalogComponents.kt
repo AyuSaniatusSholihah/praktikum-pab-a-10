@@ -39,17 +39,17 @@ import java.util.*
 // ============================================================
 // WARNA TEMA — KATALOG SHARED
 // ============================================================
-val UploadBg     = Color(0xFFDDE9F5)
-val UploadBorder = Color(0xFFC3D4E9)
-val FormBg       = Color(0xFFB2C9DD).copy(alpha = 0.5f)
-val Primary      = Color(0xFF6A87A1)
+val UploadBg     = Color(0xFFEEF3F7)
+val UploadBorder = Color(0xFFD1DDE7)
+val FormBg       = Color(0xFFB2C9DD).copy(alpha = 0.3f)
+val Primary      = com.l0124005.sewain_rpl.ui.theme.BluePrimary
 val Black        = Color(0xFF181A18)
 val White        = Color(0xFFFFFFFF)
 val TextDark     = Color(0xFF484848)
 val TextMuted    = Color(0xFF8A8A8A)
 val BorderGray   = Color(0xFF8A8A8A)
-val SectionBg    = Color(0xFFDDE9F5)
-val SectionBorder= Color(0xFFC3D4E9)
+val SectionBg    = Color(0xFFEEF3F7)
+val SectionBorder= Color(0xFFD1DDE7)
 
 // Font Fallback
 val Volkhov = FontFamily.Default
@@ -414,6 +414,7 @@ fun SewainFormField(
                 unfocusedBorderColor = BorderGray,
                 unfocusedContainerColor = FormBg,
                 focusedContainerColor   = FormBg,
+                cursorColor = Primary
             )
         )
         Spacer(Modifier.height(14.dp))

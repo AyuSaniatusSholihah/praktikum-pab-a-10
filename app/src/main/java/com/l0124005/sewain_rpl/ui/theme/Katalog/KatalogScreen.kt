@@ -26,7 +26,9 @@ import coil.compose.AsyncImage
 import com.l0124005.sewain_rpl.network.CatalogData
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.viewmodel.KatalogViewModel
-import com.l0124005.sewain_rpl.utils.CurrencyUtils
+import com.l0124005.sewain_rpl.ui.theme.BluePrimary
+import com.l0124005.sewain_rpl.ui.theme.NavyPrimary
+import com.l0124005.sewain_rpl.ui.theme.SewainTopBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,21 +46,8 @@ fun KatalogScreen(
 
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Row {
-                        Text("SEWA", fontWeight = FontWeight.ExtraBold, color = Color(0xFF2A2A2A))
-                        Text("IN", fontWeight = FontWeight.ExtraBold, color = Color(0xFF5D8AA8))
-                    }
-                },
-                actions = {
-                    IconButton(onClick = onCartClick) {
-                        Icon(Icons.Default.ShoppingCart, contentDescription = "Keranjang")
-                    }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = Color.White
-                )
+            SewainTopBar(
+                onActionClick = onCartClick
             )
         }
     ) { padding ->
@@ -76,18 +65,20 @@ fun KatalogScreen(
                     .fillMaxWidth()
                     .padding(16.dp),
                 placeholder = { Text("Cari barang yang ingin Anda sewa...") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = BluePrimary) },
                 shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = Color.White,
-                    unfocusedContainerColor = Color.White
+                    unfocusedContainerColor = Color.White,
+                    focusedBorderColor = BluePrimary,
+                    unfocusedBorderColor = Color(0xFFE8E8E8)
                 )
             )
 
             when (katalogState) {
                 is Resource.Loading -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = Color(0xFF5D8AA8))
+                        CircularProgressIndicator(color = BluePrimary)
                     }
                 }
                 is Resource.Success -> {

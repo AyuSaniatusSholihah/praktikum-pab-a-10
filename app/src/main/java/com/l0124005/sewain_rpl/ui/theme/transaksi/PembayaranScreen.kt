@@ -20,6 +20,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.l0124005.sewain_rpl.network.BayarRequest
+import com.l0124005.sewain_rpl.ui.theme.SewainTopBar
+import com.l0124005.sewain_rpl.ui.theme.BluePrimary
 import com.l0124005.sewain_rpl.ui.theme.katalog.formatRupiah
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.viewmodel.TransaksiViewModel
@@ -44,13 +46,8 @@ fun PembayaranScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Pembayaran", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
-                    }
-                }
+            SewainTopBar(
+                onNavigationClick = onBack
             )
         }
     ) { padding ->
@@ -92,7 +89,7 @@ fun PembayaranScreen(
                 },
                 modifier = Modifier.fillMaxWidth().height(50.dp),
                 shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF5D8AA8)),
+                colors = ButtonDefaults.buttonColors(containerColor = BluePrimary),
                 enabled = pembayaranState !is Resource.Loading
             ) {
                 if (pembayaranState is Resource.Loading) {
@@ -113,7 +110,7 @@ fun MetodeItem(metode: String, isSelected: Boolean, onClick: () -> Unit) {
             .clickable { onClick() }
             .border(
                 width = if (isSelected) 2.dp else 1.dp,
-                color = if (isSelected) Color(0xFF5D8AA8) else Color.LightGray,
+                color = if (isSelected) BluePrimary else Color.LightGray,
                 shape = RoundedCornerShape(12.dp)
             ),
         colors = CardDefaults.cardColors(containerColor = Color.White)
@@ -125,7 +122,7 @@ fun MetodeItem(metode: String, isSelected: Boolean, onClick: () -> Unit) {
         ) {
             Text(metode, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
             if (isSelected) {
-                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF5D8AA8))
+                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = BluePrimary)
             }
         }
     }

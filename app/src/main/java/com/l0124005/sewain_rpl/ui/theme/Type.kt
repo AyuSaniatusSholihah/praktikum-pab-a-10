@@ -10,6 +10,9 @@ import com.l0124005.sewain_rpl.R
 
 val VolkhovFont = FontFamily(Font(R.font.volkhov_regular))
 val MonsterratFont = FontFamily(Font(R.font.montserrat))
+val LatoFont = FontFamily(Font(R.font.lato_regular))
+
+val AbrilFatfaceFont = FontFamily(Font(R.font.abrilfatface_regular))
 val VidalokaFont = FontFamily(Font(R.font.vidaloka_regular))
 val MontaguSlabFont = FontFamily(
     Font(R.font.montaguslab_regular, FontWeight.Normal),
