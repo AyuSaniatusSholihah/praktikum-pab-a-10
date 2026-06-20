@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -36,6 +37,10 @@ import java.util.Locale
 // ============================================================
 
 val PaidGreen = Color(0xFF2E7D32) // border .paid-badge
+
+val AbrilFatfaceFont = FontFamily(
+    Font(com.l0124005.sewain_rpl.R.font.abrilfatface_regular, FontWeight.Normal)
+)
 
 // ============================================================
 // 2. MAPPING HELPERS
@@ -238,7 +243,7 @@ private fun ConfirmSection(
         Text(
             text = "PAYMENT CONFIRMED!",
             fontFamily = Volkhov,
-            fontWeight = FontWeight.Medium,
+            fontWeight = FontWeight.SemiBold,
             fontSize = 24.sp,
             color = TextDark,
             textAlign = TextAlign.Center
@@ -268,12 +273,12 @@ private fun ConfirmSection(
             text = "Terima kasih telah bertransaksi di SEWAIN. " +
                     "Pesanan Anda telah kami terima dan sedang diproses. " +
                     "Silakan cek detail transaksi di menu riwayat untuk informasi lebih lanjut.",
-            fontFamily = FontFamily.Default,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 14.sp,
-            color = Color(0xFF818181),
+            fontFamily = AbrilFatfaceFont,
+            fontWeight = FontWeight.Normal,
+            fontSize = 16.sp,
+            color = Color(0xFF555555),
             textAlign = TextAlign.Center,
-            lineHeight = 22.sp
+            lineHeight = 24.sp
         )
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -386,19 +391,13 @@ private fun ReceiptProductItem(item: RentedItem) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = item.name,
-                        fontFamily = Volkhov,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp,
-                        color = Black,
+                        style = CkHeading.copy(fontSize = 13.sp),
                         lineHeight = 18.sp
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "${CurrencyUtils.formatRupiah(item.pricePerDay)}/hari",
-                        fontFamily = FontFamily.Default,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 11.sp,
-                        color = Primary
+                        style = CkBody.copy(fontSize = 11.sp, color = Primary)
                     )
                 }
             }
@@ -491,19 +490,14 @@ private fun DateBlock(label: String, value: String, modifier: Modifier = Modifie
             Spacer(modifier = Modifier.width(4.dp))
             Text(
                 text = label,
-                fontFamily = FontFamily.Default,
-                fontWeight = FontWeight.Black,
-                fontSize = 11.sp,
-                color = Color(0xFF181A18),
+                style = CkHeading.copy(fontSize = 11.sp, fontWeight = FontWeight.Black),
                 textAlign = TextAlign.Center
             )
         }
         Spacer(modifier = Modifier.height(3.dp))
         Text(
             text = value,
-            fontFamily = FontFamily.Default,
-            fontSize = 11.sp,
-            color = Color(0xFF181A18),
+            style = CkBody.copy(fontSize = 11.sp, color = Black),
             textAlign = TextAlign.Center
         )
     }
@@ -524,19 +518,21 @@ private fun ReceiptRow(
     ) {
         Text(
             text = label,
-            fontFamily = FontFamily.Default,
-            fontSize = 11.sp,
-            fontStyle = if (isItalic) androidx.compose.ui.text.font.FontStyle.Italic else androidx.compose.ui.text.font.FontStyle.Normal,
-            fontWeight = if (isBold) FontWeight.Bold else FontWeight.Normal,
-            color = TextDark
+            style = CkBody.copy(
+                fontSize = 11.sp,
+                fontStyle = if (isItalic) androidx.compose.ui.text.font.FontStyle.Italic else androidx.compose.ui.text.font.FontStyle.Normal,
+                fontWeight = if (isBold) FontWeight.Bold else FontWeight.SemiBold,
+                color = TextDark
+            )
         )
         Text(
             text = value,
-            fontFamily = FontFamily.Default,
-            fontSize = if (isBold) 12.sp else 11.sp,
-            fontStyle = if (isItalic) androidx.compose.ui.text.font.FontStyle.Italic else androidx.compose.ui.text.font.FontStyle.Normal,
-            fontWeight = if (isBold) FontWeight.Bold else FontWeight.Medium,
-            color = TextDark
+            style = CkBody.copy(
+                fontSize = if (isBold) 12.sp else 11.sp,
+                fontStyle = if (isItalic) androidx.compose.ui.text.font.FontStyle.Italic else androidx.compose.ui.text.font.FontStyle.Normal,
+                fontWeight = if (isBold) FontWeight.Bold else FontWeight.SemiBold,
+                color = TextDark
+            )
         )
     }
 }
@@ -600,17 +596,12 @@ private fun CustomerField(label: String, value: String, modifier: Modifier = Mod
     Column(modifier = modifier) {
         Text(
             text = label,
-            fontFamily = FontFamily.Default,
-            fontSize = 12.sp,
-            color = TextDark
+            style = CkBody.copy(fontSize = 12.sp, color = TextDark)
         )
         Spacer(modifier = Modifier.height(2.dp))
         Text(
             text = value,
-            fontFamily = FontFamily.Default,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 13.sp,
-            color = TextDark
+            style = CkBody.copy(fontSize = 13.sp, color = TextDark)
         )
     }
 }

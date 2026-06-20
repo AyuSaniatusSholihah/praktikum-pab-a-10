@@ -21,6 +21,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -52,6 +53,23 @@ val SectionBorder= Color(0xFFC3D4E9)
 
 // Font Fallback
 val Volkhov = FontFamily.Default
+
+// ============================================================
+// TYPOGRAPHY — CK STANDARD
+// ============================================================
+val CkHeading = TextStyle(
+    fontFamily = Volkhov,
+    fontWeight = FontWeight.Bold,
+    fontSize = 16.sp,
+    color = Black
+)
+
+val CkBody = TextStyle(
+    fontFamily = FontFamily.Default,
+    fontWeight = FontWeight.SemiBold,
+    fontSize = 12.sp,
+    color = TextMuted
+)
 
 fun formatRupiah(number: Double): String {
     val format = java.text.NumberFormat.getCurrencyInstance(java.util.Locale("id", "ID"))

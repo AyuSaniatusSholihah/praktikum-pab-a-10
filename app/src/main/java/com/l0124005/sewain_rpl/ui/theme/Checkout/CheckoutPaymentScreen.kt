@@ -52,6 +52,9 @@ fun CheckoutPaymentScreen(
 ) {
     val keranjangData by keranjangViewModel.keranjang.observeAsState()
     val profileState by profileViewModel.profile.observeAsState()
+    val checkoutState by transaksiViewModel.checkoutState.observeAsState()
+
+    val isLoading = checkoutState is Resource.Loading
 
     LaunchedEffect(Unit) {
         if (profileState == null) {
@@ -128,18 +131,29 @@ fun CheckoutPaymentScreen(
 
         Button(
             onClick = {
-                transaksiViewModel.checkout(token)
+                if (!isLoading) {
+                    transaksiViewModel.checkout(token)
+                }
             },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
                 .height(50.dp),
+            enabled = !isLoading,
             shape = RoundedCornerShape(8.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Primary)
         ) {
-            Text("Bayar Sekarang", color = Color.White, fontWeight = FontWeight.Bold)
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = Color.White,
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Text("Bayar Sekarang", color = Color.White, fontWeight = FontWeight.Bold)
+            }
         }
-        
+
         Spacer(Modifier.height(32.dp))
     }
 }
@@ -190,14 +204,11 @@ fun ShippingAddressSection(
             Column {
                 Text(
                     text = "$name | $phone",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
-                    color = Black
+                    style = CkHeading.copy(fontSize = 13.sp)
                 )
                 Text(
                     text = address,
-                    fontSize = 12.sp,
-                    color = TextMuted,
+                    style = CkBody,
                     lineHeight = 18.sp
                 )
             }
@@ -244,18 +255,12 @@ fun SummaryProductCard(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         item.nama,
-                        fontFamily = Volkhov,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp,
-                        color = Black
+                        style = CkHeading.copy(fontSize = 13.sp)
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
                         "${CurrencyUtils.formatRupiah(item.harga)}/hari",
-                        fontFamily = FontFamily.Default,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Primary
+                        style = CkBody.copy(fontSize = 11.sp, color = Primary)
                     )
                 }
             }
@@ -337,20 +342,14 @@ private fun SummaryDateBox(label: String, value: String, modifier: Modifier = Mo
             )
             Text(
                 label,
-                fontFamily = FontFamily.Default,
-                fontWeight = FontWeight.Black,
-                fontSize = 11.sp,
-                color = Black,
+                style = CkHeading.copy(fontSize = 11.sp, fontWeight = FontWeight.Black),
                 maxLines = 2
             )
         }
         Spacer(Modifier.height(3.dp))
         Text(
             value,
-            fontFamily = FontFamily.Default,
-            fontWeight = FontWeight.Normal,
-            fontSize = 11.sp,
-            color = Black
+            style = CkBody.copy(fontSize = 11.sp, color = Black)
         )
     }
 }
@@ -363,19 +362,21 @@ private fun SummaryRow(label: String, value: String, bold: Boolean = false, ital
     ) {
         Text(
             label,
-            fontFamily = FontFamily.Default,
-            fontSize = 11.sp,
-            fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal,
-            fontStyle = if (italic) FontStyle.Italic else FontStyle.Normal,
-            color = TextDark
+            style = CkBody.copy(
+                fontSize = 11.sp,
+                fontWeight = if (bold) FontWeight.Bold else FontWeight.SemiBold,
+                fontStyle = if (italic) FontStyle.Italic else FontStyle.Normal,
+                color = TextDark
+            )
         )
         Text(
             value,
-            fontFamily = FontFamily.Default,
-            fontSize = 11.sp,
-            fontWeight = if (bold) FontWeight.Bold else FontWeight.Medium,
-            fontStyle = if (italic) FontStyle.Italic else FontStyle.Normal,
-            color = TextDark
+            style = CkBody.copy(
+                fontSize = 11.sp,
+                fontWeight = if (bold) FontWeight.Bold else FontWeight.SemiBold,
+                fontStyle = if (italic) FontStyle.Italic else FontStyle.Normal,
+                color = TextDark
+            )
         )
     }
 }
