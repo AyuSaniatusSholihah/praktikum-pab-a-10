@@ -114,6 +114,9 @@ fun CheckoutPaymentScreen(
     LaunchedEffect(Unit) {
         profileViewModel.getProfile(token)
         transaksiViewModel.resetCheckoutState()
+        if (selectedItems.isEmpty()) {
+            keranjangViewModel.getKeranjang(token)
+        }
     }
 
     // Jika selectedItems kosong (misal navigasi langsung), ambil semua dari keranjang
