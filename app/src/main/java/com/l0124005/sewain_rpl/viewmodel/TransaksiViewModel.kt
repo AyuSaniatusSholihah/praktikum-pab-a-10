@@ -13,27 +13,41 @@ import okhttp3.RequestBody
 
 class TransaksiViewModel(private val repository: TransaksiRepository) : ViewModel() {
 
-    private val _checkoutState = MutableLiveData<Resource<CheckoutResponse>>()
-    val checkoutState: LiveData<Resource<CheckoutResponse>> = _checkoutState
+    private val _checkoutState = MutableLiveData<Resource<CheckoutResponse>?>()
+    val checkoutState: LiveData<Resource<CheckoutResponse>?> = _checkoutState
 
-    private val _pembayaranState = MutableLiveData<Resource<BayarResponse>>()
-    val pembayaranState: LiveData<Resource<BayarResponse>> = _pembayaranState
+    private val _pembayaranState = MutableLiveData<Resource<BayarResponse>?>()
+    val pembayaranState: LiveData<Resource<BayarResponse>?> = _pembayaranState
 
-    private val _transaksiList = MutableLiveData<Resource<TransaksiListResponse>>()
-    val transaksiList: LiveData<Resource<TransaksiListResponse>> = _transaksiList
+    private val _transaksiList = MutableLiveData<Resource<TransaksiListResponse>?>()
+    val transaksiList: LiveData<Resource<TransaksiListResponse>?> = _transaksiList
 
-    private val _transaksiDetail = MutableLiveData<Resource<TransaksiDetailResponse>>()
-    val transaksiDetail: LiveData<Resource<TransaksiDetailResponse>> = _transaksiDetail
+    private val _transaksiDetail = MutableLiveData<Resource<TransaksiDetailResponse>?>()
+    val transaksiDetail: LiveData<Resource<TransaksiDetailResponse>?> = _transaksiDetail
 
-    private val _kembalikanState = MutableLiveData<Resource<KembalikanResponse>>()
-    val kembalikanState: LiveData<Resource<KembalikanResponse>> = _kembalikanState
+    private val _kembalikanState = MutableLiveData<Resource<KembalikanResponse>?>()
+    val kembalikanState: LiveData<Resource<KembalikanResponse>?> = _kembalikanState
 
     // Owner Side
-    private val _ownerDashboard = MutableLiveData<Resource<OwnerDashboardResponse>>()
-    val ownerDashboard: LiveData<Resource<OwnerDashboardResponse>> = _ownerDashboard
+    private val _ownerDashboard = MutableLiveData<Resource<OwnerDashboardResponse>?>()
+    val ownerDashboard: LiveData<Resource<OwnerDashboardResponse>?> = _ownerDashboard
 
-    private val _verifikasiState = MutableLiveData<Resource<VerifikasiPengembalianResponse>>()
-    val verifikasiState: LiveData<Resource<VerifikasiPengembalianResponse>> = _verifikasiState
+    private val _verifikasiState = MutableLiveData<Resource<VerifikasiPengembalianResponse>?>()
+    val verifikasiState: LiveData<Resource<VerifikasiPengembalianResponse>?> = _verifikasiState
+
+    fun resetCheckoutState() {
+        _checkoutState.value = null
+    }
+
+    fun resetStates() {
+        _checkoutState.value = null
+        _pembayaranState.value = null
+        _transaksiList.value = null
+        _transaksiDetail.value = null
+        _kembalikanState.value = null
+        _ownerDashboard.value = null
+        _verifikasiState.value = null
+    }
 
     fun getRiwayatTransaksi(token: String) {
         viewModelScope.launch {

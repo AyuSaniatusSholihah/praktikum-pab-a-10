@@ -26,8 +26,7 @@ import coil.compose.AsyncImage
 import com.l0124005.sewain_rpl.network.CatalogData
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.viewmodel.KatalogViewModel
-import java.text.NumberFormat
-import java.util.*
+import com.l0124005.sewain_rpl.utils.CurrencyUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -105,7 +104,13 @@ fun KatalogScreen(
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             items(products) { product ->
-                                ProductCard(product = product, onClick = { onProductClick(product.id) })
+                                ProductCard(
+                                    product = product, 
+                                    onClick = { onProductClick(product.id) },
+                                    onAddToCart = {
+                                        // KatalogScreen tidak menangani cart, ini hanya placeholder
+                                    }
+                                )
                             }
                         }
                     }
@@ -120,78 +125,3 @@ fun KatalogScreen(
         }
     }
 }
-
-@Composable
-fun ProductCard(product: CatalogData, onClick: () -> Unit) {
-    // Sesuaikan BASE_URL dengan IP Laptop Anda atau URL Laravel Anda
-    val baseUrl = "http://10.0.2.2:8000/storage/" 
-    val imageUrl = if (product.foto_barang != null) baseUrl + product.foto_barang else null
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() },
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(140.dp)
-                    .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
-                    .background(Color.LightGray)
-            ) {
-                if (imageUrl != null) {
-                    AsyncImage(
-                        model = imageUrl,
-                        contentDescription = product.nama_barang,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-            }
-
-            Column(modifier = Modifier.padding(12.dp)) {
-                Text(
-                    text = product.nama_barang,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                
-                Spacer(modifier = Modifier.height(4.dp))
-                
-                Text(
-                    text = "Rp ${formatRupiah(product.harga_sewa)} / hari",
-                    color = Color(0xFF1E5276),
-                    fontWeight = FontWeight.ExtraBold,
-                    fontSize = 13.sp
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(
-                        color = if (product.stok > 0) Color(0xFFE8F5E9) else Color(0xFFFFEBEE),
-                        shape = RoundedCornerShape(4.dp)
-                    ) {
-                        Text(
-                            text = if (product.stok > 0) "Tersedia" else "Habis",
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                            fontSize = 10.sp,
-                            color = if (product.stok > 0) Color(0xFF2E7D32) else Color(0xFFC62828),
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    Spacer(modifier = Modifier.weight(1f))
-                    Text(text = product.lokasi, fontSize = 10.sp, color = Color.Gray)
-                }
-            }
-        }
-    }
-}
-
-

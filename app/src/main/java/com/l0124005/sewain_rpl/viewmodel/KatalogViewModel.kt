@@ -13,20 +13,40 @@ import okhttp3.RequestBody
 
 class KatalogViewModel(private val repository: KatalogRepository) : ViewModel() {
 
-    private val _katalogPublik = MutableLiveData<Resource<KatalogListResponse>>()
-    val katalogPublik: LiveData<Resource<KatalogListResponse>> = _katalogPublik
+    private val _katalogPublik = MutableLiveData<Resource<KatalogListResponse>?>()
+    val katalogPublik: LiveData<Resource<KatalogListResponse>?> = _katalogPublik
 
-    private val _myKatalog = MutableLiveData<Resource<KatalogListResponse>>()
-    val myKatalog: LiveData<Resource<KatalogListResponse>> = _myKatalog
+    private val _myKatalog = MutableLiveData<Resource<KatalogListResponse>?>()
+    val myKatalog: LiveData<Resource<KatalogListResponse>?> = _myKatalog
 
-    private val _myKatalogDetail = MutableLiveData<Resource<KatalogDetailResponse>>()
-    val myKatalogDetail: LiveData<Resource<KatalogDetailResponse>> = _myKatalogDetail
+    private val _myKatalogDetail = MutableLiveData<Resource<KatalogDetailResponse>?>()
+    val myKatalogDetail: LiveData<Resource<KatalogDetailResponse>?> = _myKatalogDetail
 
-    private val _crudResult = MutableLiveData<Resource<KatalogCrudResponse>>()
-    val crudResult: LiveData<Resource<KatalogCrudResponse>> = _crudResult
+    private val _crudResult = MutableLiveData<Resource<KatalogCrudResponse>?>()
+    val crudResult: LiveData<Resource<KatalogCrudResponse>?> = _crudResult
 
-    private val _deleteResult = MutableLiveData<Resource<GenericResponse>>()
-    val deleteResult: LiveData<Resource<GenericResponse>> = _deleteResult
+    private val _deleteResult = MutableLiveData<Resource<GenericResponse>?>()
+    val deleteResult: LiveData<Resource<GenericResponse>?> = _deleteResult
+
+    private val _kategori = MutableLiveData<Resource<KategoriListResponse>?>()
+    val kategori: LiveData<Resource<KategoriListResponse>?> = _kategori
+
+    fun resetStates() {
+        _katalogPublik.value = null
+        _myKatalog.value = null
+        _myKatalogDetail.value = null
+        _crudResult.value = null
+        _deleteResult.value = null
+        _kategori.value = null
+    }
+
+    fun getKategori() {
+        viewModelScope.launch {
+            repository.getKategori().collect {
+                _kategori.value = it
+            }
+        }
+    }
 
     fun getKatalogPublik(
         search: String? = null,
@@ -58,6 +78,14 @@ class KatalogViewModel(private val repository: KatalogRepository) : ViewModel() 
         }
     }
 
+    fun getKatalogPublikDetail(id: Int) {
+        viewModelScope.launch {
+            repository.getKatalogPublikDetail(id).collect {
+                _myKatalogDetail.value = it
+            }
+        }
+    }
+
     fun createKatalog(
         token: String,
         kategoriId: RequestBody,
@@ -68,13 +96,15 @@ class KatalogViewModel(private val repository: KatalogRepository) : ViewModel() 
         hargaDendaPerjam: RequestBody,
         stok: RequestBody,
         lokasi: RequestBody,
+        additionalInformation: RequestBody?,
         fotoBarang: MultipartBody.Part?,
         status: RequestBody? = null
     ) {
         viewModelScope.launch {
             repository.createKatalog(
                 token, kategoriId, namaBarang, deskripsi, hargaSewa,
-                hargaJaminan, hargaDendaPerjam, stok, lokasi, fotoBarang, status
+                hargaJaminan, hargaDendaPerjam, stok, lokasi,
+                additionalInformation, fotoBarang, status
             ).collect {
                 _crudResult.value = it
             }
@@ -92,13 +122,15 @@ class KatalogViewModel(private val repository: KatalogRepository) : ViewModel() 
         hargaDendaPerjam: RequestBody? = null,
         stok: RequestBody? = null,
         lokasi: RequestBody? = null,
+        additionalInformation: RequestBody? = null,
         fotoBarang: MultipartBody.Part? = null,
         status: RequestBody? = null
     ) {
         viewModelScope.launch {
             repository.updateKatalog(
                 token, id, kategoriId, namaBarang, deskripsi, hargaSewa,
-                hargaJaminan, hargaDendaPerjam, stok, lokasi, fotoBarang, status
+                hargaJaminan, hargaDendaPerjam, stok, lokasi,
+                additionalInformation, fotoBarang, status
             ).collect {
                 _crudResult.value = it
             }

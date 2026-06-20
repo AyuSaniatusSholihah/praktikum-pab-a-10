@@ -11,11 +11,16 @@ import kotlinx.coroutines.launch
 
 class KeranjangViewModel(private val repository: KeranjangRepository) : ViewModel() {
 
-    private val _keranjang = MutableLiveData<Resource<KeranjangResponse>>()
-    val keranjang: LiveData<Resource<KeranjangResponse>> = _keranjang
+    private val _keranjang = MutableLiveData<Resource<KeranjangResponse>?>()
+    val keranjang: LiveData<Resource<KeranjangResponse>?> = _keranjang
 
-    private val _clearResult = MutableLiveData<Resource<GenericResponse>>()
-    val clearResult: LiveData<Resource<GenericResponse>> = _clearResult
+    private val _clearResult = MutableLiveData<Resource<GenericResponse>?>()
+    val clearResult: LiveData<Resource<GenericResponse>?> = _clearResult
+
+    fun resetStates() {
+        _keranjang.value = null
+        _clearResult.value = null
+    }
 
     fun getKeranjang(token: String) {
         viewModelScope.launch {

@@ -79,7 +79,9 @@ fun RiwayatTransaksiScreen(
                         modifier = Modifier.align(Alignment.Center)
                     )
                 }
-                else -> {}
+                null -> {
+                    // State is null (e.g., before loading or after reset)
+                }
             }
         }
     }

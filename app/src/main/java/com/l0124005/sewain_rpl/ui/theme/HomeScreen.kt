@@ -1,5 +1,7 @@
 package com.l0124005.sewain_rpl.ui.theme
 
+import android.content.Intent
+import com.l0124005.sewain_rpl.ui.theme.katalog.DetailProdukActivity
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -65,8 +67,11 @@ class RentalsActivity : ComponentActivity() {
                     viewModel = katalogViewModel,
                     keranjangViewModel = keranjangViewModel,
                     token = token,
-                    onItemClick = { _ ->
-                        // TODO: navigasi ke detail
+                    onItemClick = { barang ->
+                        val intent = Intent(this@RentalsActivity, DetailProdukActivity::class.java).apply {
+                            putExtra("EXTRA_PRODUCT_ID", barang.id)
+                        }
+                        startActivity(intent)
                     }
                 )
             }
@@ -88,14 +93,6 @@ private val TextMuted      = Color(0xFF8A8A8A)
 private val BorderColor    = Color(0xFFE8E8E8)
 
 // ═══════════════════════════════════════
-// DAFTAR KATEGORI FILTER
-// ═══════════════════════════════════════
-
-private val kategoriList = listOf(
-    "Semua", "Kamera", "Outdoor", "Elektronik", "Olahraga", "Fashion", "Lainnya"
-)
-
-// ═══════════════════════════════════════
 // MAIN SCREEN
 // ═══════════════════════════════════════
 
@@ -109,6 +106,11 @@ fun RentalsScreen(
 ) {
     val context = LocalContext.current
     val keranjangState by keranjangViewModel.keranjang.observeAsState()
+    val kategoriResult by viewModel.kategori.observeAsState()
+
+    LaunchedEffect(Unit) {
+        viewModel.getKategori()
+    }
 
     LaunchedEffect(keranjangState) {
         if (keranjangState is Resource.Success) {
@@ -124,15 +126,12 @@ fun RentalsScreen(
     val katalogState by viewModel.katalogPublik.observeAsState(Resource.Loading())
 
     // Fetch ulang setiap kali filter berubah
-    LaunchedEffect(searchQuery, activeKategori) {
-        val katId = when (activeKategori) {
-            "Kamera" -> 1
-            "Outdoor" -> 2
-            "Elektronik" -> 3
-            "Olahraga" -> 4
-            "Fashion" -> 5
-            "Lainnya" -> 6
-            else -> null
+    LaunchedEffect(searchQuery, activeKategori, kategoriResult) {
+        val cats = (kategoriResult as? Resource.Success)?.data?.data ?: emptyList()
+        val katId = if (activeKategori == "Semua") {
+            null
+        } else {
+            cats.find { it.nama_kategori == activeKategori }?.id
         }
         val q = searchQuery.ifBlank { null }
         viewModel.getKatalogPublik(search = q, kategoriId = katId)
@@ -153,7 +152,11 @@ fun RentalsScreen(
         )
 
         // ── Filter Kategori ──
+        val availableCategories = (kategoriResult as? Resource.Success)?.data?.data?.map { it.nama_kategori } ?: emptyList()
+        val fullCategories = listOf("Semua") + availableCategories
+
         KategoriFilterRow(
+            categories = fullCategories,
             aktif        = activeKategori,
             onKategoriSelected = { activeKategori = it }
         )
@@ -180,23 +183,16 @@ fun RentalsScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text     = state.message ?: "",
+                            text     = state.message ?: "Terjadi kesalahan",
                             fontSize = 12.sp,
-                            color    = TextMuted
+                            color    = TextMuted,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         OutlinedButton(
                             onClick = {
-                                val katId = when (activeKategori) {
-                                    "Kamera" -> 1
-                                    "Outdoor" -> 2
-                                    "Elektronik" -> 3
-                                    "Olahraga" -> 4
-                                    "Fashion" -> 5
-                                    "Lainnya" -> 6
-                                    else -> null
-                                }
-                                viewModel.getKatalogPublik(kategoriId = katId)
+                                viewModel.getKategori()
+                                viewModel.getKatalogPublik()
                             },
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = TealPrimary),
                             border = androidx.compose.foundation.BorderStroke(1.dp, TealPrimary)
@@ -223,6 +219,8 @@ fun RentalsScreen(
                         )
                     }
                 }
+
+                else -> {}
             }
         }
     }
@@ -342,6 +340,7 @@ private fun RentalsSearchBar(
 
 @Composable
 private fun KategoriFilterRow(
+    categories: List<String>,
     aktif: String,
     onKategoriSelected: (String) -> Unit
 ) {
@@ -349,7 +348,7 @@ private fun KategoriFilterRow(
         contentPadding      = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(kategoriList) { kat ->
+        items(categories) { kat ->
             val isActive = kat == aktif
             Box(
                 contentAlignment = Alignment.Center,
@@ -429,8 +428,13 @@ private fun RentalCard(
                     .background(TealLight)
             ) {
                 if (!barang.foto_barang.isNullOrEmpty()) {
+                    val imageUrl = if (barang.foto_barang.startsWith("http")) {
+                        barang.foto_barang
+                    } else {
+                        "${ApiClient.IMAGE_BASE_URL}${barang.foto_barang}"
+                    }
                     AsyncImage(
-                        model               = "${ApiClient.IMAGE_BASE_URL}${barang.foto_barang}",
+                        model               = imageUrl,
                         contentDescription  = barang.nama_barang,
                         contentScale        = ContentScale.Crop,
                         modifier            = Modifier.fillMaxSize()

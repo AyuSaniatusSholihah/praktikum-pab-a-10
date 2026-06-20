@@ -1,6 +1,7 @@
 package com.l0124005.sewain_rpl.ui.theme.katalog
 
 import android.net.Uri
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,12 +20,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import com.l0124005.sewain_rpl.network.ApiClient
+import com.l0124005.sewain_rpl.network.CatalogData
+import com.l0124005.sewain_rpl.network.KategoriData
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -46,19 +53,146 @@ val SectionBorder= Color(0xFFC3D4E9)
 // Font Fallback
 val Volkhov = FontFamily.Default
 
-val categories = listOf("Semua", "Kamera", "Outdoor", "Elektronik", "Olahraga", "Fashion", "Lainnya")
-
 fun formatRupiah(number: Double): String {
     val format = java.text.NumberFormat.getCurrencyInstance(java.util.Locale("id", "ID"))
     return format.format(number).replace("Rp", "").trim()
 }
 
+@Composable
+fun ProductCard(product: CatalogData, onClick: () -> Unit, onAddToCart: () -> Unit) {
+    val imageUrl = if (product.foto_barang != null) {
+        if (product.foto_barang.startsWith("http")) {
+            product.foto_barang
+        } else {
+            "${ApiClient.IMAGE_BASE_URL}${product.foto_barang}"
+        }
+    } else null
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = BorderStroke(0.5.dp, SectionBorder),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Column {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(130.dp)
+                    .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
+                    .background(UploadBg)
+            ) {
+                if (imageUrl != null) {
+                    AsyncImage(
+                        model = imageUrl,
+                        contentDescription = product.nama_barang,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Outlined.Inventory2,
+                        contentDescription = null,
+                        tint = Primary,
+                        modifier = Modifier.size(40.dp).align(Alignment.Center)
+                    )
+                }
+                
+                if (product.stok > 0) {
+                     Surface(
+                        color = Primary,
+                        shape = RoundedCornerShape(bottomStart = 8.dp),
+                        modifier = Modifier.align(Alignment.TopEnd)
+                    ) {
+                        Text(
+                            text = "Tersedia",
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            fontSize = 8.sp,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+
+            Column(modifier = Modifier.padding(12.dp)) {
+                Text(
+                    text = product.nama_barang,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = Black
+                )
+                
+                Spacer(modifier = Modifier.height(4.dp))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Outlined.LocationOn, null, Modifier.size(12.dp), tint = TextMuted)
+                            Spacer(Modifier.width(2.dp))
+                            Text(
+                                text = product.lokasi ?: "-",
+                                fontSize = 10.sp,
+                                color = TextMuted,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        Row(verticalAlignment = Alignment.Bottom) {
+                            Text(
+                                text = "Rp ${formatRupiah(product.harga_sewa)}",
+                                color = Primary,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp
+                            )
+                            Text(
+                                text = " / hari",
+                                color = TextMuted,
+                                fontSize = 10.sp,
+                                modifier = Modifier.padding(bottom = 1.dp)
+                            )
+                        }
+                    }
+
+                    // Tombol Keranjang Cepat
+                    IconButton(
+                        onClick = { onAddToCart() },
+                        modifier = Modifier
+                            .size(32.dp)
+                            .background(Primary, CircleShape)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.ShoppingCart,
+                            contentDescription = "Tambah ke Keranjang",
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
 // ============================================================
 // PROFILE CARD
 // ============================================================
+
 data class AddItemFormState(
     val itemName: String = "",
-    val category: String = "Camping",
+    val category: String = "",
     val price: String = "",
     val description: String = "",
     val whatsApp: String = "",
@@ -70,6 +204,7 @@ data class AddItemFormState(
     val dateStart: String = "",
     val dateEnd: String = "",
     val mainImageUri: Uri? = null,
+    val categoryId: String = "",
     val angle1Uri: Uri? = null,
     val angle2Uri: Uri? = null,
     val angle3Uri: Uri? = null,
@@ -305,13 +440,14 @@ fun StockQtyStepper(
 }
 
 // ============================================================
-// CATEGORY BOTTOM SHEET
+// DYNAMIC CATEGORY BOTTOM SHEET
 // ============================================================
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CategoryBottomSheet(
-    selectedCategory: String,
-    onSelect: (String) -> Unit,
+fun CategoryBottomSheetDynamic(
+    categories: List<KategoriData>,
+    selectedCategoryId: String,
+    onSelect: (Int, String) -> Unit,
     onDismiss: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -333,18 +469,18 @@ fun CategoryBottomSheet(
             )
             HorizontalDivider(color = SectionBorder)
             categories.forEach { cat ->
-                val isSelected = cat == selectedCategory
+                val isSelected = cat.id.toString() == selectedCategoryId
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onSelect(cat) }
+                        .clickable { onSelect(cat.id, cat.nama_kategori) }
                         .background(if (isSelected) UploadBg else White)
                         .padding(horizontal = 20.dp, vertical = 14.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = cat,
+                        text = cat.nama_kategori,
                         fontFamily = FontFamily.Default,
                         fontSize = 15.sp,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,

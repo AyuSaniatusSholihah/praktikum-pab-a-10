@@ -23,8 +23,6 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        
-        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"${localProperties.getProperty("GOOGLE_WEB_CLIENT_ID") ?: ""}\"")
     }
 
     buildTypes {
@@ -92,9 +90,6 @@ dependencies {
 
     // ── Material Design ───────────────────────
     implementation("com.google.android.material:material:1.11.0")
-
-    // ── Google Auth ───────────────────────────
-    implementation("com.google.android.gms:play-services-auth:21.0.0")
 
     // ── SwipeRefreshLayout ────────────────────
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")

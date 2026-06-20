@@ -33,7 +33,7 @@ class KatalogRepository {
     fun getMyKatalog(token: String): Flow<Resource<KatalogListResponse>> = flow {
         emit(Resource.Loading())
         try {
-            val response = apiService.getMyKatalog("Bearer $token")
+            val response = apiService.getMyKatalog(token)
             if (response.isSuccessful && response.body() != null) {
                 emit(Resource.Success(response.body()!!))
             } else {
@@ -47,11 +47,25 @@ class KatalogRepository {
     fun getMyKatalogDetail(token: String, id: Int): Flow<Resource<KatalogDetailResponse>> = flow {
         emit(Resource.Loading())
         try {
-            val response = apiService.getMyKatalogDetail("Bearer $token", id)
+            val response = apiService.getMyKatalogDetail(token, id)
             if (response.isSuccessful && response.body() != null) {
                 emit(Resource.Success(response.body()!!))
             } else {
-                emit(Resource.Error(response.message()))
+                emit(Resource.Error(response.message(), code = response.code()))
+            }
+        } catch (e: Exception) {
+            emit(Resource.Error(e.message ?: "An error occurred"))
+        }
+    }
+
+    fun getKatalogPublikDetail(id: Int): Flow<Resource<KatalogDetailResponse>> = flow {
+        emit(Resource.Loading())
+        try {
+            val response = apiService.getKatalogPublikDetail(id)
+            if (response.isSuccessful && response.body() != null) {
+                emit(Resource.Success(response.body()!!))
+            } else {
+                emit(Resource.Error(response.message(), code = response.code()))
             }
         } catch (e: Exception) {
             emit(Resource.Error(e.message ?: "An error occurred"))
@@ -68,14 +82,16 @@ class KatalogRepository {
         hargaDendaPerjam: RequestBody,
         stok: RequestBody,
         lokasi: RequestBody,
+        additionalInformation: RequestBody?,
         fotoBarang: MultipartBody.Part?,
         status: RequestBody? = null
     ): Flow<Resource<KatalogCrudResponse>> = flow {
         emit(Resource.Loading())
         try {
             val response = apiService.createKatalog(
-                "Bearer $token", kategoriId, namaBarang, deskripsi,
-                hargaSewa, hargaJaminan, hargaDendaPerjam, stok, lokasi, fotoBarang, status
+                token, kategoriId, namaBarang, deskripsi,
+                hargaSewa, hargaJaminan, hargaDendaPerjam, stok, lokasi,
+                additionalInformation, fotoBarang, status
             )
             if (response.isSuccessful && response.body() != null) {
                 emit(Resource.Success(response.body()!!))
@@ -98,14 +114,16 @@ class KatalogRepository {
         hargaDendaPerjam: RequestBody? = null,
         stok: RequestBody? = null,
         lokasi: RequestBody? = null,
+        additionalInformation: RequestBody? = null,
         fotoBarang: MultipartBody.Part? = null,
         status: RequestBody? = null
     ): Flow<Resource<KatalogCrudResponse>> = flow {
         emit(Resource.Loading())
         try {
             val response = apiService.updateKatalog(
-                "Bearer $token", id, "PUT", kategoriId, namaBarang, deskripsi,
-                hargaSewa, hargaJaminan, hargaDendaPerjam, stok, lokasi, fotoBarang, status
+                token, id, "PUT", kategoriId, namaBarang, deskripsi,
+                hargaSewa, hargaJaminan, hargaDendaPerjam, stok, lokasi,
+                additionalInformation, fotoBarang, status
             )
             if (response.isSuccessful && response.body() != null) {
                 emit(Resource.Success(response.body()!!))
@@ -120,7 +138,21 @@ class KatalogRepository {
     fun deleteKatalog(token: String, id: Int): Flow<Resource<GenericResponse>> = flow {
         emit(Resource.Loading())
         try {
-            val response = apiService.deleteKatalog("Bearer $token", id)
+            val response = apiService.deleteKatalog(token, id)
+            if (response.isSuccessful && response.body() != null) {
+                emit(Resource.Success(response.body()!!))
+            } else {
+                emit(Resource.Error(response.message()))
+            }
+        } catch (e: Exception) {
+            emit(Resource.Error(e.message ?: "An error occurred"))
+        }
+    }
+
+    fun getKategori(): Flow<Resource<KategoriListResponse>> = flow {
+        emit(Resource.Loading())
+        try {
+            val response = apiService.getKategori()
             if (response.isSuccessful && response.body() != null) {
                 emit(Resource.Success(response.body()!!))
             } else {
