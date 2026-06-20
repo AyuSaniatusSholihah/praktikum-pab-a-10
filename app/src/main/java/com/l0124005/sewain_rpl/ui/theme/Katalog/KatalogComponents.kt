@@ -60,7 +60,13 @@ fun formatRupiah(number: Double): String {
 
 @Composable
 fun ProductCard(product: CatalogData, onClick: () -> Unit, onAddToCart: () -> Unit) {
-    val imageUrl = if (product.foto_barang != null) "${ApiClient.IMAGE_BASE_URL}${product.foto_barang}" else null
+    val imageUrl = if (product.foto_barang != null) {
+        if (product.foto_barang.startsWith("http")) {
+            product.foto_barang
+        } else {
+            "${ApiClient.IMAGE_BASE_URL}${product.foto_barang}"
+        }
+    } else null
 
     Card(
         modifier = Modifier

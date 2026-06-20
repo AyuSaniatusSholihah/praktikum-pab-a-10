@@ -353,7 +353,11 @@ fun MainContainer(
                     com.l0124005.sewain_rpl.ui.theme.profile.MyRentalsScreen(
                         viewModel = transaksiViewModel,
                         token = token,
-                        onBack = { currentScreen = Screen.Profile }
+                        onBack = { currentScreen = Screen.Profile },
+                        onDetailClick = { id ->
+                            selectedTransaksiId = id
+                            currentScreen = Screen.DetailTransaksi
+                        }
                     )
                 }
                 Screen.RentalsOwner -> {

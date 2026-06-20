@@ -428,8 +428,13 @@ private fun RentalCard(
                     .background(TealLight)
             ) {
                 if (!barang.foto_barang.isNullOrEmpty()) {
+                    val imageUrl = if (barang.foto_barang.startsWith("http")) {
+                        barang.foto_barang
+                    } else {
+                        "${ApiClient.IMAGE_BASE_URL}${barang.foto_barang}"
+                    }
                     AsyncImage(
-                        model               = "${ApiClient.IMAGE_BASE_URL}${barang.foto_barang}",
+                        model               = imageUrl,
                         contentDescription  = barang.nama_barang,
                         contentScale        = ContentScale.Crop,
                         modifier            = Modifier.fillMaxSize()
