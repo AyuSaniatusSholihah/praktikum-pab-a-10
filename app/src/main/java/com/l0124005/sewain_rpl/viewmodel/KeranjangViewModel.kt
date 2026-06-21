@@ -14,12 +14,20 @@ class KeranjangViewModel(private val repository: KeranjangRepository) : ViewMode
     private val _keranjang = MutableLiveData<Resource<KeranjangResponse>?>()
     val keranjang: LiveData<Resource<KeranjangResponse>?> = _keranjang
 
+    private val _addToCartState = MutableLiveData<Resource<KeranjangResponse>?>()
+    val addToCartState: LiveData<Resource<KeranjangResponse>?> = _addToCartState
+
     private val _clearResult = MutableLiveData<Resource<GenericResponse>?>()
     val clearResult: LiveData<Resource<GenericResponse>?> = _clearResult
 
+    fun resetActionStates() {
+        _addToCartState.value = null
+        _clearResult.value = null
+    }
+
     fun resetStates() {
         _keranjang.value = null
-        _clearResult.value = null
+        resetActionStates()
     }
 
     fun getKeranjang(token: String) {
@@ -33,7 +41,7 @@ class KeranjangViewModel(private val repository: KeranjangRepository) : ViewMode
     fun addToKeranjang(token: String, barangId: Int, jumlah: Int, tglSewa: String, tglKembali: String) {
         viewModelScope.launch {
             repository.addToKeranjang(token, AddToKeranjangRequest(barangId, jumlah, tglSewa, tglKembali)).collect {
-                _keranjang.value = it
+                _addToCartState.value = it
             }
         }
     }

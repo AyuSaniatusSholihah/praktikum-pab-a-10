@@ -105,20 +105,20 @@ fun RentalsScreen(
     onItemClick: (CatalogData) -> Unit
 ) {
     val context = LocalContext.current
-    val keranjangState by keranjangViewModel.keranjang.observeAsState()
+    val addToCartState by keranjangViewModel.addToCartState.observeAsState()
     val kategoriResult by viewModel.kategori.observeAsState()
 
     LaunchedEffect(Unit) {
         viewModel.getKategori()
     }
 
-    LaunchedEffect(keranjangState) {
-        if (keranjangState is Resource.Success) {
+    LaunchedEffect(addToCartState) {
+        if (addToCartState is Resource.Success) {
             Toast.makeText(context, "Berhasil ditambahkan ke keranjang!", Toast.LENGTH_SHORT).show()
-            keranjangViewModel.resetStates()
-        } else if (keranjangState is Resource.Error) {
-            Toast.makeText(context, "Gagal: ${keranjangState?.message}", Toast.LENGTH_SHORT).show()
-            keranjangViewModel.resetStates()
+            keranjangViewModel.resetActionStates()
+        } else if (addToCartState is Resource.Error) {
+            Toast.makeText(context, "Gagal: ${addToCartState?.message}", Toast.LENGTH_SHORT).show()
+            keranjangViewModel.resetActionStates()
         }
     }
 
