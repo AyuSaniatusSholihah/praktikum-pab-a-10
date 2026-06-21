@@ -123,19 +123,27 @@ fun RentalsScreen(
     }
 
     var searchQuery    by remember { mutableStateOf("") }
+    var debouncedSearchQuery by remember { mutableStateOf("") }
     var activeKategori by remember { mutableStateOf("Semua") }
 
     val katalogState by viewModel.katalogPublik.observeAsState(Resource.Loading())
+    val extractedKategori by viewModel.extractedKategori.observeAsState(emptyList())
+
+    // Debounce search query
+    LaunchedEffect(searchQuery) {
+        kotlinx.coroutines.delay(500)
+        debouncedSearchQuery = searchQuery
+    }
 
     // Fetch ulang setiap kali filter berubah
-    LaunchedEffect(searchQuery, activeKategori, kategoriResult) {
+    LaunchedEffect(debouncedSearchQuery, activeKategori) {
         val cats = (kategoriResult as? Resource.Success)?.data?.data ?: emptyList()
         val katId = if (activeKategori == "Semua") {
             null
         } else {
             cats.find { it.nama_kategori == activeKategori }?.id
         }
-        val q = searchQuery.ifBlank { null }
+        val q = debouncedSearchQuery.ifBlank { null }
         viewModel.getKatalogPublik(search = q, kategoriId = katId)
     }
 
@@ -154,7 +162,11 @@ fun RentalsScreen(
         )
 
         // ── Filter Kategori ──
-        val availableCategories = (kategoriResult as? Resource.Success)?.data?.data?.map { it.nama_kategori } ?: emptyList()
+        val availableCategories = if (extractedKategori.isNotEmpty()) {
+            extractedKategori
+        } else {
+            (kategoriResult as? Resource.Success)?.data?.data?.map { it.nama_kategori } ?: emptyList()
+        }
         val fullCategories = listOf("Semua") + availableCategories
 
         KategoriFilterRow(
