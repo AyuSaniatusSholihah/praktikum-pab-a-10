@@ -151,7 +151,7 @@ fun ProductDetailScreen(
 ) {
     val context = LocalContext.current
     val detailState by katalogViewModel.myKatalogDetail.observeAsState()
-    val keranjangState by keranjangViewModel.keranjang.observeAsState()
+    val addToCartState by keranjangViewModel.addToCartState.observeAsState()
     val checkoutState by transaksiViewModel.checkoutState.observeAsState()
 
     var isRentNowClicked by remember { mutableStateOf(false) }
@@ -198,21 +198,21 @@ fun ProductDetailScreen(
         }
     }
 
-    LaunchedEffect(keranjangState) {
-        if (keranjangState is Resource.Success) {
+    LaunchedEffect(addToCartState) {
+        if (addToCartState is Resource.Success) {
             if (isRentNowClicked) {
                 // Navigasi ke CheckoutPayment dengan productId agar hanya produk ini yang di-checkout
                 isRentNowClicked = false
-                keranjangViewModel.resetStates()
+                keranjangViewModel.resetActionStates()
                 onNavigateToCheckout(productId)
             } else {
                 Toast.makeText(context, "Berhasil ditambahkan ke keranjang!", Toast.LENGTH_SHORT).show()
-                keranjangViewModel.resetStates()
+                keranjangViewModel.resetActionStates()
                 onNavigateToCart()
             }
-        } else if (keranjangState is Resource.Error) {
-            Toast.makeText(context, "Gagal: ${keranjangState?.message}", Toast.LENGTH_SHORT).show()
-            keranjangViewModel.resetStates()
+        } else if (addToCartState is Resource.Error) {
+            Toast.makeText(context, "Gagal: ${addToCartState?.message}", Toast.LENGTH_SHORT).show()
+            keranjangViewModel.resetActionStates()
         }
     }
 
@@ -247,7 +247,7 @@ fun ProductDetailScreen(
         },
         bottomBar = {
             if (detailState is Resource.Success) {
-                val isLoading = keranjangState is Resource.Loading || checkoutState is Resource.Loading
+                val isLoading = addToCartState is Resource.Loading || checkoutState is Resource.Loading
                 DetailBottomActionBar(
                     onAddToCart = {
                         isRentNowClicked = false
