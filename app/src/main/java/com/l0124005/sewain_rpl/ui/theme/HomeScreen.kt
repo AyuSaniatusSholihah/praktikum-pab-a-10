@@ -115,8 +115,10 @@ fun RentalsScreen(
     LaunchedEffect(keranjangState) {
         if (keranjangState is Resource.Success) {
             Toast.makeText(context, "Berhasil ditambahkan ke keranjang!", Toast.LENGTH_SHORT).show()
+            keranjangViewModel.resetStates()
         } else if (keranjangState is Resource.Error) {
             Toast.makeText(context, "Gagal: ${keranjangState?.message}", Toast.LENGTH_SHORT).show()
+            keranjangViewModel.resetStates()
         }
     }
 

@@ -9,6 +9,7 @@ import androidx.compose.ui.unit.sp
 import com.l0124005.sewain_rpl.R
 
 val VolkhovFont = FontFamily(Font(R.font.volkhov_regular))
+val RobotoFont = FontFamily(Font(R.font.roboto_regular))
 val MonsterratFont = FontFamily(Font(R.font.montserrat))
 val LatoFont = FontFamily(Font(R.font.lato_regular))
 

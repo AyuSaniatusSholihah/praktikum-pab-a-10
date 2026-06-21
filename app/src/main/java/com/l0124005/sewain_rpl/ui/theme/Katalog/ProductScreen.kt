@@ -78,8 +78,20 @@ fun ProductScreen(
     val katalogState by viewModel.katalogPublik.observeAsState()
     val kategoriResult by viewModel.kategori.observeAsState()
 
+    val keranjangState by keranjangViewModel.keranjang.observeAsState()
+
     LaunchedEffect(Unit) {
         viewModel.getKategori()
+    }
+
+    LaunchedEffect(keranjangState) {
+        if (keranjangState is Resource.Success) {
+            Toast.makeText(context, "Berhasil ditambahkan ke keranjang!", Toast.LENGTH_SHORT).show()
+            keranjangViewModel.resetStates()
+        } else if (keranjangState is Resource.Error) {
+            Toast.makeText(context, "Gagal: ${keranjangState?.message}", Toast.LENGTH_SHORT).show()
+            keranjangViewModel.resetStates()
+        }
     }
 
     LaunchedEffect(activeKategori, searchQuery, kategoriResult) {
@@ -157,7 +169,6 @@ fun ProductScreen(
                                     tglSewa = tglSewa,
                                     tglKembali = tglKembali
                                 )
-                                Toast.makeText(context, "${product.nama_barang} ditambahkan ke keranjang", Toast.LENGTH_SHORT).show()
                             }
                         )
                     }
