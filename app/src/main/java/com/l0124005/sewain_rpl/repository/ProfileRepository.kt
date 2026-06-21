@@ -40,10 +40,15 @@ class ProfileRepository {
             if (response.isSuccessful && response.body() != null) {
                 emit(Resource.Success(response.body()!!))
             } else {
-                emit(Resource.Error(response.message()))
+                val errMsg = try {
+                    response.errorBody()?.string()?.let {
+                        org.json.JSONObject(it).optString("message", response.message())
+                    } ?: response.message()
+                } catch (e: Exception) { response.message() }
+                emit(Resource.Error(errMsg ?: "Gagal memperbarui profil"))
             }
         } catch (e: Exception) {
-            emit(Resource.Error(e.message ?: "An error occurred"))
+            emit(Resource.Error(e.message ?: "Koneksi gagal, coba lagi"))
         }
     }
 }

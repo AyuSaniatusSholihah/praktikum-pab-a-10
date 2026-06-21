@@ -25,15 +25,19 @@ class KeranjangRepository {
     fun addToKeranjang(token: String, request: AddToKeranjangRequest): Flow<Resource<KeranjangResponse>> = flow {
         emit(Resource.Loading())
         try {
-            // Token sudah mengandung "Bearer " dari SessionManager, jadi tidak perlu ditambah lagi
             val response = apiService.addToKeranjang(token, request)
             if (response.isSuccessful && response.body() != null) {
                 emit(Resource.Success(response.body()!!))
             } else {
-                emit(Resource.Error(response.message()))
+                val errMsg = try {
+                    response.errorBody()?.string()?.let {
+                        org.json.JSONObject(it).optString("message", response.message())
+                    } ?: response.message()
+                } catch (e: Exception) { response.message() }
+                emit(Resource.Error(errMsg ?: "Gagal menambahkan ke keranjang"))
             }
         } catch (e: Exception) {
-            emit(Resource.Error(e.message ?: "An error occurred"))
+            emit(Resource.Error(e.message ?: "Koneksi gagal, coba lagi"))
         }
     }
 
@@ -44,10 +48,15 @@ class KeranjangRepository {
             if (response.isSuccessful && response.body() != null) {
                 emit(Resource.Success(response.body()!!))
             } else {
-                emit(Resource.Error(response.message()))
+                val errMsg = try {
+                    response.errorBody()?.string()?.let {
+                        org.json.JSONObject(it).optString("message", response.message())
+                    } ?: response.message()
+                } catch (e: Exception) { response.message() }
+                emit(Resource.Error(errMsg ?: "Gagal memperbarui keranjang"))
             }
         } catch (e: Exception) {
-            emit(Resource.Error(e.message ?: "An error occurred"))
+            emit(Resource.Error(e.message ?: "Koneksi gagal, coba lagi"))
         }
     }
 
@@ -58,10 +67,15 @@ class KeranjangRepository {
             if (response.isSuccessful && response.body() != null) {
                 emit(Resource.Success(response.body()!!))
             } else {
-                emit(Resource.Error(response.message()))
+                val errMsg = try {
+                    response.errorBody()?.string()?.let {
+                        org.json.JSONObject(it).optString("message", response.message())
+                    } ?: response.message()
+                } catch (e: Exception) { response.message() }
+                emit(Resource.Error(errMsg ?: "Gagal menghapus item keranjang"))
             }
         } catch (e: Exception) {
-            emit(Resource.Error(e.message ?: "An error occurred"))
+            emit(Resource.Error(e.message ?: "Koneksi gagal, coba lagi"))
         }
     }
 

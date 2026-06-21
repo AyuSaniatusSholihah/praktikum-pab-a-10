@@ -101,6 +101,7 @@ fun CheckoutPaymentScreen(
     profileViewModel: ProfileViewModel,
     transaksiViewModel: TransaksiViewModel,
     selectedItems: List<KeranjangItem> = emptyList(),
+    checkoutProductId: Int = -1,
     onEditProfile: () -> Unit,
     onBack: () -> Unit,
     onCheckoutStarted: (CheckoutFormData) -> Unit = {}
@@ -125,7 +126,13 @@ fun CheckoutPaymentScreen(
     val displayItems = if (selectedItems.isNotEmpty()) {
         selectedItems.map { it.toCartItem() }
     } else {
-        (keranjangState as? Resource.Success)?.data?.data?.items?.map { it.toCartItem() } ?: emptyList()
+        val items = (keranjangState as? Resource.Success)?.data?.data?.items ?: emptyList()
+        if (checkoutProductId != -1) {
+            val matchedItem = items.lastOrNull { it.barang?.id == checkoutProductId }
+            if (matchedItem != null) listOf(matchedItem.toCartItem()) else emptyList()
+        } else {
+            items.map { it.toCartItem() }
+        }
     }
 
     CheckoutPaymentUI(
@@ -135,7 +142,8 @@ fun CheckoutPaymentScreen(
         onPayNow = { formData ->
             // Data form sudah siap digunakan untuk integrasi ke API checkout
             onCheckoutStarted(formData)
-            transaksiViewModel.checkout(token)
+            val keranjangIds = displayItems.map { it.id }
+            transaksiViewModel.checkout(token, keranjangIds)
         },
         onBack = onBack
     )

@@ -99,9 +99,18 @@ fun KeranjangScreen(
 
     LaunchedEffect(keranjangState) {
         val data = (keranjangState as? Resource.Success)?.data?.data
-        if (data != null && !initialized) {
-            checkedIds  = data.items.map { it.id }.toSet()
-            initialized = true
+        if (data != null) {
+            if (!initialized) {
+                // First load: select all items
+                checkedIds  = data.items.map { it.id }.toSet()
+                initialized = true
+            } else {
+                // After add/remove: keep existing selections and auto-select newly added items
+                val existingIds = checkedIds
+                val allCurrentIds = data.items.map { it.id }.toSet()
+                val newIds = allCurrentIds - existingIds
+                checkedIds = existingIds.intersect(allCurrentIds) + newIds
+            }
         }
     }
 

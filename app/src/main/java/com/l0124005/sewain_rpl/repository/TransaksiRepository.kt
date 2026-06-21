@@ -38,10 +38,10 @@ class TransaksiRepository {
         }
     }
 
-    fun checkout(token: String): Flow<Resource<CheckoutResponse>> = flow {
+    fun checkout(token: String, keranjangIds: List<Int>? = null): Flow<Resource<CheckoutResponse>> = flow {
         emit(Resource.Loading())
         try {
-            val response = apiService.checkout(token)
+            val response = apiService.checkout(token, CheckoutRequest(keranjangIds))
             if (response.isSuccessful && response.body() != null) {
                 emit(Resource.Success(response.body()!!))
             } else {

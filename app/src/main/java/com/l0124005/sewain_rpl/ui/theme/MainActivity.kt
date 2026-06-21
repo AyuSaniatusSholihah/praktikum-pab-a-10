@@ -77,6 +77,7 @@ data class ScreenTarget(val screen: Screen, val id: Long = System.currentTimeMil
 
 class MainActivity : ComponentActivity() {
     private val _initialScreen = mutableStateOf(ScreenTarget(Screen.Home))
+    private val _checkoutProductId = mutableStateOf(-1)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -92,6 +93,7 @@ class MainActivity : ComponentActivity() {
         }
 
         val screenStr = intent.getStringExtra("TARGET_SCREEN")
+        _checkoutProductId.value = intent.getIntExtra("PRODUCT_ID", -1)
         _initialScreen.value = ScreenTarget(getScreenFromStr(screenStr))
 
         enableEdgeToEdge()
@@ -112,6 +114,7 @@ class MainActivity : ComponentActivity() {
                     keranjangViewModel = keranjangViewModel,
                     transaksiViewModel = transaksiViewModel,
                     initialScreen = _initialScreen.value,
+                    initialCheckoutProductId = _checkoutProductId.value,
                     onLogout = {
                         sessionManager.clearSession()
                         val intent = Intent(this@MainActivity, LoginActivity::class.java)
@@ -128,6 +131,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         val screenStr = intent.getStringExtra("TARGET_SCREEN")
         if (screenStr != null) {
+            _checkoutProductId.value = intent.getIntExtra("PRODUCT_ID", -1)
             _initialScreen.value = ScreenTarget(getScreenFromStr(screenStr))
         }
     }
@@ -154,6 +158,7 @@ fun MainContainer(
     keranjangViewModel: KeranjangViewModel,
     transaksiViewModel: TransaksiViewModel,
     initialScreen: ScreenTarget = ScreenTarget(Screen.Home),
+    initialCheckoutProductId: Int = -1,
     onLogout: () -> Unit
 ) {
     val context = LocalContext.current
@@ -161,9 +166,6 @@ fun MainContainer(
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(initialScreen) {
-        currentScreen = initialScreen.screen
-    }
 
     val checkoutState by transaksiViewModel.checkoutState.observeAsState()
 
@@ -185,6 +187,15 @@ fun MainContainer(
     var selectedTransaksiIdsForPayment by remember { mutableStateOf<List<Int>>(emptyList()) }
     var selectedItemsForCheckout by remember { mutableStateOf<List<com.l0124005.sewain_rpl.network.KeranjangItem>>(emptyList()) }
     var pendingCheckoutFormData by remember { mutableStateOf<com.l0124005.sewain_rpl.ui.theme.checkout.CheckoutFormData?>(null) }
+    var checkoutProductId by remember { mutableStateOf(initialCheckoutProductId) }
+
+    // Update checkoutProductId whenever a new initial screen is set (i.e., from a new intent)
+    LaunchedEffect(initialScreen) {
+        currentScreen = initialScreen.screen
+        if (initialScreen.screen == Screen.CheckoutPayment) {
+            checkoutProductId = initialCheckoutProductId
+        }
+    }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -270,6 +281,7 @@ fun MainContainer(
                     onBack = { currentScreen = Screen.Home },
                     onCheckout = { selectedItems ->
                         selectedItemsForCheckout = selectedItems
+                        checkoutProductId = -1
                         currentScreen = Screen.CheckoutPayment
                     }
                 )
@@ -280,6 +292,7 @@ fun MainContainer(
                         profileViewModel = profileViewModel,
                         transaksiViewModel = transaksiViewModel,
                         selectedItems = selectedItemsForCheckout,
+                        checkoutProductId = checkoutProductId,
                         onEditProfile = {
                             currentScreen = Screen.Profile
                         },
