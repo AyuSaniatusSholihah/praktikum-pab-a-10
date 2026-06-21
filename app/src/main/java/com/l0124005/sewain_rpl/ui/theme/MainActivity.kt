@@ -199,15 +199,22 @@ fun MainContainer(
     var selectedTransaksiId by remember { mutableStateOf<Int?>(null) }
     var selectedTransaksiIdsForPayment by remember { mutableStateOf<List<Int>>(emptyList()) }
     var initialSearchQuery by remember { mutableStateOf("") }
+    var initialCategory by remember { mutableStateOf("Semua") }
 
     val keranjangState by keranjangViewModel.keranjang.observeAsState()
+    val addToCartState by keranjangViewModel.addToCartState.observeAsState()
     val checkoutState by transaksiViewModel.checkoutState.observeAsState()
 
     LaunchedEffect(initialScreen) {
         currentScreen = initialScreen.screen
         if (initialScreen.screen == Screen.CheckoutPayment && initialScreen.productId != null) {
             keranjangViewModel.getKeranjang(token)
-        } else if (initialScreen.screen == Screen.Keranjang) {
+        }
+    }
+
+    // Setiap kali user masuk ke tab Keranjang, langsung fetch ulang data keranjang
+    LaunchedEffect(currentScreen) {
+        if (currentScreen == Screen.Keranjang) {
             keranjangViewModel.getKeranjang(token)
         }
     }
@@ -222,13 +229,18 @@ fun MainContainer(
                 Toast.makeText(context, "Produk tidak ditemukan di keranjang", Toast.LENGTH_SHORT).show()
                 currentScreen = Screen.Home
             }
-            keranjangViewModel.resetStates()
-        } else if (keranjangState is Resource.Success) {
+            // Hanya reset action states, JANGAN reset keranjang state
+            keranjangViewModel.resetActionStates()
+        }
+    }
+
+    LaunchedEffect(addToCartState) {
+        if (addToCartState is Resource.Success) {
             Toast.makeText(context, "Berhasil ditambahkan ke keranjang!", Toast.LENGTH_SHORT).show()
-            keranjangViewModel.resetStates()
-        } else if (keranjangState is Resource.Error) {
-            Toast.makeText(context, "Gagal: ${keranjangState?.message}", Toast.LENGTH_SHORT).show()
-            keranjangViewModel.resetStates()
+            keranjangViewModel.resetActionStates()
+        } else if (addToCartState is Resource.Error) {
+            Toast.makeText(context, "Gagal: ${addToCartState?.message}", Toast.LENGTH_SHORT).show()
+            keranjangViewModel.resetActionStates()
         }
     }
 
@@ -305,6 +317,12 @@ fun MainContainer(
                         },
                         onSeeAllRentals = { query ->
                             initialSearchQuery = query ?: ""
+                            initialCategory = "Semua"
+                            currentScreen = Screen.Rental
+                        },
+                        onCategoryClick = { category ->
+                            initialCategory = category
+                            initialSearchQuery = ""
                             currentScreen = Screen.Rental
                         },
                         onProductClick = { productId: Int ->
@@ -319,6 +337,7 @@ fun MainContainer(
                         viewModel = katalogViewModel,
                         keranjangViewModel = keranjangViewModel,
                         initialSearchQuery = initialSearchQuery,
+                        initialCategory = initialCategory,
                         onItemClick = { id ->
                             val intent = Intent(context, DetailProdukActivity::class.java).apply {
                                 putExtra("EXTRA_PRODUCT_ID", id)
@@ -506,6 +525,7 @@ fun HomeScreenContent(
     onMenuClick: () -> Unit,
     onCartClick: () -> Unit,
     onSeeAllRentals: (String?) -> Unit,
+    onCategoryClick: (String) -> Unit,
     onProductClick: (Int) -> Unit
 ) {
     val katalogState by katalogViewModel.katalogPublik.observeAsState(Resource.Loading())
@@ -552,7 +572,7 @@ fun HomeScreenContent(
         // jadi 3 ikon "Wide Range / Easy & Fast Booking / 24/7 Support" hilang dari app.
         FeaturesSection()
         Spacer(modifier = Modifier.height(48.dp))
-        CategoriesSection(kategoriState = kategoriState)
+        CategoriesSection(kategoriState = kategoriState, onCategoryClick = onCategoryClick)
         Spacer(modifier = Modifier.height(48.dp))
         val context = LocalContext.current
         RentItemsSection(
@@ -846,7 +866,7 @@ private fun FeatureItem(icon: ImageVector, title: String, desc: String) {
 }
 
 @Composable
-fun CategoriesSection(kategoriState: Resource<KategoriListResponse>?) {
+fun CategoriesSection(kategoriState: Resource<KategoriListResponse>?, onCategoryClick: (String) -> Unit) {
     val categories = (kategoriState as? Resource.Success)?.data?.data ?: emptyList()
 
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -866,7 +886,7 @@ fun CategoriesSection(kategoriState: Resource<KategoriListResponse>?) {
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(categories) { category ->
-                        CategoryCard(category.nama_kategori, Modifier.width(160.dp))
+                        CategoryCard(category.nama_kategori, Modifier.width(160.dp), onClick = { onCategoryClick(category.nama_kategori) })
                     }
                 }
             }
@@ -903,7 +923,7 @@ private fun categoryImage(name: String): Int = when (name.trim().lowercase()) {
     else          -> R.drawable.produk_apple
 }
 @Composable
-private fun CategoryCard(name: String, modifier: Modifier) {
+private fun CategoryCard(name: String, modifier: Modifier, onClick: () -> Unit) {
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             modifier = Modifier
@@ -924,7 +944,7 @@ private fun CategoryCard(name: String, modifier: Modifier) {
         Text(categoryDescription(name), fontSize = 11.sp, color = HomeColors.TextDark, textAlign = TextAlign.Center, lineHeight = 15.sp)
         Spacer(modifier = Modifier.height(10.dp))
         OutlinedButton(
-            onClick = {},
+            onClick = onClick,
             shape = RoundedCornerShape(6.dp),
             border = BorderStroke(1.dp, Color(0xFFD8D8D8)),
             colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White, contentColor = HomeColors.TextBody),
@@ -1276,7 +1296,7 @@ fun HomeScreenPreview() {
                     )
                 )
             )
-            CategoriesSection(kategoriState = dummyKategori)
+            CategoriesSection(kategoriState = dummyKategori, onCategoryClick = {})
 
             Spacer(modifier = Modifier.height(48.dp))
 
