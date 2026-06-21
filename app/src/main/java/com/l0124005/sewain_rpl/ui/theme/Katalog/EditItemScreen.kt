@@ -59,11 +59,15 @@ fun EditItemScreen(
     var existingImageUrl by remember { mutableStateOf("") }
     var showCategorySheet by remember { mutableStateOf(false) }
 
+    // Snackbar untuk menampilkan pesan error / sukses
+    val snackbarHostState = remember { SnackbarHostState() }
+
     LaunchedEffect(Unit) {
         viewModel.getMyKatalogDetail(token, itemId)
         viewModel.getKategori()
     }
 
+    // Isi form dengan data dari server saat detail berhasil dimuat
     LaunchedEffect(itemDetailState, kategoriResult) {
         if (itemDetailState is Resource.Success) {
             val data = itemDetailState?.data?.data
@@ -88,9 +92,18 @@ fun EditItemScreen(
         }
     }
 
+    // Observer hasil CRUD: tampilkan snackbar error atau navigasi jika sukses
     LaunchedEffect(crudResult) {
-        if (crudResult is Resource.Success) {
-            onSuccess()
+        when (val result = crudResult) {
+            is Resource.Success -> {
+                snackbarHostState.showSnackbar("Berhasil menyimpan perubahan!")
+                onSuccess()
+            }
+            is Resource.Error -> {
+                val msg = result.message ?: "Terjadi kesalahan, coba lagi."
+                snackbarHostState.showSnackbar("Gagal menyimpan: $msg")
+            }
+            else -> {}
         }
     }
 
@@ -108,12 +121,36 @@ fun EditItemScreen(
                     }
                 }
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { padding ->
         Column(
             modifier = Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            
+            // Tampilkan error saat fetch detail
+            if (itemDetailState is Resource.Error) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Gagal memuat data: ${(itemDetailState as Resource.Error).message}",
+                        color = Color(0xFFB71C1C),
+                        modifier = Modifier.padding(12.dp)
+                    )
+                }
+            }
+
+            // Loading saat memuat detail
+            if (itemDetailState is Resource.Loading) {
+                Box(modifier = Modifier.fillMaxWidth().height(60.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            }
+
+            // Foto Barang
             Box(
                 modifier = Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(8.dp)).background(Color.LightGray).clickable { imageLauncher.launch("image/*") },
                 contentAlignment = Alignment.Center
@@ -123,11 +160,17 @@ fun EditItemScreen(
                 } else if (existingImageUrl.isNotEmpty()) {
                     AsyncImage(model = "${ApiClient.IMAGE_BASE_URL}$existingImageUrl", contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                 } else {
-                    Icon(Icons.Outlined.CameraAlt, contentDescription = null, modifier = Modifier.size(48.dp))
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.Outlined.CameraAlt, contentDescription = null, modifier = Modifier.size(48.dp))
+                        Text("Ketuk untuk ganti foto", color = Color.DarkGray)
+                    }
                 }
             }
 
-            OutlinedTextField(value = itemName, onValueChange = { itemName = it }, label = { Text("Nama Barang") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = itemName, onValueChange = { itemName = it }, label = { Text("Nama Barang") }, modifier = Modifier.fillMaxWidth(), isError = itemName.isBlank())
+            if (itemName.isBlank()) {
+                Text("Nama barang wajib diisi", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            }
             
             // Kategori
             OutlinedTextField(
@@ -146,11 +189,11 @@ fun EditItemScreen(
                 )
             )
 
-            OutlinedTextField(value = priceSewa, onValueChange = { priceSewa = it }, label = { Text("Harga Sewa / Hari") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = priceJaminan, onValueChange = { priceJaminan = it }, label = { Text("Harga Jaminan") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = priceDenda, onValueChange = { priceDenda = it }, label = { Text("Denda / Jam") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = stock, onValueChange = { stock = it }, label = { Text("Stok") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = location, onValueChange = { location = it }, label = { Text("Lokasi") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = priceSewa, onValueChange = { priceSewa = it.filter { c -> c.isDigit() } }, label = { Text("Harga Sewa / Hari") }, modifier = Modifier.fillMaxWidth(), isError = priceSewa.isBlank())
+            OutlinedTextField(value = priceJaminan, onValueChange = { priceJaminan = it.filter { c -> c.isDigit() } }, label = { Text("Harga Jaminan") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = priceDenda, onValueChange = { priceDenda = it.filter { c -> c.isDigit() } }, label = { Text("Denda / Jam") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = stock, onValueChange = { stock = it.filter { c -> c.isDigit() } }, label = { Text("Stok") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = location, onValueChange = { location = it }, label = { Text("Lokasi") }, modifier = Modifier.fillMaxWidth(), isError = location.isBlank())
             OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Deskripsi") }, modifier = Modifier.fillMaxWidth(), minLines = 3)
             OutlinedTextField(value = additionalInformation, onValueChange = { additionalInformation = it }, label = { Text("Informasi Tambahan") }, modifier = Modifier.fillMaxWidth(), minLines = 3)
 
@@ -172,15 +215,27 @@ fun EditItemScreen(
                 }
             }
 
+            // Tombol Simpan
+            val isFormValid = itemName.isNotBlank() && priceSewa.isNotBlank() && location.isNotBlank()
+            val isSaving = crudResult is Resource.Loading
+
             Button(
                 onClick = {
+                    // Validasi input sebelum mengirim ke server
+                    if (!isFormValid) {
+                        return@Button
+                    }
+
+                    // Reset state lama agar tidak memicu onSuccess() dari hasil sebelumnya
+                    viewModel.resetStates()
+
                     val namePart = itemName.toRequestBody("text/plain".toMediaTypeOrNull())
                     val catPart = categoryId.toString().toRequestBody("text/plain".toMediaTypeOrNull())
                     
-                    val cleanSewa = priceSewa.filter { it.isDigit() }.ifEmpty { "0" }
-                    val cleanJaminan = priceJaminan.filter { it.isDigit() }.ifEmpty { "0" }
-                    val cleanDenda = priceDenda.filter { it.isDigit() }.ifEmpty { "0" }
-                    val cleanStock = stock.filter { it.isDigit() }.ifEmpty { "1" }
+                    val cleanSewa = priceSewa.ifEmpty { "0" }
+                    val cleanJaminan = priceJaminan.ifEmpty { "0" }
+                    val cleanDenda = priceDenda.ifEmpty { "0" }
+                    val cleanStock = stock.ifEmpty { "1" }
 
                     val sewaPart = cleanSewa.toRequestBody("text/plain".toMediaTypeOrNull())
                     val jaminanPart = cleanJaminan.toRequestBody("text/plain".toMediaTypeOrNull())
@@ -204,10 +259,22 @@ fun EditItemScreen(
                     viewModel.updateKatalog(token, itemId, catPart, namePart, descPart, sewaPart, jaminanPart, dendaPart, stokPart, locPart, addInfoPart, imagePart, statusPart)
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = crudResult !is Resource.Loading
+                enabled = !isSaving && isFormValid
             ) {
-                if (crudResult is Resource.Loading) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
-                else Text("Simpan Perubahan")
+                if (isSaving) {
+                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                } else {
+                    Text("Simpan Perubahan")
+                }
+            }
+
+            // Pesan jika form belum valid
+            if (!isFormValid) {
+                Text(
+                    text = "Lengkapi field yang wajib diisi (Nama, Harga Sewa, Lokasi)",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
         }
     }

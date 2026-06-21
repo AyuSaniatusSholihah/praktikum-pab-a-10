@@ -395,7 +395,11 @@ fun MainContainer(
                             token = token,
                             itemId = it.id,
                             onBack = { currentScreen = Screen.MyKatalog },
-                            onSuccess = { currentScreen = Screen.MyKatalog }
+                            onSuccess = {
+                                // Refresh daftar katalog dari server agar perubahan tampil
+                                katalogViewModel.getMyKatalog(token)
+                                currentScreen = Screen.MyKatalog
+                            }
                         )
                     }
                     Screen.MyKatalog -> MyKatalogScreen(

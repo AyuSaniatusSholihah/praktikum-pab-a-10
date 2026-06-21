@@ -9,9 +9,9 @@ import java.util.concurrent.TimeUnit
 object ApiClient {
 
     // Ganti IP di bawah sesuai dengan IP Laptop Anda (cek cmd: ipconfig)
-    private const val IP_LAPTOP = "10.76.36.196" // IP Wi-Fi Anda sekarang
+    private const val IP_LAPTOP = "10.39.247.248" // IP Wi-Fi Anda sekarang
 
-    // Jika pakai emulator gunakan "10.0.2.2", jika HP fisik gunakan IP_LAPTOP
+    // Jika pakai emulator gunakan "10.39.247.248", jika HP fisik gunakan IP_LAPTOP
     private const val BASE_URL = "http://$IP_LAPTOP:8000/api/"
 
     // URL tanpa /api/ — untuk load gambar
