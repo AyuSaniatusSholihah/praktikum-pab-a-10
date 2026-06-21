@@ -519,7 +519,7 @@ fun HomeScreenContent(
         HomeTopBar(onLogout = onLogout, onMenuClick = onMenuClick)
         HeroCollage(onSeeAllRentals)
         Spacer(modifier = Modifier.height(20.dp))
-        SearchCard()
+        SearchCard(onSearchClick = onSeeAllRentals)
         Spacer(modifier = Modifier.height(36.dp))
         BrandLogosSection()
         Spacer(modifier = Modifier.height(36.dp))
@@ -654,7 +654,7 @@ fun HeroCollage(onRentNow: () -> Unit) {
 }
 
 @Composable
-fun SearchCard() {
+fun SearchCard(onSearchClick: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
         colors = CardDefaults.cardColors(containerColor = HomeColors.Background),
@@ -671,7 +671,7 @@ fun SearchCard() {
             SearchFieldItem("Return", "20 July 2024", Icons.Default.CalendarMonth, true)
             Spacer(modifier = Modifier.height(20.dp))
             Button(
-                onClick = { },
+                onClick = onSearchClick,
                 modifier = Modifier.fillMaxWidth().height(48.dp),
                 shape = RoundedCornerShape(999.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = HomeColors.Accent)
