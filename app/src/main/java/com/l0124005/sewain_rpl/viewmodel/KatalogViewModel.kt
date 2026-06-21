@@ -31,6 +31,9 @@ class KatalogViewModel(private val repository: KatalogRepository) : ViewModel() 
     private val _kategori = MutableLiveData<Resource<KategoriListResponse>?>()
     val kategori: LiveData<Resource<KategoriListResponse>?> = _kategori
 
+    private val _extractedKategori = MutableLiveData<List<String>>(emptyList())
+    val extractedKategori: LiveData<List<String>> = _extractedKategori
+
     fun resetStates() {
         _katalogPublik.value = null
         _myKatalog.value = null
@@ -38,6 +41,11 @@ class KatalogViewModel(private val repository: KatalogRepository) : ViewModel() 
         _crudResult.value = null
         _deleteResult.value = null
         _kategori.value = null
+    }
+
+    // Hanya reset crudResult agar state katalog & kategori tidak hilang saat simpan
+    fun resetCrudResult() {
+        _crudResult.value = null
     }
 
     fun getKategori() {

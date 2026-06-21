@@ -78,117 +78,161 @@ fun MyKatalogScreen(
     onItemClick: (CatalogData) -> Unit = {}
 ) {
     var searchQuery by remember { mutableStateOf("") }
+    var itemToDelete by remember { mutableStateOf<CatalogData?>(null) }
 
     val myKatalogState by viewModel.myKatalog.observeAsState(Resource.Loading())
     val profileState by profileViewModel.profile.observeAsState()
+    val deleteResult by viewModel.deleteResult.observeAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         viewModel.getMyKatalog(token)
         profileViewModel.getProfile(token)
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(White)
-    ) {
-        // ── Top Bar ──
-        SewainTopBar()
-
-        when (val state = myKatalogState) {
-            is Resource.Loading -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = BluePrimary)
-                }
+    // Refresh list setelah delete berhasil
+    LaunchedEffect(deleteResult) {
+        when (deleteResult) {
+            is Resource.Success -> {
+                snackbarHostState.showSnackbar("Barang berhasil dihapus")
+                viewModel.getMyKatalog(token)
             }
             is Resource.Error -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(text = state.message ?: "Terjadi kesalahan", color = Color.Red)
-                }
+                snackbarHostState.showSnackbar("Gagal menghapus: ${(deleteResult as Resource.Error).message}")
             }
-            is Resource.Success -> {
-                val allItems = state.data?.data ?: emptyList()
-                val filteredItems = remember(searchQuery, allItems) {
-                    if (searchQuery.isBlank()) allItems
-                    else allItems.filter {
-                        it.nama_barang.contains(searchQuery, ignoreCase = true) ||
-                                it.lokasi.contains(searchQuery, ignoreCase = true)
-                    }
-                }
-
-                LazyColumn(
-                    modifier            = Modifier.fillMaxSize(),
-                    contentPadding      = PaddingValues(bottom = 80.dp)
-                ) {
-                    // ── Profile Card ──
-                    item {
-                        val user = (profileState as? Resource.Success)?.data?.data
-                        ProfileCard(
-                            modifier = Modifier.padding(16.dp),
-                            nama          = user?.name ?: "Loading...",
-                            lokasi        = user?.alamat ?: (if (allItems.isNotEmpty()) allItems[0].lokasi else "Unknown"),
-                            rating        = 4.5f,
-                            totalUlasan   = 12,
-                            jumlahKatalog = allItems.size,
-                            whatsapp      = user?.phone_number ?: ""
-                        )
-                    }
-
-                    // ── Search Bar ──
-                    item {
-                        MyKatalogSearchBar(
-                            query         = searchQuery,
-                            onQueryChange = { searchQuery = it }
-                        )
-                    }
-
-                    // ── Tombol Tambah ──
-                    item {
-                        AddItemButton(onClick = onAddItem)
-                    }
-
-                    // ── Label jumlah ──
-                    item {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text       = "${filteredItems.size} Barang",
-                                fontSize   = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color      = Black,
-                                fontFamily = Volkhov
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text     = "di katalogmu",
-                                fontSize = 13.sp,
-                                color    = TextMuted
-                            )
-                        }
-                    }
-
-                    // ── List Katalog ──
-                    if (filteredItems.isEmpty()) {
-                        item { MyKatalogEmpty() }
-                    } else {
-                        items(filteredItems) { item ->
-                            MyKatalogCard(
-                                item            = item,
-                                onClick         = { onItemClick(item) },
-                                onEditClick     = { onEditItem(item) },
-                                onDeleteClick   = {
-                                    viewModel.deleteKatalog(token, item.id)
-                                    viewModel.getMyKatalog(token) // Refresh
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-
             else -> {}
+        }
+    }
+
+    // Dialog konfirmasi hapus
+    itemToDelete?.let { barang ->
+        AlertDialog(
+            onDismissRequest = { itemToDelete = null },
+            title = { Text("Hapus Barang", fontWeight = FontWeight.Bold, color = Black) },
+            text = { Text("Yakin ingin menghapus \"${barang.nama_barang}\"? Tindakan ini tidak bisa dibatalkan.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteKatalog(token, barang.id)
+                        itemToDelete = null
+                    }
+                ) {
+                    Text("Hapus", color = Color(0xFFE24B4A), fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { itemToDelete = null }) {
+                    Text("Batal", color = Primary)
+                }
+            }
+        )
+    }
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .background(White)
+        ) {
+            // ── Top Bar ──
+            SewainTopBar()
+
+            when (val state = myKatalogState) {
+                is Resource.Loading -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = BluePrimary)
+                    }
+                }
+                is Resource.Error -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(text = state.message ?: "Terjadi kesalahan", color = Color.Red)
+                    }
+                }
+                is Resource.Success -> {
+                    val allItems = state.data?.data ?: emptyList()
+                    val filteredItems = remember(searchQuery, allItems) {
+                        if (searchQuery.isBlank()) allItems
+                        else allItems.filter {
+                            it.nama_barang.contains(searchQuery, ignoreCase = true) ||
+                                    it.lokasi.contains(searchQuery, ignoreCase = true)
+                        }
+                    }
+
+                    LazyColumn(
+                        modifier            = Modifier.fillMaxSize(),
+                        contentPadding      = PaddingValues(bottom = 80.dp)
+                    ) {
+                        // ── Profile Card ──
+                        item {
+                            val user = (profileState as? Resource.Success)?.data?.data
+                            ProfileCard(
+                                modifier = Modifier.padding(16.dp),
+                                nama          = user?.name ?: "Loading...",
+                                lokasi        = user?.alamat ?: (if (allItems.isNotEmpty()) allItems[0].lokasi else "Unknown"),
+                                rating        = 4.5f,
+                                totalUlasan   = 12,
+                                jumlahKatalog = allItems.size,
+                                whatsapp      = user?.phone_number ?: ""
+                            )
+                        }
+
+                        // ── Search Bar ──
+                        item {
+                            MyKatalogSearchBar(
+                                query         = searchQuery,
+                                onQueryChange = { searchQuery = it }
+                            )
+                        }
+
+                        // ── Tombol Tambah ──
+                        item {
+                            AddItemButton(onClick = onAddItem)
+                        }
+
+                        // ── Label jumlah ──
+                        item {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text       = "${filteredItems.size} Barang",
+                                    fontSize   = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color      = Black,
+                                    fontFamily = Volkhov
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text     = "di katalogmu",
+                                    fontSize = 13.sp,
+                                    color    = TextMuted
+                                )
+                            }
+                        }
+
+                        // ── List Katalog ──
+                        if (filteredItems.isEmpty()) {
+                            item { MyKatalogEmpty() }
+                        } else {
+                            items(filteredItems) { item ->
+                                MyKatalogCard(
+                                    item            = item,
+                                    onClick         = { onItemClick(item) },
+                                    onEditClick     = { onEditItem(item) },
+                                    onDeleteClick   = { itemToDelete = item }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                else -> {}
+            }
         }
     }
 }
