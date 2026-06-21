@@ -34,6 +34,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.l0124005.sewain_rpl.network.ApiClient
 import com.l0124005.sewain_rpl.network.CatalogData
+import com.l0124005.sewain_rpl.network.KatalogListResponse
+import com.l0124005.sewain_rpl.network.KategoriListResponse
+import com.l0124005.sewain_rpl.network.KeranjangResponse
 import com.l0124005.sewain_rpl.repository.KatalogRepository
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.viewmodel.KatalogViewModel
@@ -105,19 +108,20 @@ fun RentalsScreen(
     onItemClick: (CatalogData) -> Unit
 ) {
     val context = LocalContext.current
-    val addToCartState by keranjangViewModel.addToCartState.observeAsState()
-    val kategoriResult by viewModel.kategori.observeAsState()
+    val addToCartState by keranjangViewModel.addToCartState.observeAsState<Resource<KeranjangResponse>?, Resource<KeranjangResponse>?>(initial = null)
+    val kategoriResult by viewModel.kategori.observeAsState<Resource<KategoriListResponse>?, Resource<KategoriListResponse>?>(initial = null)
 
     LaunchedEffect(Unit) {
         viewModel.getKategori()
     }
 
     LaunchedEffect(addToCartState) {
-        if (addToCartState is Resource.Success) {
+        val state = addToCartState
+        if (state is Resource.Success) {
             Toast.makeText(context, "Berhasil ditambahkan ke keranjang!", Toast.LENGTH_SHORT).show()
             keranjangViewModel.resetActionStates()
-        } else if (addToCartState is Resource.Error) {
-            Toast.makeText(context, "Gagal: ${addToCartState?.message}", Toast.LENGTH_SHORT).show()
+        } else if (state is Resource.Error) {
+            Toast.makeText(context, "Gagal: ${state.message}", Toast.LENGTH_SHORT).show()
             keranjangViewModel.resetActionStates()
         }
     }
@@ -126,8 +130,8 @@ fun RentalsScreen(
     var debouncedSearchQuery by remember { mutableStateOf("") }
     var activeKategori by remember { mutableStateOf("Semua") }
 
-    val katalogState by viewModel.katalogPublik.observeAsState(Resource.Loading())
-    val extractedKategori by viewModel.extractedKategori.observeAsState(emptyList())
+    val katalogState by viewModel.katalogPublik.observeAsState<Resource<KatalogListResponse>?, Resource<KatalogListResponse>?>(initial = Resource.Loading<KatalogListResponse>())
+    val extractedKategori by viewModel.extractedKategori.observeAsState<List<String>, List<String>>(initial = emptyList<String>())
 
     // Debounce search query
     LaunchedEffect(searchQuery) {
