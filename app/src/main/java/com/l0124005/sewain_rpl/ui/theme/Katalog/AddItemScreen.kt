@@ -57,11 +57,14 @@ fun AddItemScreen(
 
     val crudResult by viewModel.crudResult.observeAsState()
     val kategoriResult by viewModel.kategori.observeAsState()
+    val extractedKategori by viewModel.extractedKategori.observeAsState(emptyList())
     val profileState by profileViewModel.profile.observeAsState()
 
     LaunchedEffect(Unit) {
         profileViewModel.getProfile(token)
         viewModel.getKategori()
+        // Panggil katalog publik untuk memastikan extractedKategori terisi sebagai fallback
+        viewModel.getKatalogPublik()
     }
 
     LaunchedEffect(crudResult) {
@@ -335,32 +338,31 @@ fun AddItemScreen(
 
     // ---- CATEGORY BOTTOM SHEET ----
     if (showCategorySheet) {
-        when (kategoriResult) {
-            is Resource.Success -> {
-                val list = kategoriResult?.data?.data ?: emptyList()
-                CategoryBottomSheetDynamic(
-                    categories = list,
-                    selectedCategoryId = form.categoryId,
-                    onSelect = { selectedId, selectedName ->
-                        form = form.copy(
-                            category = selectedName,
-                            categoryId = selectedId.toString()
-                        )
-                        showCategorySheet = false
-                    },
-                    onDismiss = { showCategorySheet = false }
-                )
-            }
-            is Resource.Loading -> {
-                // Bisa tambahkan loading indicator jika perlu
-            }
-            is Resource.Error -> {
-                Toast.makeText(context, "Gagal memuat kategori: ${kategoriResult?.message}", Toast.LENGTH_SHORT).show()
+        val availableCategories = if (kategoriResult is Resource.Success) {
+            kategoriResult?.data?.data ?: emptyList()
+        } else {
+            extractedKategori
+        }
+
+        if (availableCategories.isNotEmpty()) {
+            CategoryBottomSheetDynamic(
+                categories = availableCategories,
+                selectedCategoryId = form.categoryId,
+                onSelect = { selectedId, selectedName ->
+                    form = form.copy(
+                        category = selectedName,
+                        categoryId = selectedId.toString()
+                    )
+                    showCategorySheet = false
+                },
+                onDismiss = { showCategorySheet = false }
+            )
+        } else {
+            if (kategoriResult is Resource.Loading) {
+                // Biarkan loading
+            } else if (kategoriResult is Resource.Error || kategoriResult == null) {
+                Toast.makeText(context, "Gagal memuat kategori. Pastikan Anda terhubung ke internet.", Toast.LENGTH_SHORT).show()
                 showCategorySheet = false
-            }
-            else -> {
-                // Jika null, panggil lagi
-                viewModel.getKategori()
             }
         }
     }

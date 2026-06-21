@@ -31,6 +31,9 @@ class KatalogViewModel(private val repository: KatalogRepository) : ViewModel() 
     private val _kategori = MutableLiveData<Resource<KategoriListResponse>?>()
     val kategori: LiveData<Resource<KategoriListResponse>?> = _kategori
 
+    private val _extractedKategori = MutableLiveData<List<KategoriData>>()
+    val extractedKategori: LiveData<List<KategoriData>> = _extractedKategori
+
     fun resetStates() {
         _katalogPublik.value = null
         _myKatalog.value = null
@@ -56,8 +59,14 @@ class KatalogViewModel(private val repository: KatalogRepository) : ViewModel() 
         maxHarga: Double? = null
     ) {
         viewModelScope.launch {
-            repository.getKatalogPublik(search, kategoriId, lokasi, minHarga, maxHarga).collect {
-                _katalogPublik.value = it
+            repository.getKatalogPublik(search, kategoriId, lokasi, minHarga, maxHarga).collect { resource ->
+                _katalogPublik.value = resource
+                if (resource is Resource.Success && resource.data != null) {
+                    val categories = resource.data.data
+                        .mapNotNull { it.kategori }
+                        .distinctBy { it.id }
+                    _extractedKategori.value = categories
+                }
             }
         }
     }

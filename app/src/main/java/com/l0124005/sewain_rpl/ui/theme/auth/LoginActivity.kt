@@ -126,7 +126,20 @@ fun LoginScreen(
                 onLoginSuccess()
             }
             is Resource.Error<*> -> {
-                Toast.makeText(context, (loginState as Resource.Error<*>).message ?: "Error", Toast.LENGTH_SHORT).show()
+                val errorMsg = (loginState as Resource.Error<*>).message ?: "Error"
+                if (errorMsg.startsWith("VERIFY_NEEDED|")) {
+                    val parts = errorMsg.split("|")
+                    val message = parts.getOrNull(1) ?: "Verifikasi email diperlukan"
+                    val email = parts.getOrNull(2) ?: ""
+                    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                    
+                    val intent = Intent(context, OtpActivity::class.java).apply {
+                        putExtra("EXTRA_EMAIL", email)
+                    }
+                    context.startActivity(intent)
+                } else {
+                    Toast.makeText(context, errorMsg, Toast.LENGTH_SHORT).show()
+                }
             }
             else -> {}
         }
