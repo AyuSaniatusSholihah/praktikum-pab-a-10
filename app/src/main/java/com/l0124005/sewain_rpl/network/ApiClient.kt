@@ -8,17 +8,12 @@ import java.util.concurrent.TimeUnit
 
 object ApiClient {
 
-    // Ganti IP di bawah sesuai dengan IP Laptop Anda (cek cmd: ipconfig)
-    private const val IP_LAPTOP = "10.76.36.196" // IP Wi-Fi Anda sekarang
-
-    // Jika pakai emulator gunakan "10.39.247.248", jika HP fisik gunakan IP_LAPTOP
-    private const val BASE_URL = "http://10.76.36.196:8000/api/"
-
-    // URL tanpa /api/ — untuk load gambar
-    const val IMAGE_BASE_URL = "http://10.76.36.196:8000/storage/"
+    // URL Produksi (Hostinger)
+    private const val BASE_URL = "https://sewain.thecompoint.com/api/"
+    const val IMAGE_BASE_URL = "https://sewain.thecompoint.com/storage/"
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
-        level = HttpLoggingInterceptor.Level.BODY
+        level = HttpLoggingInterceptor.Level.BASIC
     }
 
     private val okHttpClient = OkHttpClient.Builder()

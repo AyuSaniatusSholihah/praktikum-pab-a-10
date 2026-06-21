@@ -48,16 +48,24 @@ class KeranjangViewModel(private val repository: KeranjangRepository) : ViewMode
 
     fun updateKeranjangItem(token: String, id: Int, request: UpdateKeranjangRequest) {
         viewModelScope.launch {
-            repository.updateKeranjangItem(token, id, request).collect {
-                _keranjang.value = it
+            repository.updateKeranjangItem(token, id, request).collect { resource ->
+                if (resource is Resource.Success) {
+                    getKeranjang(token)
+                } else if (resource is Resource.Error) {
+                    _keranjang.value = resource
+                }
             }
         }
     }
 
     fun removeKeranjangItem(token: String, id: Int) {
         viewModelScope.launch {
-            repository.removeKeranjangItem(token, id).collect {
-                _keranjang.value = it
+            repository.removeKeranjangItem(token, id).collect { resource ->
+                if (resource is Resource.Success) {
+                    getKeranjang(token)
+                } else if (resource is Resource.Error) {
+                    _keranjang.value = resource
+                }
             }
         }
     }

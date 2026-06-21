@@ -131,7 +131,7 @@ fun KeranjangScreen(
 
                 is Resource.Success -> {
                     val data = state.data?.data
-                    if (data == null || data.items.isEmpty()) {
+                    if (data?.items.isNullOrEmpty()) {
                         EmptyCartSection(modifier = Modifier.weight(1f), onBrowseProducts = onBack)
                     } else {
                         val allChecked = data.items.all { it.id in checkedIds }
@@ -180,7 +180,16 @@ fun KeranjangScreen(
                                     },
                                     onRemove    = { viewModel.removeKeranjangItem(token, item.id) },
                                     onQtyChange = { newQty ->
-                                        viewModel.updateKeranjangItem(token, item.id, UpdateKeranjangRequest(jumlah = newQty))
+                                        val formattedToken = if (token.startsWith("Bearer ")) token else "Bearer $token"
+                                        viewModel.updateKeranjangItem(
+                                            formattedToken,
+                                            item.id,
+                                            UpdateKeranjangRequest(
+                                                jumlah = newQty,
+                                                tanggal_sewa = item.tanggal_sewa,
+                                                tanggal_kembali_rencana = item.tanggal_kembali_rencana
+                                            )
+                                        )
                                     }
                                 )
                                 HorizontalDivider(color = CartColors.DividerRow, thickness = 1.dp)

@@ -132,7 +132,7 @@ interface ApiService {
         @Path("id") id: Int
     ): Response<GenericResponse>
 
-    @GET("kategori")
+    @GET("kategori-publik")
     suspend fun getKategori(): Response<KategoriListResponse>
 
 
@@ -151,11 +151,12 @@ interface ApiService {
         @Body request: AddToKeranjangRequest
     ): Response<KeranjangResponse>
 
-    @PATCH("keranjang/items/{id}")
+    @POST("keranjang/items/{id}")
     suspend fun updateKeranjangItem(
         @Header("Authorization") token: String,
         @Path("id") id: Int,
-        @Body request: UpdateKeranjangRequest
+        @Body request: UpdateKeranjangRequest,
+        @Query("_method") method: String = "PATCH"
     ): Response<KeranjangResponse>
 
     @DELETE("keranjang/items/{id}")
