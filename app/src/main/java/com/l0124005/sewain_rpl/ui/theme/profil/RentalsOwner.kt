@@ -83,6 +83,7 @@ fun RentalsOwnerScreen(
         drawerContent = {
             ProfileDrawerContent(
                 userName = userName,
+                userPhoto = avatarUrl,
                 currentScreen = "Rentals Owner",
                 onProfileClick = {
                     scope.launch { drawerState.close() }

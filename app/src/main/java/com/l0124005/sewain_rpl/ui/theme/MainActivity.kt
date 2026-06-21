@@ -21,8 +21,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PhoneCallback
-import androidx.compose.material.icons.automirrored.filled.ListAlt
-import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -30,7 +28,6 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -64,7 +61,6 @@ import com.l0124005.sewain_rpl.ui.theme.profil.ProfileScreen
 import com.l0124005.sewain_rpl.ui.theme.profil.MyWalletScreen
 import com.l0124005.sewain_rpl.ui.theme.profil.MyRentalsScreen
 import com.l0124005.sewain_rpl.ui.theme.profil.RentalsOwnerScreen
-import com.l0124005.sewain_rpl.ui.theme.admin.OwnerDashboardScreen
 import com.l0124005.sewain_rpl.ui.theme.transaksi.RiwayatTransaksiScreen
 import com.l0124005.sewain_rpl.ui.theme.transaksi.DetailTransaksiScreen
 import com.l0124005.sewain_rpl.ui.theme.keranjang.KeranjangScreen
@@ -73,12 +69,8 @@ import com.l0124005.sewain_rpl.utils.SessionManager
 import com.l0124005.sewain_rpl.utils.CurrencyUtils
 import com.l0124005.sewain_rpl.viewmodel.*
 import kotlinx.coroutines.launch
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import com.l0124005.sewain_rpl.ui.theme.profil.ProfileDrawerContent
-import com.l0124005.sewain_rpl.ui.theme.VidalokaFont
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import com.l0124005.sewain_rpl.R
@@ -88,7 +80,6 @@ data class ScreenTarget(val screen: Screen, val id: Long = System.currentTimeMil
 // ============================================================
 // WARNA TEMA HOME -- disamain persis sama hex di home.css
 // ============================================================
-private val Volkhov = FontFamily.Default // Fallback jika tidak ada font custom
 
 private object HomeColors {
     val Background     = Color(0xFFFFFFFF)
@@ -170,6 +161,7 @@ class MainActivity : ComponentActivity() {
             "KERANJANG" -> Screen.Keranjang
             "TRANSAKSI" -> Screen.RiwayatTransaksi
             "CHECKOUT" -> Screen.CheckoutPayment
+            "EDIT_ITEM" -> Screen.EditItem
             else -> Screen.Home
         }
     }
@@ -209,6 +201,11 @@ fun MainContainer(
         currentScreen = initialScreen.screen
         if (initialScreen.screen == Screen.CheckoutPayment && initialScreen.productId != null) {
             keranjangViewModel.getKeranjang(token)
+        }
+        if (initialScreen.screen == Screen.EditItem && initialScreen.productId != null) {
+            // Kita perlu mengambil data item untuk di-edit.
+            // Bisa dengan getMyKatalogDetail di ViewModel.
+            katalogViewModel.getMyKatalogDetail(token, initialScreen.productId)
         }
     }
 
@@ -259,10 +256,13 @@ fun MainContainer(
         drawerState = drawerState,
         drawerContent = {
             val profileState by profileViewModel.profile.observeAsState()
-            val userName = (profileState as? Resource.Success)?.data?.data?.name ?: "User"
+            val user = (profileState as? Resource.Success)?.data?.data
+            val userName = user?.name ?: "User"
+            val userPhoto = user?.foto_profil
 
             ProfileDrawerContent(
                 userName = userName,
+                userPhoto = userPhoto,
                 currentScreen = currentScreen.name,
                 onProfileClick = {
                     scope.launch { drawerState.close() }
@@ -336,6 +336,7 @@ fun MainContainer(
                         token = token,
                         viewModel = katalogViewModel,
                         keranjangViewModel = keranjangViewModel,
+                        sessionManager = SessionManager(context),
                         initialSearchQuery = initialSearchQuery,
                         initialCategory = initialCategory,
                         onItemClick = { id ->
@@ -408,18 +409,25 @@ fun MainContainer(
                         onBack = { currentScreen = Screen.MyKatalog },
                         onSuccess = { currentScreen = Screen.MyKatalog }
                     )
-                    Screen.EditItem -> selectedBarangForEdit?.let {
-                        EditItemScreen(
-                            viewModel = katalogViewModel,
-                            token = token,
-                            itemId = it.id,
-                            onBack = { currentScreen = Screen.MyKatalog },
-                            onSuccess = {
-                                // Refresh daftar katalog dari server agar perubahan tampil
-                                katalogViewModel.getMyKatalog(token)
-                                currentScreen = Screen.MyKatalog
-                            }
-                        )
+                    Screen.EditItem -> {
+                        // Gunakan productId dari initialScreen jika ada, jika tidak gunakan id dari selectedBarangForEdit
+                        val itemId = initialScreen.productId ?: selectedBarangForEdit?.id
+
+                        if (itemId != null) {
+                            EditItemScreen(
+                                viewModel = katalogViewModel,
+                                token = token,
+                                itemId = itemId,
+                                onBack = { currentScreen = Screen.MyKatalog },
+                                onSuccess = {
+                                    katalogViewModel.getMyKatalog(token)
+                                    currentScreen = Screen.MyKatalog
+                                }
+                            )
+                        } else {
+                            // Fallback jika tidak ada ID yang bisa diedit
+                            SideEffect { currentScreen = Screen.MyKatalog }
+                        }
                     }
                     Screen.MyKatalog -> MyKatalogScreen(
                         viewModel = katalogViewModel,
@@ -432,8 +440,10 @@ fun MainContainer(
                             currentScreen = Screen.EditItem
                         },
                         onItemClick = { barang ->
-                            selectedBarangForEdit = barang
-                            currentScreen = Screen.EditItem
+                            val intent = Intent(context, com.l0124005.sewain_rpl.ui.theme.katalog.DetailMyKatalogActivity::class.java).apply {
+                                putExtra("EXTRA_PRODUCT_ID", barang.id)
+                            }
+                            context.startActivity(intent)
                         }
                     )
                     Screen.Profile -> ProfileScreen(
@@ -532,6 +542,10 @@ fun HomeScreenContent(
     onCategoryClick: (String) -> Unit,
     onProductClick: (Int) -> Unit
 ) {
+    val context = LocalContext.current
+    val sessionManager = remember { SessionManager(context) }
+    val currentUserId = sessionManager.getUserId()
+
     val katalogState by katalogViewModel.katalogPublik.observeAsState(Resource.Loading())
     val kategoriState by katalogViewModel.kategori.observeAsState(Resource.Loading())
 
@@ -578,9 +592,9 @@ fun HomeScreenContent(
         Spacer(modifier = Modifier.height(48.dp))
         CategoriesSection(kategoriState = kategoriState, onCategoryClick = onCategoryClick)
         Spacer(modifier = Modifier.height(48.dp))
-        val context = LocalContext.current
         RentItemsSection(
             katalogState = katalogState,
+            currentUserId = currentUserId,
             onProductClick = onProductClick,
             onSeeAllRentals = { onSeeAllRentals(null) },
             onAddToCart = { product ->
@@ -608,9 +622,9 @@ fun HomeScreenContent(
 @Composable
 fun HomeTopBar(onLogout: () -> Unit, onMenuClick: () -> Unit, onCartClick: () -> Unit) {
     SewainTopBar(
-        navigationIcon = Icons.Default.Menu,
+        navigationIcon = null,
         onNavigationClick = onMenuClick,
-        actionIcon = Icons.Default.ShoppingCart,
+        actionIcon = null,
         onActionClick = onCartClick
     )
 }
@@ -962,6 +976,7 @@ private fun CategoryCard(name: String, modifier: Modifier, onClick: () -> Unit) 
 @Composable
 private fun RentItemsSection(
     katalogState: Resource<KatalogListResponse>?,
+    currentUserId: Int,
     onProductClick: (Int) -> Unit,
     onSeeAllRentals: () -> Unit,
     onAddToCart: (CatalogData) -> Unit
@@ -980,7 +995,8 @@ private fun RentItemsSection(
                 CircularProgressIndicator(color = HomeColors.Accent)
             }
             is Resource.Success -> {
-                val itemsList = katalogState.data?.data?.take(6) ?: emptyList()
+                val allItems = katalogState.data?.data ?: emptyList()
+                val itemsList = allItems.filter { it.user_id != currentUserId }.take(6)
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(14.dp)
@@ -1038,9 +1054,9 @@ fun HomeRentalCard(
                     .background(HomeColors.ImgPlaceholder),
                 contentAlignment = Alignment.Center
             ) {
-                if (!barang.foto_barang.isNullOrEmpty()) {
+                if (barang.mainFotoUrl.isNotEmpty()) {
                     AsyncImage(
-                        model = "${ApiClient.IMAGE_BASE_URL}${barang.foto_barang}",
+                        model = barang.mainFotoUrl,
                         contentDescription = barang.nama_barang,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize()
@@ -1317,6 +1333,7 @@ fun HomeScreenPreview() {
             )
             RentItemsSection(
                 katalogState = dummyKatalog,
+                currentUserId = -1,
                 onProductClick = {},
                 onSeeAllRentals = {},
                 onAddToCart = {}

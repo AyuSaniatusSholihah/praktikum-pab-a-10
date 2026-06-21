@@ -49,22 +49,26 @@ fun SewainTopBar(
             }
 
             // Logo SEWAIN
-            Text(
-                text = buildAnnotatedString {
-                    withStyle(style = SpanStyle(color = Color(0xFF484848))) {
-                        append("SEWA")
-                    }
-                    withStyle(style = SpanStyle(color = Color(0xFF6A87A1))) {
-                        append("IN")
-                    }
-                },
-                fontSize = 24.sp,
-                fontFamily = VidalokaFont,
-                fontWeight = FontWeight.Normal,
-                letterSpacing = 1.5.sp,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.weight(1f)
-            )
+            Box(
+                modifier = Modifier.weight(1f),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = buildAnnotatedString {
+                        withStyle(style = SpanStyle(color = Color(0xFF484848))) {
+                            append("SEWA")
+                        }
+                        withStyle(style = SpanStyle(color = Color(0xFF6A87A1))) {
+                            append("IN")
+                        }
+                    },
+                    fontSize = 24.sp,
+                    fontFamily = VidalokaFont,
+                    fontWeight = FontWeight.Normal,
+                    letterSpacing = 1.5.sp,
+                    textAlign = TextAlign.Center
+                )
+            }
 
             // Icon kanan (opsional)
             if (actionIcon != null) {

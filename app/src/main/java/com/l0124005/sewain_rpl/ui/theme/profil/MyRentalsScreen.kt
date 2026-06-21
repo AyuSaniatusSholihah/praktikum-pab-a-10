@@ -104,6 +104,7 @@ fun MyRentalsScreen(
     }
 
     val userName = (profileState as? Resource.Success)?.data?.data?.name ?: "User"
+    val userPhoto = (profileState as? Resource.Success)?.data?.data?.foto_profil
 
     val allTransactions = (transaksiState as? Resource.Success)?.data?.data ?: emptyList()
     
@@ -120,6 +121,7 @@ fun MyRentalsScreen(
         drawerContent = {
             ProfileDrawerContent(
                 userName = userName,
+                userPhoto = userPhoto,
                 currentScreen = "My Rentals",
                 onProfileClick = {
                     scope.launch { drawerState.close() }

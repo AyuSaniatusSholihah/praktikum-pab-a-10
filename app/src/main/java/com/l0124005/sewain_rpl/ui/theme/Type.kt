@@ -12,6 +12,7 @@ val VolkhovFont = FontFamily(Font(R.font.volkhov_regular))
 val RobotoFont = FontFamily(Font(R.font.roboto_regular))
 val MonsterratFont = FontFamily(Font(R.font.montserrat))
 val LatoFont = FontFamily(Font(R.font.lato_regular))
+val JostFont = FontFamily(Font(R.font.jost_regular))
 
 val AbrilFatfaceFont = FontFamily(Font(R.font.abrilfatface_regular))
 val VidalokaFont = FontFamily(Font(R.font.vidaloka_regular))

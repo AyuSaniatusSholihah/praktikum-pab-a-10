@@ -102,8 +102,15 @@ interface ApiService {
         @Part("harga_denda_perjam") hargaDendaPerjam: RequestBody,
         @Part("stok") stok: RequestBody,
         @Part("lokasi") lokasi: RequestBody,
+        @Part("whatsapp") whatsapp: RequestBody? = null,
+        @Part("tanggal_mulai") tanggalMulai: RequestBody? = null,
+        @Part("tanggal_akhir") tanggalAkhir: RequestBody? = null,
         @Part("additional_information") additionalInformation: RequestBody?,
-        @Part foto_barang: MultipartBody.Part?,
+        @Part foto_barang: MultipartBody.Part?,     // Nama field diambil dari Part.createFormData("foto_barang", ...)
+        @Part fotoproduk1: MultipartBody.Part? = null,
+        @Part fotoproduk2: MultipartBody.Part? = null,
+        @Part fotoproduk3: MultipartBody.Part? = null,
+        @Part fotoproduk4: MultipartBody.Part? = null,
         @Part("status") status: RequestBody? = null
     ): Response<KatalogCrudResponse>
 
@@ -121,8 +128,15 @@ interface ApiService {
         @Part("harga_denda_perjam") hargaDendaPerjam: RequestBody? = null,
         @Part("stok") stok: RequestBody? = null,
         @Part("lokasi") lokasi: RequestBody? = null,
+        @Part("whatsapp") whatsapp: RequestBody? = null,
+        @Part("tanggal_mulai") tanggalMulai: RequestBody? = null,
+        @Part("tanggal_akhir") tanggalAkhir: RequestBody? = null,
         @Part("additional_information") additionalInformation: RequestBody? = null,
         @Part foto_barang: MultipartBody.Part? = null,
+        @Part fotoproduk1: MultipartBody.Part? = null,
+        @Part fotoproduk2: MultipartBody.Part? = null,
+        @Part fotoproduk3: MultipartBody.Part? = null,
+        @Part fotoproduk4: MultipartBody.Part? = null,
         @Part("status") status: RequestBody? = null
     ): Response<KatalogCrudResponse>
 

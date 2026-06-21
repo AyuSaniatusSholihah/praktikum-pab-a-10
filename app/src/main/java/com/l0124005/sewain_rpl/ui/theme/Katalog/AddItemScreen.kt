@@ -1,6 +1,7 @@
 package com.l0124005.sewain_rpl.ui.theme.katalog
 
 import android.net.Uri
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -28,6 +29,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
+import com.l0124005.sewain_rpl.utils.ImageUtils
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.viewmodel.KatalogViewModel
 import com.l0124005.sewain_rpl.viewmodel.ProfileViewModel
@@ -36,6 +38,9 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
+import com.l0124005.sewain_rpl.ui.theme.MonsterratFont
+import com.l0124005.sewain_rpl.ui.theme.SewainTopBar
+import com.l0124005.sewain_rpl.ui.theme.VolkhovFont
 
 // ============================================================
 // ADD ITEM SCREEN
@@ -96,7 +101,12 @@ fun AddItemScreen(
     }
 
     Scaffold(
-        topBar = { AddItemTopBar(onBack = onBack) },
+        topBar = {
+            SewainTopBar(
+                navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
+                onNavigationClick = onBack
+            )
+        },
         bottomBar = {
             PublishBottomBar(
                 onPublish = {
@@ -117,25 +127,42 @@ fun AddItemScreen(
                     val dendaPart = cleanDenda.toRequestBody("text/plain".toMediaTypeOrNull())
                     val stokPart = form.stockQty.toString().toRequestBody("text/plain".toMediaTypeOrNull())
                     val locPart = form.lokasi.toRequestBody("text/plain".toMediaTypeOrNull())
+                    val waPart  = form.whatsApp.toRequestBody("text/plain".toMediaTypeOrNull())
+                    val dStartPart = form.dateStart.toRequestBody("text/plain".toMediaTypeOrNull())
+                    val dEndPart   = form.dateEnd.toRequestBody("text/plain".toMediaTypeOrNull())
                     val descPart = form.description.toRequestBody("text/plain".toMediaTypeOrNull())
                     val addInfoPart = form.additionalInfo.toRequestBody("text/plain".toMediaTypeOrNull())
                     val statusPart = "tersedia".toRequestBody("text/plain".toMediaTypeOrNull())
 
-                    var imagePart: MultipartBody.Part? = null
-                    form.mainImageUri?.let { uri ->
-                        try {
-                            val file = File(context.cacheDir, "temp_image_${System.currentTimeMillis()}.jpg")
-                            context.contentResolver.openInputStream(uri)?.use { input ->
-                                file.outputStream().use { output -> input.copyTo(output) }
-                            }
+                    // Helper function to create MultipartBody.Part for a specific field name
+                    fun createPart(uri: Uri?, fieldName: String): MultipartBody.Part? {
+                        if (uri == null) return null
+                        return try {
+                            val file = ImageUtils.compressImage(context, uri) ?: return null
+                            
                             val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
-                            imagePart = MultipartBody.Part.createFormData("foto_barang", file.name, requestFile)
+                            MultipartBody.Part.createFormData(fieldName, file.name, requestFile)
                         } catch (e: Exception) {
-                            Toast.makeText(context, "Gagal memproses gambar", Toast.LENGTH_SHORT).show()
+                            Log.e("AddItem", "Gagal memproses $fieldName: ${e.message}")
+                            null
                         }
                     }
 
-                    viewModel.createKatalog(token, catPart, namePart, descPart, sewaPart, jaminanPart, dendaPart, stokPart, locPart, addInfoPart, imagePart, statusPart)
+                    val partMain   = createPart(form.mainImageUri, "foto_barang")
+                    val partAngle1 = createPart(form.angle1Uri, "fotoproduk1")
+                    val partAngle2 = createPart(form.angle2Uri, "fotoproduk2")
+                    val partAngle3 = createPart(form.angle3Uri, "fotoproduk3")
+                    val partAngle4 = createPart(form.angle4Uri, "fotoproduk4")
+
+                    Log.d("AddItem", "Publishing: main=${partMain!=null}, a1=${partAngle1!=null}, a2=${partAngle2!=null}, a3=${partAngle3!=null}, a4=${partAngle4!=null}")
+
+                    viewModel.createKatalog(
+                        token, catPart, namePart, descPart, sewaPart, jaminanPart, 
+                        dendaPart, stokPart, locPart, waPart, dStartPart, dEndPart,
+                        addInfoPart,
+                        partMain, partAngle1, partAngle2, partAngle3, partAngle4, 
+                        statusPart
+                    )
                 },
                 isLoading = crudResult is Resource.Loading
             )
@@ -152,37 +179,21 @@ fun AddItemScreen(
 
             // ---- HEADER ----
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 20.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
                     text = "My Katalogs",
-                    fontFamily = Volkhov,
+                    fontFamily = VolkhovFont,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 28.sp,
+                    fontSize = 30.sp,          // disamakan ukuran besar web (36px desktop, scaled ke mobile)
                     color = Black
                 )
                 Spacer(Modifier.height(6.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Text("Home", fontFamily = FontFamily.Default, fontSize = 12.sp, color = TextMuted)
-                    Text(
-                        " › ",
-                        fontFamily = FontFamily.Default,
-                        fontSize = 12.sp,
-                        color = TextMuted
-                    )
-                    Text(
-                        "My Katalogs",
-                        fontFamily = FontFamily.Default,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp,
-                        color = Black
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                    Text("My Katalog", fontSize = 12.sp, color = TextMuted)
+                    Text(" › ", fontSize = 12.sp, color = TextMuted)
+                    Text("Add Item", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Black)
                 }
             }
 
@@ -199,7 +210,8 @@ fun AddItemScreen(
                 rating = 4.5f,
                 totalUlasan = 12,
                 jumlahKatalog = 0,
-                whatsapp = user?.phone_number ?: ""
+                whatsapp = user?.phone_number ?: "",
+                fotoProfil = user?.foto_profil
             )
 
             Spacer(Modifier.height(24.dp))
@@ -207,7 +219,7 @@ fun AddItemScreen(
             // ---- UPLOAD SECTION LABEL ----
             Text(
                 text = "Foto Produk",
-                fontFamily = Volkhov,
+                fontFamily = VolkhovFont,
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp,
                 color = Black,
@@ -406,64 +418,33 @@ fun UploadBoxMain(
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
-            .border(2.dp, UploadBorder, RoundedCornerShape(12.dp))
-            .background(UploadBg)
+            .border(2.dp, AddItemSectionBorder, RoundedCornerShape(12.dp))
+            .background(AddItemSectionBg)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         if (uri != null) {
-            AsyncImage(
-                model = uri,
-                contentDescription = "Foto utama",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
-            // Edit overlay
+            AsyncImage(model = uri, contentDescription = "Foto utama", contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
             Box(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(10.dp)
-                    .size(34.dp)
-                    .clip(CircleShape)
-                    .background(White.copy(alpha = 0.85f)),
+                modifier = Modifier.align(Alignment.BottomEnd).padding(10.dp).size(34.dp).clip(CircleShape).background(White.copy(alpha = 0.85f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    Icons.Outlined.Edit,
-                    contentDescription = "Ganti foto",
-                    tint = Primary,
-                    modifier = Modifier.size(18.dp)
-                )
+                Icon(Icons.Outlined.Edit, contentDescription = "Ganti foto", tint = AddItemAccent, modifier = Modifier.size(18.dp))
             }
         } else {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Icon(
-                    Icons.Outlined.CameraAlt,
-                    contentDescription = null,
-                    tint = Black,
-                    modifier = Modifier.size(40.dp)
-                )
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Icon(Icons.Outlined.CameraAlt, contentDescription = null, tint = Color(0xFF1E1E1E), modifier = Modifier.size(40.dp))
                 Text(
-                    text = "Upload Foto / Image",
+                    text = "Upload Foto/Image",
                     fontFamily = FontFamily.Default,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,
-                    color = TextDark
-                )
-                Text(
-                    text = "Foto utama produk",
-                    fontFamily = FontFamily.Default,
-                    fontSize = 12.sp,
-                    color = TextMuted
+                    color = Color(0xFF484848)
                 )
             }
         }
     }
 }
-
 @Composable
 fun UploadBoxSmall(
     uri: Uri?,
@@ -537,16 +518,16 @@ fun ItemDetailsForm(
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
-            .border(1.dp, SectionBorder, RoundedCornerShape(12.dp))
-            .background(SectionBg)
+            .border(1.dp, AddItemSectionBorder, RoundedCornerShape(12.dp))
+            .background(AddItemSectionBg30)
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
         Text(
             text = "Item Details",
-            fontFamily = Volkhov,
+            fontFamily = VolkhovFont,
             fontWeight = FontWeight.Bold,
-            fontSize = 20.sp,
+            fontSize = 22.sp,
             color = Black
         )
 
@@ -691,7 +672,7 @@ fun PublishBottomBar(onPublish: () -> Unit, isLoading: Boolean) {
                     .height(50.dp),
                 shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Primary,
+                    containerColor = AddItemAccent,
                     contentColor   = White
                 ),
                 enabled = !isLoading
@@ -708,7 +689,7 @@ fun PublishBottomBar(onPublish: () -> Unit, isLoading: Boolean) {
                     Text(
                         text = "PUBLISH ITEM",
                         fontFamily = FontFamily.Default,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.ExtraBold,
                         fontSize = 14.sp,
                         letterSpacing = 1.sp
                     )

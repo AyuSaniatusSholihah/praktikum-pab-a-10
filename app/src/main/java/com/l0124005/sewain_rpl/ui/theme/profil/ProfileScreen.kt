@@ -103,14 +103,17 @@ fun ProfileScreen(
         }
     }
 
-    // ── Ambil nama user buat ditampilin di drawer header ──
-    val userName = (profileState as? Resource.Success<ProfileResponse>)?.data?.data?.name ?: "User"
+    // ── Ambil data user buat ditampilin di drawer ──
+    val user = (profileState as? Resource.Success<ProfileResponse>)?.data?.data
+    val userName = user?.name ?: "User"
+    val userPhoto = user?.foto_profil
 
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
             ProfileDrawerContent(
                 userName = userName,
+                userPhoto = userPhoto,
                 currentScreen = "Profile",
                 onProfileClick = { scope.launch { drawerState.close() } },
                 onMyRentalsClick = {

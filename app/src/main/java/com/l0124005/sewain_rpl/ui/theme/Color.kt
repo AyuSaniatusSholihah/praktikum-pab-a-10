@@ -11,7 +11,7 @@ val PurpleGrey40 = Color(0xFF625b71)
 val Pink40 = Color(0xFF7D5260)
 
 // Sewain Theme Colors
-val BluePrimary = Color(0xFF4A7A9B)
+val BluePrimary = Color(0xFF6A87A1)
 val NavyPrimary = Color(0xFF285473)
 val PrimaryBlue = NavyPrimary
 val AccentBlue = BluePrimary

@@ -94,9 +94,12 @@ fun MyWalletScreen(
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            val userName = profileState?.data?.data?.name ?: "User"
+            val user = (profileState as? Resource.Success)?.data?.data
+            val userName = user?.name ?: "User"
+            val userPhoto = user?.foto_profil
             ProfileDrawerContent(
                 userName = userName,
+                userPhoto = userPhoto,
                 currentScreen = "My Wallet",
                 onProfileClick = {
                     scope.launch { drawerState.close() }
