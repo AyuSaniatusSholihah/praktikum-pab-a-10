@@ -113,9 +113,10 @@ class DetailProdukActivity : ComponentActivity() {
                         startActivity(intent)
                         finish()
                     },
-                    onNavigateToCheckout = {
+                    onNavigateToCheckout = { productIdToCheckout ->
                         val intent = Intent(this, MainActivity::class.java).apply {
                             putExtra("TARGET_SCREEN", "CHECKOUT")
+                            putExtra("PRODUCT_ID", productIdToCheckout)
                             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                         }
                         startActivity(intent)
@@ -145,7 +146,7 @@ fun ProductDetailScreen(
     transaksiViewModel: TransaksiViewModel,
     onBack: () -> Unit = {},
     onNavigateToCart: () -> Unit = {},
-    onNavigateToCheckout: () -> Unit = {},
+    onNavigateToCheckout: (Int) -> Unit = {},
     onNavigateToTransactions: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -200,26 +201,18 @@ fun ProductDetailScreen(
     LaunchedEffect(keranjangState) {
         if (keranjangState is Resource.Success) {
             if (isRentNowClicked) {
-                transaksiViewModel.checkout(token)
+                // Navigasi ke CheckoutPayment dengan productId agar hanya produk ini yang di-checkout
+                isRentNowClicked = false
+                keranjangViewModel.resetStates()
+                onNavigateToCheckout(productId)
             } else {
                 Toast.makeText(context, "Berhasil ditambahkan ke keranjang!", Toast.LENGTH_SHORT).show()
+                keranjangViewModel.resetStates()
                 onNavigateToCart()
             }
-            keranjangViewModel.resetStates()
         } else if (keranjangState is Resource.Error) {
             Toast.makeText(context, "Gagal: ${keranjangState?.message}", Toast.LENGTH_SHORT).show()
             keranjangViewModel.resetStates()
-        }
-    }
-
-    LaunchedEffect(checkoutState) {
-        if (checkoutState is Resource.Success) {
-            Toast.makeText(context, "Sewa berhasil! Mengalihkan ke checkout...", Toast.LENGTH_SHORT).show()
-            onNavigateToCheckout()
-            transaksiViewModel.resetStates()
-        } else if (checkoutState is Resource.Error) {
-            Toast.makeText(context, "Checkout gagal: ${checkoutState?.message}", Toast.LENGTH_SHORT).show()
-            transaksiViewModel.resetStates()
         }
     }
 

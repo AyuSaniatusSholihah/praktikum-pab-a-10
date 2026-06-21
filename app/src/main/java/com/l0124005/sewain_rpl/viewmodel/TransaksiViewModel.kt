@@ -65,9 +65,9 @@ class TransaksiViewModel(private val repository: TransaksiRepository) : ViewMode
         }
     }
 
-    fun checkout(token: String) {
+    fun checkout(token: String, keranjangIds: List<Int>? = null) {
         viewModelScope.launch {
-            repository.checkout(token).collect {
+            repository.checkout(token, keranjangIds).collect {
                 _checkoutState.value = it
             }
         }

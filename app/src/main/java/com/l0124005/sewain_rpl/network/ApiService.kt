@@ -187,7 +187,8 @@ interface ApiService {
 
     @POST("checkout")
     suspend fun checkout(
-        @Header("Authorization") token: String
+        @Header("Authorization") token: String,
+        @Body request: CheckoutRequest
     ): Response<CheckoutResponse>
 
     @POST("transaksi/bayar")

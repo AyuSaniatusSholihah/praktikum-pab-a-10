@@ -76,6 +76,7 @@ fun ProfileScreen(
     onSettingsClick: () -> Unit = {}
 ) {
     val profileState by viewModel.profile.observeAsState()
+    val updateState  by viewModel.updateState.observeAsState()
     val context = LocalContext.current
 
     // ── State buat drawer ──
@@ -85,15 +86,20 @@ fun ProfileScreen(
 
     LaunchedEffect(Unit) { viewModel.getProfile(token) }
 
-    LaunchedEffect(profileState) {
-        if (isSaving && profileState is Resource.Success) {
-            Toast.makeText(context, "Profil berhasil diperbarui!", Toast.LENGTH_SHORT).show()
-            isSaving = false
-            viewModel.resetStates()
-            viewModel.getProfile(token)
-        } else if (profileState is Resource.Error) {
-            Toast.makeText(context, "Gagal update: ${profileState?.message}", Toast.LENGTH_SHORT).show()
-            viewModel.resetStates()
+    // Pantau hasil UPDATE (bukan profile load)
+    LaunchedEffect(updateState) {
+        when {
+            isSaving && updateState is Resource.Success -> {
+                Toast.makeText(context, "Profil berhasil diperbarui!", Toast.LENGTH_SHORT).show()
+                isSaving = false
+                viewModel.resetUpdateState()
+                viewModel.getProfile(token)   // refresh tampilan dengan data terbaru
+            }
+            isSaving && updateState is Resource.Error -> {
+                Toast.makeText(context, "Gagal menyimpan: ${updateState?.message}", Toast.LENGTH_LONG).show()
+                isSaving = false
+                viewModel.resetUpdateState()
+            }
         }
     }
 
@@ -160,40 +166,54 @@ fun ProfileScreen(
                         val user = (profileState as Resource.Success<ProfileResponse>).data?.data
                         if (user != null) {
                             ProfileContent(
-                            user = user,
-                            onLogout = onLogout,
-                            onSave = { updatedUser, imageUri ->
-                                val namePart = updatedUser.name.toRequestBody("text/plain".toMediaTypeOrNull())
-                                val phonePart = updatedUser.phone_number?.toRequestBody("text/plain".toMediaTypeOrNull())
-                                val alamatPart = updatedUser.alamat?.toRequestBody("text/plain".toMediaTypeOrNull())
-                                val tanggalLahirPart = updatedUser.tanggal_lahir?.toRequestBody("text/plain".toMediaTypeOrNull())
-                                val jenisKelaminPart = updatedUser.jenis_kelamin?.toRequestBody("text/plain".toMediaTypeOrNull())
+                                user = user,
+                                isSaving = isSaving,
+                                onLogout = onLogout,
+                                onSave = { updatedUser, imageUri ->
+                                    val namePart = updatedUser.name.toRequestBody("text/plain".toMediaTypeOrNull())
+                                    val phonePart = updatedUser.phone_number?.toRequestBody("text/plain".toMediaTypeOrNull())
+                                    val alamatPart = updatedUser.alamat?.toRequestBody("text/plain".toMediaTypeOrNull())
+                                    val tanggalLahirPart = updatedUser.tanggal_lahir?.toRequestBody("text/plain".toMediaTypeOrNull())
+                                    val jenisKelaminPart = updatedUser.jenis_kelamin?.toRequestBody("text/plain".toMediaTypeOrNull())
 
-                                var imagePart: MultipartBody.Part? = null
-                                imageUri?.let { uri ->
-                                    try {
-                                        val file = uriToFile(context, uri)
-                                        val requestFile = file.readBytes().toRequestBody("image/*".toMediaTypeOrNull())
-                                        imagePart = MultipartBody.Part.createFormData("foto_profil", file.name, requestFile)
-                                    } catch (e: Exception) {
-                                        Toast.makeText(context, "Gagal memproses foto", Toast.LENGTH_SHORT).show()
+                                    var imagePart: MultipartBody.Part? = null
+                                    imageUri?.let { uri ->
+                                        try {
+                                            val file = uriToFile(context, uri)
+                                            val requestFile = file.readBytes().toRequestBody("image/*".toMediaTypeOrNull())
+                                            imagePart = MultipartBody.Part.createFormData("foto_profil", file.name, requestFile)
+                                        } catch (e: Exception) {
+                                            Toast.makeText(context, "Gagal memproses foto", Toast.LENGTH_SHORT).show()
+                                        }
                                     }
-                                }
 
-                                isSaving = true
-                                viewModel.updateProfile(token, namePart, null, phonePart, alamatPart, tanggalLahirPart, jenisKelaminPart, imagePart)
-                            }
-                        )
+                                    isSaving = true
+                                    viewModel.updateProfile(token, namePart, null, phonePart, alamatPart, tanggalLahirPart, jenisKelaminPart, imagePart)
+                                }
+                            )
                         }
                     }
                     is Resource.Error -> {
-                        Text(
-                            text = "Error: ${profileState?.message}",
-                            color = Color.Red,
+                        Column(
                             modifier = Modifier
                                 .align(Alignment.Center)
                                 .padding(top = 100.dp)
-                        )
+                                .padding(horizontal = 24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "Gagal memuat profil",
+                                color = Color.Red,
+                                fontFamily = VolkhovFont
+                            )
+                            Spacer(Modifier.height(12.dp))
+                            Button(
+                                onClick = { viewModel.getProfile(token) },
+                                colors = ButtonDefaults.buttonColors(containerColor = AccentBlue)
+                            ) {
+                                Text("Coba Lagi", color = Color.White)
+                            }
+                        }
                     }
                     else -> {}
                 }
@@ -233,6 +253,7 @@ private fun DrawerMenuItem(
 @Composable
 internal fun ProfileContent(
     user: UserData,
+    isSaving: Boolean = false,
     onLogout: () -> Unit,
     onSave: (UserData, Uri?) -> Unit
 ) {
@@ -459,30 +480,52 @@ internal fun ProfileContent(
             // ── Tombol SAVE -- warna #4D6674 sesuai .btn-save-profile di web ──
             Button(
                 onClick = {
-                    onSave(
-                        user.copy(
-                            name = name,
-                            phone_number = phone,
-                            tanggal_lahir = tanggalLahir,
-                            jenis_kelamin = jenisKelamin,
-                            alamat = alamat
-                        ),
-                        selectedImageUri
-                    )
+                    if (!isSaving) {
+                        onSave(
+                            user.copy(
+                                name = name,
+                                phone_number = phone,
+                                tanggal_lahir = tanggalLahir,
+                                jenis_kelamin = jenisKelamin,
+                                alamat = alamat
+                            ),
+                            selectedImageUri
+                        )
+                    }
                 },
+                enabled = !isSaving,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MidBlue),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MidBlue,
+                    disabledContainerColor = MidBlue.copy(alpha = 0.6f)
+                ),
                 shape = RoundedCornerShape(24.dp)
             ) {
-                Text(
-                    text = "SAVE",
-                    fontFamily = MontaguSlabFont,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp,
-                    color = Color.White
-                )
+                if (isSaving) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = "Menyimpan...",
+                        fontFamily = MontaguSlabFont,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        color = Color.White
+                    )
+                } else {
+                    Text(
+                        text = "SAVE",
+                        fontFamily = MontaguSlabFont,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        color = Color.White
+                    )
+                }
             }
 
             Spacer(Modifier.height(12.dp))

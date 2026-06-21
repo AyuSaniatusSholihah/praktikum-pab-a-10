@@ -75,7 +75,7 @@ data class UserData(
 data class ProfileResponse(
     val status: String, 
     val message: String?, 
-    val data: UserData
+    val data: UserData?
 )
 
 // Kategori & Catalog DTOs
@@ -211,6 +211,10 @@ data class CheckoutResponse(
     val status: String, 
     val message: String?, 
     val data: CheckoutData?
+)
+
+data class CheckoutRequest(
+    val keranjang_ids: List<Int>? = null
 )
 
 data class CheckoutData(

@@ -13,11 +13,21 @@ import okhttp3.RequestBody
 
 class ProfileViewModel(private val repository: ProfileRepository) : ViewModel() {
 
+    // State untuk MENAMPILKAN profil (GET)
     private val _profile = MutableLiveData<Resource<ProfileResponse>?>()
     val profile: LiveData<Resource<ProfileResponse>?> = _profile
 
+    // State TERPISAH untuk aksi UPDATE — agar form tidak hilang saat loading
+    private val _updateState = MutableLiveData<Resource<ProfileResponse>?>()
+    val updateState: LiveData<Resource<ProfileResponse>?> = _updateState
+
     fun resetStates() {
         _profile.value = null
+        _updateState.value = null
+    }
+
+    fun resetUpdateState() {
+        _updateState.value = null
     }
 
     fun getProfile(token: String) {
@@ -39,8 +49,9 @@ class ProfileViewModel(private val repository: ProfileRepository) : ViewModel() 
         fotoProfil: MultipartBody.Part? = null
     ) {
         viewModelScope.launch {
+            // Gunakan _updateState bukan _profile agar tampilan tidak hilang saat loading
             repository.updateProfile(token, name, username, phoneNumber, alamat, tanggalLahir, jenisKelamin, fotoProfil).collect {
-                _profile.value = it
+                _updateState.value = it
             }
         }
     }
