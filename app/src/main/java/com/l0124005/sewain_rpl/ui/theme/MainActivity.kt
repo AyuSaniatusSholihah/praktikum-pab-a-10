@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -197,6 +198,7 @@ fun MainContainer(
     var selectedBarangForEdit by remember { mutableStateOf<CatalogData?>(null) }
     var selectedTransaksiId by remember { mutableStateOf<Int?>(null) }
     var selectedTransaksiIdsForPayment by remember { mutableStateOf<List<Int>>(emptyList()) }
+    var initialSearchQuery by remember { mutableStateOf("") }
 
     val keranjangState by keranjangViewModel.keranjang.observeAsState()
     val checkoutState by transaksiViewModel.checkoutState.observeAsState()
@@ -298,7 +300,13 @@ fun MainContainer(
                         onMenuClick = {
                             scope.launch { drawerState.open() }
                         },
-                        onSeeAllRentals = { currentScreen = Screen.Rental },
+                        onCartClick = {
+                            currentScreen = Screen.Keranjang
+                        },
+                        onSeeAllRentals = { query ->
+                            initialSearchQuery = query ?: ""
+                            currentScreen = Screen.Rental
+                        },
                         onProductClick = { productId: Int ->
                             val intent = Intent(context, DetailProdukActivity::class.java).apply {
                                 putExtra("EXTRA_PRODUCT_ID", productId)
@@ -310,6 +318,7 @@ fun MainContainer(
                         token = token,
                         viewModel = katalogViewModel,
                         keranjangViewModel = keranjangViewModel,
+                        initialSearchQuery = initialSearchQuery,
                         onItemClick = { id ->
                             val intent = Intent(context, DetailProdukActivity::class.java).apply {
                                 putExtra("EXTRA_PRODUCT_ID", id)
@@ -495,7 +504,8 @@ fun HomeScreenContent(
     token: String,
     onLogout: () -> Unit,
     onMenuClick: () -> Unit,
-    onSeeAllRentals: () -> Unit,
+    onCartClick: () -> Unit,
+    onSeeAllRentals: (String?) -> Unit,
     onProductClick: (Int) -> Unit
 ) {
     val katalogState by katalogViewModel.katalogPublik.observeAsState(Resource.Loading())
@@ -512,10 +522,27 @@ fun HomeScreenContent(
             .background(HomeColors.Background)
             .verticalScroll(rememberScrollState())
     ) {
-        HomeTopBar(onLogout = onLogout, onMenuClick = onMenuClick)
-        HeroCollage(onSeeAllRentals)
+        HomeTopBar(onLogout = onLogout, onMenuClick = onMenuClick, onCartClick = onCartClick)
+        HeroCollage(onRentNow = { onSeeAllRentals(null) })
         Spacer(modifier = Modifier.height(20.dp))
-        SearchCard()
+        
+        // State Logika Pencarian di Home
+        var location by remember { mutableStateOf("Choose Location") }
+        var tempSearchQuery by remember { mutableStateOf("") }
+        var startDate by remember { mutableStateOf("17 July 2024") }
+        var endDate by remember { mutableStateOf("20 July 2024") }
+
+        SearchCard(
+            location = location,
+            onLocationChange = { location = it },
+            searchQuery = tempSearchQuery,
+            onQueryChange = { tempSearchQuery = it },
+            startDate = startDate,
+            onStartDateChange = { startDate = it },
+            endDate = endDate,
+            onEndDateChange = { endDate = it },
+            onSearchClick = { onSeeAllRentals(tempSearchQuery) }
+        )
         Spacer(modifier = Modifier.height(36.dp))
         BrandLogosSection()
         Spacer(modifier = Modifier.height(36.dp))
@@ -531,7 +558,7 @@ fun HomeScreenContent(
         RentItemsSection(
             katalogState = katalogState,
             onProductClick = onProductClick,
-            onSeeAllRentals = onSeeAllRentals,
+            onSeeAllRentals = { onSeeAllRentals(null) },
             onAddToCart = { product ->
                 val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
                 val tglSewa = sdf.format(Calendar.getInstance().time)
@@ -555,8 +582,13 @@ fun HomeScreenContent(
 }
 
 @Composable
-fun HomeTopBar(onLogout: () -> Unit, onMenuClick: () -> Unit) {
-    SewainTopBar()
+fun HomeTopBar(onLogout: () -> Unit, onMenuClick: () -> Unit, onCartClick: () -> Unit) {
+    SewainTopBar(
+        navigationIcon = Icons.Default.Menu,
+        onNavigationClick = onMenuClick,
+        actionIcon = Icons.Default.ShoppingCart,
+        onActionClick = onCartClick
+    )
 }
 
 @Composable
@@ -650,7 +682,17 @@ fun HeroCollage(onRentNow: () -> Unit) {
 }
 
 @Composable
-fun SearchCard() {
+fun SearchCard(
+    location: String,
+    onLocationChange: (String) -> Unit,
+    searchQuery: String,
+    onQueryChange: (String) -> Unit,
+    startDate: String,
+    onStartDateChange: (String) -> Unit,
+    endDate: String,
+    onEndDateChange: (String) -> Unit,
+    onSearchClick: () -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
         colors = CardDefaults.cardColors(containerColor = HomeColors.Background),
@@ -658,22 +700,62 @@ fun SearchCard() {
         shape = RoundedCornerShape(20.dp)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
-            SearchFieldItem("Location", "Choose Location", Icons.Default.LocationOn)
+            // Location
+            EditableSearchFieldItem("Location", location, onLocationChange, Icons.Default.LocationOn)
             HorizontalDivider(color = HomeColors.Border, thickness = 0.5.dp)
-            SearchFieldItem("Find", "Kamera", Icons.Default.Search)
+            
+            // Logika Pencarian: Menggunakan TextField untuk "Find"
+            EditableSearchFieldItem("Find", searchQuery, onQueryChange, Icons.Default.Search, hint = "Cari barang...")
+
             HorizontalDivider(color = HomeColors.Border, thickness = 0.5.dp)
-            SearchFieldItem("Sewa Up", "17 July 2024", Icons.Default.CalendarMonth, true)
+            
+            // Tanggal
+            EditableSearchFieldItem("Sewa Up", startDate, onStartDateChange, Icons.Default.CalendarMonth, true)
             HorizontalDivider(color = HomeColors.Border, thickness = 0.5.dp)
-            SearchFieldItem("Return", "20 July 2024", Icons.Default.CalendarMonth, true)
+            EditableSearchFieldItem("Return", endDate, onEndDateChange, Icons.Default.CalendarMonth, true)
+            
             Spacer(modifier = Modifier.height(20.dp))
             Button(
-                onClick = { },
+                onClick = onSearchClick,
                 modifier = Modifier.fillMaxWidth().height(48.dp),
                 shape = RoundedCornerShape(999.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = HomeColors.Accent)
             ) {
                 Text("Search", color = Color.White, fontWeight = FontWeight.Bold)
             }
+        }
+    }
+}
+
+@Composable
+private fun EditableSearchFieldItem(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    icon: ImageVector,
+    hasArrow: Boolean = false,
+    hint: String = ""
+) {
+    Column(modifier = Modifier.padding(vertical = 10.dp)) {
+        Text(label, fontSize = 11.sp, color = HomeColors.TextMuted, fontWeight = FontWeight.Medium)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, null, Modifier.size(16.dp), tint = HomeColors.IconStroke)
+            Spacer(Modifier.width(8.dp))
+            BasicTextField(
+                value = value,
+                onValueChange = onValueChange,
+                textStyle = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Medium, color = HomeColors.TextBody),
+                modifier = Modifier.weight(1f),
+                decorationBox = { innerTextField ->
+                    Box {
+                        if (value.isEmpty() && hint.isNotEmpty()) {
+                            Text(hint, fontSize = 14.sp, color = Color.Gray)
+                        }
+                        innerTextField()
+                    }
+                }
+            )
+            if (hasArrow) Icon(Icons.Default.KeyboardArrowDown, null, Modifier.size(18.dp), tint = HomeColors.TextBody)
         }
     }
 }
@@ -1072,46 +1154,79 @@ private fun HomeBottomNavigation(
     onScreenSelected: (Screen) -> Unit
 ) {
     NavigationBar(
-        containerColor = Color(0xFF4A4A4A),
+        containerColor = HomeColors.SoftGray, // ← E0E0E0
         modifier = Modifier
             .navigationBarsPadding()
             .height(80.dp)
             .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
     ) {
+        val unselectedColor = Color(0xFF21394F)  // biru tua
+        val selectedColor   = HomeColors.Accent  // 6A87A1
+
         NavigationBarItem(
             selected = currentScreen == Screen.Home,
             onClick = { onScreenSelected(Screen.Home) },
             icon = { Icon(Icons.Default.Home, null) },
             label = { Text("Home", fontSize = 10.sp) },
-            colors = NavigationBarItemDefaults.colors(selectedIconColor = HomeColors.Accent, unselectedIconColor = Color.Gray, selectedTextColor = HomeColors.Accent, unselectedTextColor = Color.Gray, indicatorColor = Color.Transparent)
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor   = selectedColor,
+                unselectedIconColor = unselectedColor,
+                selectedTextColor   = selectedColor,
+                unselectedTextColor = unselectedColor,
+                indicatorColor      = Color.Transparent
+            )
         )
         NavigationBarItem(
             selected = currentScreen == Screen.Rental,
             onClick = { onScreenSelected(Screen.Rental) },
             icon = { Icon(Icons.Default.Search, null) },
             label = { Text("Rental", fontSize = 10.sp) },
-            colors = NavigationBarItemDefaults.colors(selectedIconColor = HomeColors.Accent, unselectedIconColor = Color.Gray, selectedTextColor = HomeColors.Accent, unselectedTextColor = Color.Gray, indicatorColor = Color.Transparent)
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor   = selectedColor,
+                unselectedIconColor = unselectedColor,
+                selectedTextColor   = selectedColor,
+                unselectedTextColor = unselectedColor,
+                indicatorColor      = Color.Transparent
+            )
         )
         NavigationBarItem(
             selected = currentScreen == Screen.Keranjang,
             onClick = { onScreenSelected(Screen.Keranjang) },
             icon = { Icon(Icons.Default.ShoppingCart, null) },
             label = { Text("Keranjang", fontSize = 10.sp) },
-            colors = NavigationBarItemDefaults.colors(selectedIconColor = HomeColors.Accent, unselectedIconColor = Color.Gray, selectedTextColor = HomeColors.Accent, unselectedTextColor = Color.Gray, indicatorColor = Color.Transparent)
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor   = selectedColor,
+                unselectedIconColor = unselectedColor,
+                selectedTextColor   = selectedColor,
+                unselectedTextColor = unselectedColor,
+                indicatorColor      = Color.Transparent
+            )
         )
         NavigationBarItem(
             selected = currentScreen == Screen.MyKatalog,
             onClick = { onScreenSelected(Screen.MyKatalog) },
             icon = { Icon(Icons.Default.Store, null) },
             label = { Text("My Katalog", fontSize = 10.sp) },
-            colors = NavigationBarItemDefaults.colors(selectedIconColor = HomeColors.Accent, unselectedIconColor = Color.Gray, selectedTextColor = HomeColors.Accent, unselectedTextColor = Color.Gray, indicatorColor = Color.Transparent)
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor   = selectedColor,
+                unselectedIconColor = unselectedColor,
+                selectedTextColor   = selectedColor,
+                unselectedTextColor = unselectedColor,
+                indicatorColor      = Color.Transparent
+            )
         )
         NavigationBarItem(
             selected = currentScreen == Screen.Profile || currentScreen == Screen.RiwayatTransaksi || currentScreen == Screen.DetailTransaksi || currentScreen == Screen.Pembayaran,
             onClick = { onScreenSelected(Screen.Profile) },
             icon = { Icon(Icons.Default.Person, null) },
             label = { Text("Me", fontSize = 10.sp) },
-            colors = NavigationBarItemDefaults.colors(selectedIconColor = HomeColors.Accent, unselectedIconColor = Color.Gray, selectedTextColor = HomeColors.Accent, unselectedTextColor = Color.Gray, indicatorColor = Color.Transparent)
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor   = selectedColor,
+                unselectedIconColor = unselectedColor,
+                selectedTextColor   = selectedColor,
+                unselectedTextColor = unselectedColor,
+                indicatorColor      = Color.Transparent
+            )
         )
     }
 }
@@ -1127,10 +1242,20 @@ fun HomeScreenPreview() {
                 .background(HomeColors.Background)
                 .verticalScroll(rememberScrollState())
         ) {
-            HomeTopBar(onLogout = {}, onMenuClick = {})
+            HomeTopBar(onLogout = {}, onMenuClick = {}, onCartClick = {})
             HeroCollage(onRentNow = {})
             Spacer(modifier = Modifier.height(20.dp))
-            SearchCard()
+            SearchCard(
+                location = "Jakarta",
+                onLocationChange = {},
+                searchQuery = "",
+                onQueryChange = {},
+                startDate = "2024-07-17",
+                onStartDateChange = {},
+                endDate = "2024-07-20",
+                onEndDateChange = {},
+                onSearchClick = {}
+            )
             Spacer(modifier = Modifier.height(36.dp))
             BrandLogosSection()
             Spacer(modifier = Modifier.height(36.dp))
