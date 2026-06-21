@@ -68,35 +68,41 @@ fun ProductScreen(
     viewModel: KatalogViewModel,
     keranjangViewModel: KeranjangViewModel,
     initialSearchQuery: String = "",
+    initialCategory: String = "Semua",
     onItemClick: (Int) -> Unit
 ) {
     val context = LocalContext.current
     var searchQuery     by remember { mutableStateOf(initialSearchQuery) }
-    var activeKategori  by remember { mutableStateOf("Semua") }
+    var activeKategori  by remember { mutableStateOf(initialCategory) }
     var activeHarga     by remember { mutableStateOf<HargaRange?>(null) }
     var showFilterSheet by remember { mutableStateOf(false) }
 
     val katalogState by viewModel.katalogPublik.observeAsState()
     val kategoriResult by viewModel.kategori.observeAsState()
 
-    val keranjangState by keranjangViewModel.keranjang.observeAsState()
+    val addToCartState by keranjangViewModel.addToCartState.observeAsState()
 
     // Sync searchQuery with initialSearchQuery when navigating from Home
     LaunchedEffect(initialSearchQuery) {
         searchQuery = initialSearchQuery
+    }
+    
+    // Sync activeKategori with initialCategory when navigating from Home
+    LaunchedEffect(initialCategory) {
+        activeKategori = initialCategory
     }
 
     LaunchedEffect(Unit) {
         viewModel.getKategori()
     }
 
-    LaunchedEffect(keranjangState) {
-        if (keranjangState is Resource.Success) {
+    LaunchedEffect(addToCartState) {
+        if (addToCartState is Resource.Success) {
             Toast.makeText(context, "Berhasil ditambahkan ke keranjang!", Toast.LENGTH_SHORT).show()
-            keranjangViewModel.resetStates()
-        } else if (keranjangState is Resource.Error) {
-            Toast.makeText(context, "Gagal: ${keranjangState?.message}", Toast.LENGTH_SHORT).show()
-            keranjangViewModel.resetStates()
+            keranjangViewModel.resetActionStates()
+        } else if (addToCartState is Resource.Error) {
+            Toast.makeText(context, "Gagal: ${addToCartState?.message}", Toast.LENGTH_SHORT).show()
+            keranjangViewModel.resetActionStates()
         }
     }
 
