@@ -67,10 +67,11 @@ fun ProductScreen(
     token: String,
     viewModel: KatalogViewModel,
     keranjangViewModel: KeranjangViewModel,
+    initialSearchQuery: String = "",
     onItemClick: (Int) -> Unit
 ) {
     val context = LocalContext.current
-    var searchQuery     by remember { mutableStateOf("") }
+    var searchQuery     by remember { mutableStateOf(initialSearchQuery) }
     var activeKategori  by remember { mutableStateOf("Semua") }
     var activeHarga     by remember { mutableStateOf<HargaRange?>(null) }
     var showFilterSheet by remember { mutableStateOf(false) }
@@ -79,6 +80,11 @@ fun ProductScreen(
     val kategoriResult by viewModel.kategori.observeAsState()
 
     val keranjangState by keranjangViewModel.keranjang.observeAsState()
+
+    // Sync searchQuery with initialSearchQuery when navigating from Home
+    LaunchedEffect(initialSearchQuery) {
+        searchQuery = initialSearchQuery
+    }
 
     LaunchedEffect(Unit) {
         viewModel.getKategori()
