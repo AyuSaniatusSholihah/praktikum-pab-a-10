@@ -77,14 +77,18 @@ fun mapCheckoutResponseToState(
         )
     }
 
-    val dateFormat = java.text.SimpleDateFormat("dd MMMM yyyy HH:mm:ss", java.util.Locale("id", "ID"))
+    val dateFormat = java.text.SimpleDateFormat("EEEE, d MMMM yyyy HH:mm", java.util.Locale("id", "ID"))
     val currentDateTime = dateFormat.format(java.util.Date())
 
     val customer = CustomerInfo(
-        nama = firstTx.user?.name ?: "Customer (Guest)",
-        metodePembayaran = firstTx.pembayaran?.metode ?: "Transfer Bank - BCA",
-        metodePengiriman = if (firstTx.user?.alamat.isNullOrBlank()) "COD" else "Delivery",
-        alamat = firstTx.user?.alamat ?: "-",
+        nama = formData?.let { "${it.firstName} ${it.lastName}" } ?: firstTx.user?.name ?: "Customer",
+        metodePembayaran = formData?.paymentDetail ?: firstTx.pembayaran?.metode ?: "-",
+        metodePengiriman = formData?.shipping?.name ?: (if (firstTx.user?.alamat.isNullOrBlank()) "COD" else "Delivery"),
+        alamat = if (formData?.shipping == ShippingMethod.DELIVERY) {
+            "${formData.address}, ${formData.cityProvince} ${formData.postalCode}"
+        } else {
+            firstTx.user?.alamat ?: "-"
+        },
         tanggalPembayaran = currentDateTime
     )
 

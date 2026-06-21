@@ -11,7 +11,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.*
@@ -22,8 +22,6 @@ import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -47,7 +45,6 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalContext
-import android.widget.Toast
 
 
 
@@ -217,7 +214,7 @@ fun CheckoutPaymentUI(
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onBack) {
-                Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = CkColors.Black)
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = CkColors.Black)
             }
             Text(
                 "Checkout Payment",
@@ -428,21 +425,23 @@ fun totalAll(items: List<CartItem>, shippingCost: Long): Long =
 
 
 fun KeranjangItem.toCartItem(): CartItem {
-    val imageUrl = if (!this.barang.foto_barang.isNullOrEmpty()) {
-        if (this.barang.foto_barang!!.startsWith("http")) this.barang.foto_barang!!
-        else ApiClient.IMAGE_BASE_URL + this.barang.foto_barang
+    val b = this.barang
+    val fotoBarang = b?.foto_barang
+    val imageUrl = if (!fotoBarang.isNullOrEmpty()) {
+        if (fotoBarang.startsWith("http")) fotoBarang
+        else ApiClient.IMAGE_BASE_URL + fotoBarang
     } else "https://placehold.co/200"
 
     return CartItem(
         id = this.id,
-        nama = this.barang.nama_barang,
-        harga = this.barang.harga_sewa.toLong(),
+        nama = b?.nama_barang ?: "Unknown Product",
+        harga = b?.harga_sewa?.toLong() ?: 0L,
         qty = this.jumlah,
         imageUrl = imageUrl,
         tglMulai = this.tanggal_sewa,
         tglSelesai = this.tanggal_kembali_rencana,
-        dendaPerJam = this.barang.harga_denda_perjam.toLong(),
-        jaminanBase = this.barang.harga_jaminan.toLong()
+        dendaPerJam = b?.harga_denda_perjam?.toLong() ?: 0L,
+        jaminanBase = b?.harga_jaminan?.toLong() ?: 0L
     )
 }
 
