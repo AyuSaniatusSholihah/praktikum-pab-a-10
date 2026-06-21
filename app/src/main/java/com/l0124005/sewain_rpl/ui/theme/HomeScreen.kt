@@ -127,6 +127,7 @@ fun RentalsScreen(
     var activeKategori by remember { mutableStateOf("Semua") }
 
     val katalogState by viewModel.katalogPublik.observeAsState(Resource.Loading())
+    val extractedKategori by viewModel.extractedKategori.observeAsState(emptyList())
 
     // Debounce search query
     LaunchedEffect(searchQuery) {
@@ -161,7 +162,11 @@ fun RentalsScreen(
         )
 
         // ── Filter Kategori ──
-        val availableCategories = (kategoriResult as? Resource.Success)?.data?.data?.map { it.nama_kategori } ?: emptyList()
+        val availableCategories = if (extractedKategori.isNotEmpty()) {
+            extractedKategori
+        } else {
+            (kategoriResult as? Resource.Success)?.data?.data?.map { it.nama_kategori } ?: emptyList()
+        }
         val fullCategories = listOf("Semua") + availableCategories
 
         KategoriFilterRow(

@@ -63,6 +63,7 @@ fun EditItemScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) {
+        viewModel.resetCrudResult()          // Bersihkan sisa hasil simpan sebelumnya
         viewModel.getMyKatalogDetail(token, itemId)
         viewModel.getKategori()
     }
@@ -226,8 +227,8 @@ fun EditItemScreen(
                         return@Button
                     }
 
-                    // Reset state lama agar tidak memicu onSuccess() dari hasil sebelumnya
-                    viewModel.resetStates()
+                    // Reset hanya crudResult agar tidak memicu onSuccess() dari hasil sebelumnya
+                    viewModel.resetCrudResult()
 
                     val namePart = itemName.toRequestBody("text/plain".toMediaTypeOrNull())
                     val catPart = categoryId.toString().toRequestBody("text/plain".toMediaTypeOrNull())

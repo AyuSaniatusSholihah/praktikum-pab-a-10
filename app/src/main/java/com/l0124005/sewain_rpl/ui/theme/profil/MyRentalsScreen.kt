@@ -295,7 +295,11 @@ private fun RentalCard(item: TransaksiData, modifier: Modifier = Modifier) {
     val status = RentalStatus.fromBackend(item.status)
     val barang = item.barang
     val imageUrl = if (!barang?.foto_barang.isNullOrEmpty()) {
-        "${ApiClient.IMAGE_BASE_URL}products/${barang?.foto_barang}"
+        if (barang?.foto_barang?.startsWith("http") == true) {
+            barang.foto_barang
+        } else {
+            "${ApiClient.IMAGE_BASE_URL}${barang?.foto_barang}"
+        }
     } else {
         "https://picsum.photos/seed/${barang?.id ?: 0}/300/200"
     }
@@ -357,7 +361,7 @@ private fun RentalCard(item: TransaksiData, modifier: Modifier = Modifier) {
                 )
                 Spacer(Modifier.width(3.dp))
                 Text(
-                    text = "Indonesia", 
+                    text = barang?.lokasi ?: "Indonesia",
                     color = TextMuted,
                     fontSize = 11.sp
                 )
