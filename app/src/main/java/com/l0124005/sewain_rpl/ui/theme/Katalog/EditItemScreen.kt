@@ -1,7 +1,6 @@
 package com.l0124005.sewain_rpl.ui.theme.katalog
 
 import android.net.Uri
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.*
@@ -43,7 +42,6 @@ fun EditItemScreen(
     val context = LocalContext.current
     val itemDetailState by viewModel.myKatalogDetail.observeAsState()
     val kategoriResult by viewModel.kategori.observeAsState()
-    val extractedKategori by viewModel.extractedKategori.observeAsState(emptyList())
     val crudResult by viewModel.crudResult.observeAsState()
 
     var itemName by remember { mutableStateOf("") }
@@ -64,10 +62,9 @@ fun EditItemScreen(
     LaunchedEffect(Unit) {
         viewModel.getMyKatalogDetail(token, itemId)
         viewModel.getKategori()
-        viewModel.getKatalogPublik()
     }
 
-    LaunchedEffect(itemDetailState, kategoriResult, extractedKategori) {
+    LaunchedEffect(itemDetailState, kategoriResult) {
         if (itemDetailState is Resource.Success) {
             val data = itemDetailState?.data?.data
             data?.let {
@@ -83,12 +80,10 @@ fun EditItemScreen(
                 status = it.status
                 existingImageUrl = it.foto_barang ?: ""
 
-                val cats = if (kategoriResult is Resource.Success) {
-                    (kategoriResult as Resource.Success).data?.data
-                } else {
-                    extractedKategori
+                if (kategoriResult is Resource.Success) {
+                    val cats = (kategoriResult as Resource.Success).data?.data
+                    categoryName = cats?.find { c -> c.id == it.kategori_id }?.nama_kategori ?: ""
                 }
-                categoryName = cats?.find { c -> c.id == it.kategori_id }?.nama_kategori ?: ""
             }
         }
     }
@@ -218,28 +213,16 @@ fun EditItemScreen(
     }
 
     if (showCategorySheet) {
-        val availableCategories = if (kategoriResult is Resource.Success) {
-            kategoriResult?.data?.data ?: emptyList()
-        } else {
-            extractedKategori
-        }
-
-        if (availableCategories.isNotEmpty()) {
-            CategoryBottomSheetDynamic(
-                categories = availableCategories,
-                selectedCategoryId = categoryId.toString(),
-                onSelect = { id, name ->
-                    categoryId = id
-                    categoryName = name
-                    showCategorySheet = false
-                },
-                onDismiss = { showCategorySheet = false }
-            )
-        } else {
-            if (kategoriResult !is Resource.Loading) {
-                Toast.makeText(context, "Gagal memuat kategori. Pastikan Anda terhubung ke internet.", Toast.LENGTH_SHORT).show()
+        val availableCategories = (kategoriResult as? Resource.Success)?.data?.data ?: emptyList()
+        CategoryBottomSheetDynamic(
+            categories = availableCategories,
+            selectedCategoryId = categoryId.toString(),
+            onSelect = { id, name ->
+                categoryId = id
+                categoryName = name
                 showCategorySheet = false
-            }
-        }
+            },
+            onDismiss = { showCategorySheet = false }
+        )
     }
 }

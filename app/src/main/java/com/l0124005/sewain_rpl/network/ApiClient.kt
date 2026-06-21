@@ -8,10 +8,14 @@ import java.util.concurrent.TimeUnit
 
 object ApiClient {
 
-    private const val BASE_URL = "https://sewain.thecompoint.com/api/"
+    // Ganti IP di bawah sesuai dengan IP Laptop Anda (cek cmd: ipconfig)
+    private const val IP_LAPTOP = "10.76.36.196" // IP Wi-Fi Anda sekarang
+
+    // Jika pakai emulator gunakan "10.0.2.2", jika HP fisik gunakan IP_LAPTOP
+    private const val BASE_URL = "http://$IP_LAPTOP:8000/api/"
 
     // URL tanpa /api/ — untuk load gambar
-    const val IMAGE_BASE_URL = "https://sewain.thecompoint.com/storage/"
+    const val IMAGE_BASE_URL = "http://$IP_LAPTOP:8000/storage/"
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY
@@ -19,12 +23,6 @@ object ApiClient {
 
     private val okHttpClient = OkHttpClient.Builder()
         .addInterceptor(loggingInterceptor)
-        .addInterceptor { chain ->
-            val request = chain.request().newBuilder()
-                .addHeader("Accept", "application/json")
-                .build()
-            chain.proceed(request)
-        }
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .build()

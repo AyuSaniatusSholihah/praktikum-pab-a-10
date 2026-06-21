@@ -107,7 +107,6 @@ fun RentalsScreen(
     val context = LocalContext.current
     val keranjangState by keranjangViewModel.keranjang.observeAsState()
     val kategoriResult by viewModel.kategori.observeAsState()
-    val extractedKategori by viewModel.extractedKategori.observeAsState(emptyList())
 
     LaunchedEffect(Unit) {
         viewModel.getKategori()
@@ -129,12 +128,8 @@ fun RentalsScreen(
     val katalogState by viewModel.katalogPublik.observeAsState(Resource.Loading())
 
     // Fetch ulang setiap kali filter berubah
-    LaunchedEffect(searchQuery, activeKategori, kategoriResult, extractedKategori) {
-        val cats = if (kategoriResult is Resource.Success && kategoriResult?.data != null) {
-            kategoriResult?.data!!.data
-        } else {
-            extractedKategori
-        }
+    LaunchedEffect(searchQuery, activeKategori, kategoriResult) {
+        val cats = (kategoriResult as? Resource.Success)?.data?.data ?: emptyList()
         val katId = if (activeKategori == "Semua") {
             null
         } else {
@@ -159,12 +154,7 @@ fun RentalsScreen(
         )
 
         // ── Filter Kategori ──
-        val cats = if (kategoriResult is Resource.Success && kategoriResult?.data != null) {
-            kategoriResult?.data!!.data
-        } else {
-            extractedKategori
-        }
-        val availableCategories = cats.map { it.nama_kategori }
+        val availableCategories = (kategoriResult as? Resource.Success)?.data?.data?.map { it.nama_kategori } ?: emptyList()
         val fullCategories = listOf("Semua") + availableCategories
 
         KategoriFilterRow(

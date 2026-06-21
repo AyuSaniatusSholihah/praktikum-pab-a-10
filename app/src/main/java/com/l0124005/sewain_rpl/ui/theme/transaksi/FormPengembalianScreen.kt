@@ -11,7 +11,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarBorder
@@ -59,12 +58,7 @@ fun FormPengembalianScreen(
     }
 
     Scaffold(
-        topBar = { 
-            SewainTopBar(
-                onNavigationClick = onBack,
-                navigationIcon = Icons.AutoMirrored.Filled.ArrowBack
-            ) 
-        },
+        topBar = { SewainTopBar(onNavigationClick = onBack) },
         containerColor = Color.White
     ) { padding ->
         Column(
@@ -218,9 +212,8 @@ fun FormPengembalianScreen(
                                 .fillMaxWidth()
                                 .height(100.dp),
                             placeholder = { Text("Tulis pengalamanmu...", color = TextMuted, fontSize = 14.sp) },
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedContainerColor = LightBlueBg,
-                                unfocusedContainerColor = LightBlueBg,
+                            colors = TextFieldDefaults.outlinedTextFieldColors(
+                                containerColor = LightBlueBg,
                                 focusedBorderColor = PriceBlue,
                                 unfocusedBorderColor = Color.Transparent
                             ),

@@ -1,7 +1,6 @@
 package com.l0124005.sewain_rpl.ui.theme.profil
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -92,8 +91,7 @@ fun MyRentalsScreen(
     onRentalsOwnerClick: () -> Unit,
     onMyWalletClick: () -> Unit,
     onLogoutClick: () -> Unit,
-    onSettingsClick: () -> Unit = {},
-    onItemClick: (TransaksiData) -> Unit = {}
+    onSettingsClick: () -> Unit = {}
 ) {
     val transaksiState by viewModel.transaksiList.observeAsState()
     val profileState by profileViewModel.profile.observeAsState()
@@ -176,8 +174,7 @@ fun MyRentalsScreen(
                         MyRentalsContent(
                             active = activeTransactions,
                             history = historyTransactions,
-                            onMenuClick = { scope.launch { drawerState.open() } },
-                            onItemClick = onItemClick
+                            onMenuClick = { scope.launch { drawerState.open() } }
                         )
                     }
                 }
@@ -190,8 +187,7 @@ fun MyRentalsScreen(
 private fun MyRentalsContent(
     active: List<TransaksiData>,
     history: List<TransaksiData>,
-    onMenuClick: () -> Unit,
-    onItemClick: (TransaksiData) -> Unit
+    onMenuClick: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -236,7 +232,7 @@ private fun MyRentalsContent(
                     )
 
                     Spacer(Modifier.height(16.dp))
-                    RentalCardsGrid(items = active, onItemClick = onItemClick)
+                    RentalCardsGrid(items = active)
 
                     Spacer(Modifier.height(36.dp))
 
@@ -256,7 +252,7 @@ private fun MyRentalsContent(
                     )
 
                     Spacer(Modifier.height(16.dp))
-                    RentalCardsGrid(items = history, onItemClick = onItemClick)
+                    RentalCardsGrid(items = history)
                 }
             }
         }
@@ -264,7 +260,7 @@ private fun MyRentalsContent(
 }
 
 @Composable
-private fun RentalCardsGrid(items: List<TransaksiData>, onItemClick: (TransaksiData) -> Unit) {
+private fun RentalCardsGrid(items: List<TransaksiData>) {
     if (items.isEmpty()) {
         Text(
             text = "Tidak ada data.",
@@ -282,8 +278,7 @@ private fun RentalCardsGrid(items: List<TransaksiData>, onItemClick: (TransaksiD
                     rowItems.forEach { item ->
                         RentalCard(
                             item = item,
-                            modifier = Modifier.weight(1f),
-                            onClick = { onItemClick(item) }
+                            modifier = Modifier.weight(1f)
                         )
                     }
                     if (rowItems.size == 1) {
@@ -296,11 +291,7 @@ private fun RentalCardsGrid(items: List<TransaksiData>, onItemClick: (TransaksiD
 }
 
 @Composable
-private fun RentalCard(
-    item: TransaksiData,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit = {}
-) {
+private fun RentalCard(item: TransaksiData, modifier: Modifier = Modifier) {
     val status = RentalStatus.fromBackend(item.status)
     val barang = item.barang
     val imageUrl = if (!barang?.foto_barang.isNullOrEmpty()) {
@@ -314,7 +305,6 @@ private fun RentalCard(
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(CardBlue)
-            .clickable { onClick() }
     ) {
         Box(
             modifier = Modifier

@@ -11,30 +11,18 @@ class AuthRepository(private val session: SessionManager) {
     suspend fun login(email: String, password: String): Resource<String> {
         return try {
             val response = api.login(LoginRequest(email, password))
-            val body = response.body()
-            
-            if (response.isSuccessful && body != null) {
+            if (response.isSuccessful) {
+                val body = response.body()!!
                 if (body.success && body.access_token != null) {
                     session.saveToken(body.access_token)
-                    // Ambil role asli dari user, jika tidak ada default ke "user"
-                    val role = body.user?.role ?: "user"
-                    session.saveRole(role)
+                    // Jika role tidak ada di model baru, kita default ke "user"
+                    session.saveRole("user") 
                     Resource.Success(body.message)
-                } else if (body.is_verified == false && body.email != null) {
-                    // Kasus khusus: Akun ada tapi belum verifikasi OTP
-                    Resource.Error("VERIFY_NEEDED|${body.message}|${body.email}")
                 } else {
                     Resource.Error(body.message)
                 }
             } else {
-                // Ambil pesan error dari errorBody jika ada (format JSON)
-                val errorMsg = response.errorBody()?.string()
-                if (errorMsg?.contains("message") == true) {
-                    // Parsing manual sederhana atau biarkan user melihat pesan sistem
-                    Resource.Error("Gagal login: Kredensial tidak valid atau masalah server")
-                } else {
-                    Resource.Error("Login gagal (Code: ${response.code()})")
-                }
+                Resource.Error("Login gagal: ${response.code()}")
             }
         } catch (e: Exception) {
             Resource.Error("Tidak bisa konek ke server: ${e.message}")

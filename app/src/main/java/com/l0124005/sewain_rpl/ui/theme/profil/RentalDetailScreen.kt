@@ -26,13 +26,13 @@ import coil.compose.AsyncImage
 import com.l0124005.sewain_rpl.ui.theme.AbrilFatfaceFont
 import com.l0124005.sewain_rpl.ui.theme.SewainTopBar
 import com.l0124005.sewain_rpl.ui.theme.VolkhovFont
-import com.l0124005.sewain_rpl.ui.theme.DarkNavy
-import com.l0124005.sewain_rpl.ui.theme.MidBlue
-import com.l0124005.sewain_rpl.ui.theme.TextLight
-import com.l0124005.sewain_rpl.ui.theme.TextMuted
 
-// ── Warna tema tambahan ──
+// ── Warna tema -- SAMA PERSIS dengan FormPengembalianScreen.kt / profile.css ──
+private val DarkNavy    = Color(0xFF21394F) // .dash-content-card
+private val MidBlue     = Color(0xFF4D6674) // .dash-panel / .dash-content
 private val LightBlueBg = Color(0xFFE8F4FB) // .rd-field .rd-value background
+private val TextLight   = Color(0xFFE6E8EF) // .rd-field label, rental-detail-header h3
+private val TextMuted   = Color(0xFFA1A2A7)
 private val ReceiptBg   = Color(0xFFF5F5F5) // .receipt-item / .receipt-product
 private val ReceiptBorder = Color(0xFFE8E8E8)
 private val ReceiptText = Color(0xFF484848) // .rec-row .lbl/.val
@@ -50,6 +50,7 @@ enum class RentalDetailStatus(val label: String, val bgColor: Color) {
     RETURN("Return Rent", Color(0xFFFAA443).copy(alpha = 0.35f))
 }
 
+// TODO: ganti dengan model asli dari endpoint detail transaksi kamu.
 data class RentalDetailData(
     val itemName: String,
     val itemImageUrl: String,
@@ -95,7 +96,7 @@ fun RentalDetailScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(16.dp)
             ) {
-                // ── Panel luar warna MidBlue (.dash-panel/.dash-content) ──
+                // ── Panel luar warna #4D6674 (.dash-panel/.dash-content) ──
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -103,7 +104,7 @@ fun RentalDetailScreen(
                         .background(MidBlue)
                         .padding(20.dp)
                 ) {
-                    // ── Card konten dalam warna DarkNavy (.dash-content-card) ──
+                    // ── Card konten dalam warna #21394F (.dash-content-card) ──
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -154,6 +155,7 @@ fun RentalDetailScreen(
                         }
 
                         // ── Tombol "AJUKAN PENGEMBALIAN" -- HANYA muncul kalau status Active Rent
+                        // (.btn-ajukan-return di web; posisi absolute pojok kanan atas card) ──
                         if (detail.status == RentalDetailStatus.ACTIVE) {
                             Button(
                                 onClick = onAjukanPengembalian,
@@ -184,6 +186,7 @@ fun RentalDetailScreen(
     }
 }
 
+// ── Header: foto thumbnail + badge status + nama barang ──
 @Composable
 private fun RentalDetailHeaderBlock(detail: RentalDetailData) {
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -198,6 +201,7 @@ private fun RentalDetailHeaderBlock(detail: RentalDetailData) {
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
+            // Badge status -- sesuai #statusBadge di web
             Box(
                 modifier = Modifier
                     .padding(6.dp)
@@ -225,6 +229,7 @@ private fun RentalDetailHeaderBlock(detail: RentalDetailData) {
     }
 }
 
+// ── Grid info transaksi: ID Transaksi, Owner, User, Denda, Date, Status ──
 @Composable
 private fun RentalDetailInfoGrid(detail: RentalDetailData) {
     val fields = listOf(
@@ -272,6 +277,7 @@ private fun RentalDetailInfoGrid(detail: RentalDetailData) {
     }
 }
 
+// ── Kartu Receipt (.receipt-item) -- background terang, override tema gelap ──
 @Composable
 private fun ReceiptCard(detail: RentalDetailData) {
     Column(
@@ -282,7 +288,9 @@ private fun ReceiptCard(detail: RentalDetailData) {
             .background(ReceiptBg)
             .padding(18.dp)
     ) {
+        // ── Header produk: badge nomor + foto + nama & harga + PAID ──
         Row(verticalAlignment = Alignment.Top) {
+            // Badge angka "1" (.item-badge)
             Box(
                 modifier = Modifier
                     .size(20.dp)
@@ -328,6 +336,7 @@ private fun ReceiptCard(detail: RentalDetailData) {
                 )
             }
 
+            // PAID badge -- kotak miring sesuai .paid-badge
             if (detail.isPaid) {
                 Box(
                     modifier = Modifier
@@ -349,6 +358,7 @@ private fun ReceiptCard(detail: RentalDetailData) {
 
         Spacer(Modifier.height(14.dp))
 
+        // ── Tanggal mulai & selesai (.rec-dates) ──
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.fillMaxWidth()
@@ -367,6 +377,7 @@ private fun ReceiptCard(detail: RentalDetailData) {
 
         Spacer(Modifier.height(14.dp))
 
+        // ── Rows rincian biaya (.rec-rows) ──
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             ReceiptRow(label = "Durasi Sewa", value = detail.durasiSewa)
             ReceiptRow(label = "Subtotal", value = detail.subtotal)
@@ -447,6 +458,7 @@ private fun ReceiptRow(
     }
 }
 
+// ── Preview ──
 @androidx.compose.ui.tooling.preview.Preview(showBackground = true, widthDp = 390, heightDp = 1600)
 @Composable
 fun RentalDetailScreenPreview() {
@@ -473,8 +485,10 @@ fun RentalDetailScreenPreview() {
         catatanDenda = "Rp 15.000/jam"
     )
 
-    RentalDetailScreen(
-        detail = dummyDetail,
-        onAjukanPengembalian = {}
-    )
+    com.l0124005.sewain_rpl.ui.theme.Sewain_rplTheme {
+        RentalDetailScreen(
+            detail = dummyDetail,
+            onAjukanPengembalian = {}
+        )
+    }
 }
