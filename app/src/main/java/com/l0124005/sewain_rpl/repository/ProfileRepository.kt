@@ -24,6 +24,34 @@ class ProfileRepository {
         }
     }
 
+    fun getOwnerDashboard(token: String): Flow<Resource<OwnerDashboardResponse>> = flow {
+        emit(Resource.Loading())
+        try {
+            val response = apiService.getOwnerDashboard(token)
+            if (response.isSuccessful && response.body() != null) {
+                emit(Resource.Success(response.body()!!))
+            } else {
+                emit(Resource.Error(response.message()))
+            }
+        } catch (e: Exception) {
+            emit(Resource.Error(e.message ?: "Gagal memuat data owner"))
+        }
+    }
+
+    fun getRiwayatTransaksi(token: String): Flow<Resource<TransaksiListResponse>> = flow {
+        emit(Resource.Loading())
+        try {
+            val response = apiService.getRiwayatTransaksi(token)
+            if (response.isSuccessful && response.body() != null) {
+                emit(Resource.Success(response.body()!!))
+            } else {
+                emit(Resource.Error(response.message()))
+            }
+        } catch (e: Exception) {
+            emit(Resource.Error(e.message ?: "Gagal memuat riwayat transaksi"))
+        }
+    }
+
     fun updateProfile(
         token: String,
         name: RequestBody? = null,

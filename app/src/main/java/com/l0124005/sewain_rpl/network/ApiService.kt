@@ -218,7 +218,9 @@ interface ApiService {
         @Path("id") id: Int,
         @Part foto_buktipengembalian: MultipartBody.Part,
         @Part("rating") rating: RequestBody,
-        @Part("komentar") komentar: RequestBody? = null
+        @Part("komentar") komentar: RequestBody? = null,
+        @Part("tanggal_kembali_aktual") tanggalKembali: RequestBody? = null,
+        @Part("total_denda") totalDenda: RequestBody? = null
     ): Response<KembalikanResponse>
 
 

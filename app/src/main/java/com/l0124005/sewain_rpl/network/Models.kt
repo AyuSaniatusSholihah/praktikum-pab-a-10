@@ -111,7 +111,8 @@ data class CatalogData(
     val fotoproduk3: String? = null, // Angle 3
     val fotoproduk4: String? = null, // Angle 4
     val status: String,
-    val kategori: KategoriData? = null
+    val kategori: KategoriData? = null,
+    val user: UserData? = null
 ) {
     companion object {
         val EMPTY = CatalogData(

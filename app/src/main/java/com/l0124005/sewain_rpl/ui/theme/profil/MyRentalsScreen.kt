@@ -1,6 +1,8 @@
 package com.l0124005.sewain_rpl.ui.theme.profil
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,7 +22,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.TextOverflow
 import coil.compose.AsyncImage
+import com.l0124005.sewain_rpl.utils.RentalStatus
 import com.l0124005.sewain_rpl.network.ApiClient
 import com.l0124005.sewain_rpl.network.TransaksiData
 import com.l0124005.sewain_rpl.ui.theme.AbrilFatfaceFont
@@ -37,6 +41,8 @@ import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.viewmodel.ProfileViewModel
 import com.l0124005.sewain_rpl.viewmodel.TransaksiViewModel
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 // ── Warna tema -- SAMA PERSIS dengan ProfileScreen.kt / MyWalletScreen.kt biar konsisten ──
 private val CardBlue   = Color(0xFF21394F)
@@ -45,41 +51,7 @@ private val LocalDarkNavy = Color(0xFF21394F)
 
 // ── Warna badge status -- sesuai .dc-badge di CSS ──
 // Background soft, text dark sesuai .dc-badge.active / .paid / .return dll.
-private val StatusActiveBg    = Color(0xFFC3D4E9)
-private val StatusActiveText  = Color(0xFF1e3a5f)
-private val StatusUpcomingBg  = Color(0xFFe8f4ea)
-private val StatusUpcomingText = Color(0xFF1f7a47)
-private val StatusCompletedBg  = Color(0xFFd1f0dd)
-private val StatusCompletedText = Color(0xFF1f7a47)
-private val StatusCanceledBg  = Color(0xFFffcdd2)
-private val StatusCanceledText = Color(0xFFc62828)
-private val StatusReturnBg   = Color(0xFFffe3c4)
-private val StatusReturnText  = Color(0xFFa35a17)
 
-enum class RentalStatus(
-    val label: String,
-    val badgeColor: Color,
-    val badgeTextColor: Color
-) {
-    ACTIVE("Active Rent", StatusActiveBg, StatusActiveText),
-    UPCOMING("Upcoming Rent", StatusUpcomingBg, StatusUpcomingText),
-    COMPLETED("Completed Rent", StatusCompletedBg, StatusCompletedText),
-    CANCELED("Canceled Rent", StatusCanceledBg, StatusCanceledText),
-    RETURN("Return Rent", StatusReturnBg, StatusReturnText);
-
-    companion object {
-        fun fromBackend(status: String): RentalStatus {
-            return when (status.lowercase()) {
-                "sedang_disewa", "menunggu_kembali" -> ACTIVE
-                "menunggu_pembayaran", "sudah_dibayar" -> UPCOMING
-                "selesai" -> COMPLETED
-                "dibatalkan", "expired" -> CANCELED
-                "menunggu_verifikasi" -> RETURN
-                else -> COMPLETED
-            }
-        }
-    }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -88,6 +60,7 @@ fun MyRentalsScreen(
     profileViewModel: ProfileViewModel,
     token: String,
     onBack: () -> Unit,
+    onRentalClick: (Int) -> Unit,
     onRentalsOwnerClick: () -> Unit,
     onMyWalletClick: () -> Unit,
     onLogoutClick: () -> Unit,
@@ -108,12 +81,14 @@ fun MyRentalsScreen(
 
     val allTransactions = (transaksiState as? Resource.Success)?.data?.data ?: emptyList()
     
-    // Pisahkan Active (termasuk upcoming/return) dan History (selesai/batal)
-    val activeTransactions = allTransactions.filter { 
-        it.status !in listOf("selesai", "dibatalkan", "expired") 
+    // Pisahkan menggunakan logika RentalStatus yang baru
+    val activeTransactions = allTransactions.filter {
+        val s = RentalStatus.fromTransaksi(it)
+        s == RentalStatus.ACTIVE || s == RentalStatus.UPCOMING || s == RentalStatus.RETURN
     }
     val historyTransactions = allTransactions.filter { 
-        it.status in listOf("selesai", "dibatalkan", "expired") 
+        val s = RentalStatus.fromTransaksi(it)
+        s == RentalStatus.COMPLETED || s == RentalStatus.CANCELED
     }
 
     ModalNavigationDrawer(
@@ -174,8 +149,11 @@ fun MyRentalsScreen(
                     }
                     else -> {
                         MyRentalsContent(
+                            userName = userName,
+                            userPhoto = userPhoto,
                             active = activeTransactions,
                             history = historyTransactions,
+                            onRentalClick = onRentalClick,
                             onMenuClick = { scope.launch { drawerState.open() } }
                         )
                     }
@@ -187,14 +165,17 @@ fun MyRentalsScreen(
 
 @Composable
 private fun MyRentalsContent(
+    userName: String,
+    userPhoto: String?,
     active: List<TransaksiData>,
     history: List<TransaksiData>,
+    onRentalClick: (Int) -> Unit,
     onMenuClick: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+            .background(Color.White)
     ) {
         SewainTopBar(
             navigationIcon = Icons.Default.Menu,
@@ -202,7 +183,10 @@ private fun MyRentalsContent(
         )
 
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp)
         ) {
             Column(
                 modifier = Modifier
@@ -211,6 +195,32 @@ private fun MyRentalsContent(
                     .background(LocalMidBlue)
                     .padding(20.dp)
             ) {
+                // ── Mini header: foto kecil + nama ──
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    AsyncImage(
+                        model = if (!userPhoto.isNullOrEmpty()) {
+                            if (userPhoto.startsWith("http")) userPhoto
+                            else "${ApiClient.IMAGE_BASE_URL}${if (userPhoto.startsWith("profiles/")) userPhoto else "profiles/$userPhoto"}"
+                        } else "https://ui-avatars.com/api/?name=$userName",
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .border(2.dp, Color.White.copy(alpha = 0.3f), RoundedCornerShape(6.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                    Spacer(Modifier.width(14.dp))
+                    Text(
+                        text = userName,
+                        fontFamily = VolkhovFont,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        color = Color.White
+                    )
+                }
+
+                Spacer(Modifier.height(20.dp))
+
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -234,7 +244,7 @@ private fun MyRentalsContent(
                     )
 
                     Spacer(Modifier.height(16.dp))
-                    RentalCardsGrid(items = active)
+                    RentalCardsGrid(items = active, onItemClick = onRentalClick)
 
                     Spacer(Modifier.height(36.dp))
 
@@ -254,7 +264,7 @@ private fun MyRentalsContent(
                     )
 
                     Spacer(Modifier.height(16.dp))
-                    RentalCardsGrid(items = history)
+                    RentalCardsGrid(items = history, onItemClick = onRentalClick)
                 }
             }
         }
@@ -262,7 +272,7 @@ private fun MyRentalsContent(
 }
 
 @Composable
-private fun RentalCardsGrid(items: List<TransaksiData>) {
+private fun RentalCardsGrid(items: List<TransaksiData>, onItemClick: (Int) -> Unit) {
     if (items.isEmpty()) {
         Text(
             text = "Tidak ada data.",
@@ -280,6 +290,7 @@ private fun RentalCardsGrid(items: List<TransaksiData>) {
                     rowItems.forEach { item ->
                         RentalCard(
                             item = item,
+                            onItemClick = onItemClick,
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -293,8 +304,19 @@ private fun RentalCardsGrid(items: List<TransaksiData>) {
 }
 
 @Composable
-private fun RentalCard(item: TransaksiData, modifier: Modifier = Modifier) {
-    val status = RentalStatus.fromBackend(item.status)
+private fun RentalCard(
+    item: TransaksiData,
+    onItemClick: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val status = RentalStatus.fromTransaksi(item)
+    
+    val outputSdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    val formatTgl = { dateStr: String? ->
+        val parsed = RentalStatus.parseFlexibleDate(dateStr)
+        if (parsed != null) outputSdf.format(parsed) else "N/A"
+    }
+
     val barang = item.barang
     val imageUrl = if (!barang?.foto_barang.isNullOrEmpty()) {
         if (barang?.foto_barang?.startsWith("http") == true) {
@@ -311,6 +333,7 @@ private fun RentalCard(item: TransaksiData, modifier: Modifier = Modifier) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(CardBlue)
+            .clickable { onItemClick(item.id) }
     ) {
         Box(
             modifier = Modifier
@@ -365,7 +388,9 @@ private fun RentalCard(item: TransaksiData, modifier: Modifier = Modifier) {
                 Text(
                     text = barang?.lokasi ?: "Indonesia",
                     color = TextMuted,
-                    fontSize = 11.sp
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
 
@@ -385,43 +410,41 @@ private fun RentalCard(item: TransaksiData, modifier: Modifier = Modifier) {
                 )
                 Spacer(Modifier.width(4.dp))
                 Text(
-                    text = "Sewa: ${item.tanggal_sewa} - ${item.tanggal_kembali_rencana}",
+                    text = "Sewa: ${formatTgl(item.tanggal_sewa)} s.d ${formatTgl(item.tanggal_kembali_rencana)}",
                     color = Color.White,
                     fontSize = 10.sp
                 )
             }
 
-            if (!item.tanggal_kembali_aktual.isNullOrEmpty()) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Default.CalendarMonth,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(11.dp)
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        text = "Return: ${item.tanggal_kembali_aktual}",
-                        color = Color.White,
-                        fontSize = 10.sp
-                    )
-                }
-            } else if (status == RentalStatus.ACTIVE || status == RentalStatus.UPCOMING) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Default.CalendarMonth,
-                        contentDescription = null,
-                        tint = Color.White.copy(alpha = 0.45f),
-                        modifier = Modifier.size(11.dp)
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        text = "Return: Belum dijadwalkan",
-                        color = Color.White.copy(alpha = 0.45f),
-                        fontSize = 10.sp,
-                        fontStyle = FontStyle.Italic
-                    )
-                }
+            // Tampilkan info Return (Selalu tampilkan sesuai permintaan)
+            val isReturned = !item.tanggal_kembali_aktual.isNullOrEmpty() && !item.tanggal_kembali_aktual.startsWith("0000")
+            val returnDateToDisplay = if (isReturned) item.tanggal_kembali_aktual else item.tanggal_kembali_rencana
+            
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Default.CalendarMonth,
+                    contentDescription = null,
+                    tint = if (isReturned) Color.White else Color.White.copy(alpha = 0.7f),
+                    modifier = Modifier.size(11.dp)
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    text = "Return item: ${formatTgl(returnDateToDisplay)} 23:59 WIB",
+                    color = if (isReturned) Color.White else Color.White.copy(alpha = 0.7f),
+                    fontSize = 10.sp
+                )
+            }
+
+            // Tambahan indikator urgensi jika status sudah RETURN tapi belum dikembalikan
+            if (status == RentalStatus.RETURN && !isReturned) {
+                Text(
+                    text = "⚠ Segera kembalikan!",
+                    color = Color(0xFFFFCC00),
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontStyle = FontStyle.Italic,
+                    modifier = Modifier.padding(start = 15.dp)
+                )
             }
         }
     }

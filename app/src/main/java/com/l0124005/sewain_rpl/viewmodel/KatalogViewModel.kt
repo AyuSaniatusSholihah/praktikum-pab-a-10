@@ -48,6 +48,10 @@ class KatalogViewModel(private val repository: KatalogRepository) : ViewModel() 
         _crudResult.value = null
     }
 
+    fun resetMyKatalogDetail() {
+        _myKatalogDetail.value = null
+    }
+
     fun getKategori() {
         viewModelScope.launch {
             repository.getKategori().collect {

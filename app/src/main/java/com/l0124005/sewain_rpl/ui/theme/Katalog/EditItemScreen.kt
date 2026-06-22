@@ -102,10 +102,8 @@ fun EditItemScreen(
     // ── Load detail ──
     LaunchedEffect(itemId) {
         viewModel.resetCrudResult()
-        val currentDetail = (itemDetailState as? Resource.Success)?.data?.data
-        if (currentDetail == null || currentDetail.id != itemId) {
-            viewModel.getMyKatalogDetail(token, itemId)
-        }
+        viewModel.resetMyKatalogDetail()
+        viewModel.getMyKatalogDetail(token, itemId)
         viewModel.getKategori()
     }
 

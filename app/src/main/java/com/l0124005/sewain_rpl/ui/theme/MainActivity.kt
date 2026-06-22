@@ -113,6 +113,16 @@ class MainActivity : ComponentActivity() {
             return
         }
 
+        // Always show Landing first unless coming from internal redirect
+        val isFirstRun = intent.getBooleanExtra("IS_FIRST_RUN", true)
+        if (isFirstRun && intent.getStringExtra("TARGET_SCREEN") == null) {
+            val intent = Intent(this, LandingActivity::class.java)
+            intent.putExtra("ALREADY_LOGGED_IN", true)
+            startActivity(intent)
+            finish()
+            return
+        }
+
         val screenStr = intent.getStringExtra("TARGET_SCREEN")
         val productId = if (intent.hasExtra("PRODUCT_ID")) intent.getIntExtra("PRODUCT_ID", -1) else null
         _initialScreen.value = ScreenTarget(getScreenFromStr(screenStr), productId = if (productId == -1) null else productId)
@@ -168,7 +178,7 @@ class MainActivity : ComponentActivity() {
 }
 
 enum class Screen {
-    Home, Rental, Keranjang, MyKatalog, Profile, RiwayatTransaksi, AddItem, EditItem, DetailTransaksi, Pembayaran, MyRental, RentalsOwner, CheckoutPayment, Confirm, MyWallet, Settings
+    Home, Rental, Keranjang, MyKatalog, Profile, RiwayatTransaksi, AddItem, EditItem, DetailTransaksi, Pembayaran, MyRental, RentalsOwner, CheckoutPayment, Confirm, MyWallet, Settings, RentalDetail, FormPengembalian, ReturnConfirmed
 }
 
 @Composable
@@ -190,6 +200,7 @@ fun MainContainer(
     var selectedBarangForEdit by remember { mutableStateOf<CatalogData?>(null) }
     var selectedTransaksiId by remember { mutableStateOf<Int?>(null) }
     var selectedTransaksiIdsForPayment by remember { mutableStateOf<List<Int>>(emptyList()) }
+    var lastCheckoutFormData by remember { mutableStateOf<com.l0124005.sewain_rpl.ui.theme.checkout.CheckoutFormData?>(null) }
     var initialSearchQuery by remember { mutableStateOf("") }
     var initialCategory by remember { mutableStateOf("Semua") }
 
@@ -200,6 +211,7 @@ fun MainContainer(
     LaunchedEffect(initialScreen) {
         currentScreen = initialScreen.screen
         if (initialScreen.screen == Screen.CheckoutPayment && initialScreen.productId != null) {
+            keranjangViewModel.resetStates()
             keranjangViewModel.getKeranjang(token)
         }
         if (initialScreen.screen == Screen.EditItem && initialScreen.productId != null) {
@@ -217,17 +229,36 @@ fun MainContainer(
     }
 
     LaunchedEffect(keranjangState) {
-        if (currentScreen == Screen.CheckoutPayment && initialScreen.productId != null && keranjangState is Resource.Success) {
-            val items = (keranjangState as Resource.Success<com.l0124005.sewain_rpl.network.KeranjangResponse>).data?.data?.items ?: emptyList()
-            val filtered = items.filter { it.barang?.id == initialScreen.productId }
-            if (filtered.isNotEmpty()) {
-                selectedItemsForCheckout = filtered
-            } else {
-                Toast.makeText(context, "Produk tidak ditemukan di keranjang", Toast.LENGTH_SHORT).show()
-                currentScreen = Screen.Home
+        if (currentScreen == Screen.CheckoutPayment && initialScreen.productId != null) {
+            when (keranjangState) {
+                is Resource.Success -> {
+                    val items = (keranjangState as Resource.Success).data?.data?.items ?: emptyList()
+                    val filtered = items.filter { it.barang?.id == initialScreen.productId }
+                    if (filtered.isNotEmpty()) {
+                        selectedItemsForCheckout = filtered
+                    } else {
+                        // Jika belum ada, mungkin sedang loading atau race condition. 
+                        // Kita tunggu emisi berikutnya atau beri pesan jika benar-benar tidak ada setelah loading selesai.
+                        // Namun, karena kita panggil getKeranjang() di LaunchedEffect(initialScreen), 
+                        // Resource.Success di sini harusnya adalah hasil terbaru.
+                        Toast.makeText(context, "Produk tidak ditemukan di keranjang", Toast.LENGTH_SHORT).show()
+                        currentScreen = Screen.Home
+                    }
+                    // Hanya reset action states, JANGAN reset keranjang state
+                    keranjangViewModel.resetActionStates()
+                }
+                is Resource.Error -> {
+                    Toast.makeText(context, "Gagal memuat keranjang: ${(keranjangState as Resource.Error).message}", Toast.LENGTH_SHORT).show()
+                    currentScreen = Screen.Home
+                    keranjangViewModel.resetActionStates()
+                }
+                is Resource.Loading -> {
+                    // Do nothing, wait for Success/Error
+                }
+                null -> {
+                    // Masih inisialisasi
+                }
             }
-            // Hanya reset action states, JANGAN reset keranjang state
-            keranjangViewModel.resetActionStates()
         }
     }
 
@@ -367,12 +398,17 @@ fun MainContainer(
                             },
                             onBack = {
                                 currentScreen = Screen.Keranjang
+                            },
+                            onCheckoutStarted = { formData ->
+                                lastCheckoutFormData = formData
                             }
                         )
                     }
                     Screen.Confirm -> {
                         val checkoutResponse = (checkoutState as? Resource.Success)?.data
-                        val confirmedState = checkoutResponse?.let { com.l0124005.sewain_rpl.ui.theme.checkout.mapCheckoutResponseToState(it) }
+                        val confirmedState = checkoutResponse?.let { 
+                            com.l0124005.sewain_rpl.ui.theme.checkout.mapCheckoutResponseToState(it, lastCheckoutFormData) 
+                        }
 
                         if (confirmedState != null) {
                             com.l0124005.sewain_rpl.ui.theme.checkout.PaymentConfirmedScreen(
@@ -381,8 +417,9 @@ fun MainContainer(
                                 shippingCost = confirmedState.shippingCost,
                                 customer = confirmedState.customer,
                                 onBackHome = {
-                                    transaksiViewModel.resetCheckoutState()
                                     currentScreen = Screen.Home
+                                    transaksiViewModel.resetCheckoutState()
+                                    lastCheckoutFormData = null
                                 }
                             )
                         } else {
@@ -462,10 +499,45 @@ fun MainContainer(
                             profileViewModel = profileViewModel,
                             token = token,
                             onBack = { currentScreen = Screen.Profile },
+                            onRentalClick = { transaksiId ->
+                                selectedTransaksiId = transaksiId
+                                currentScreen = Screen.RentalDetail
+                            },
                             onRentalsOwnerClick = { currentScreen = Screen.RentalsOwner },
                             onMyWalletClick = { currentScreen = Screen.MyWallet },
                             onLogoutClick = onLogout,
                             onSettingsClick = { currentScreen = Screen.Settings }
+                        )
+                    }
+                    Screen.RentalDetail -> selectedTransaksiId?.let { id ->
+                        com.l0124005.sewain_rpl.ui.theme.profil.RentalDetailScreen(
+                            transaksiId = id,
+                            token = token,
+                            viewModel = transaksiViewModel,
+                            profileViewModel = profileViewModel,
+                            onBack = { currentScreen = Screen.MyRental },
+                            onReturnClick = { currentScreen = Screen.FormPengembalian }
+                        )
+                    }
+                    Screen.FormPengembalian -> selectedTransaksiId?.let { id ->
+                        com.l0124005.sewain_rpl.ui.theme.profil.FormPengembalianScreen(
+                            transaksiId = id,
+                            token = token,
+                            viewModel = transaksiViewModel,
+                            profileViewModel = profileViewModel,
+                            onBack = { currentScreen = Screen.RentalDetail },
+                            onSuccess = { currentScreen = Screen.ReturnConfirmed }
+                        )
+                    }
+                    Screen.ReturnConfirmed -> selectedTransaksiId?.let { id ->
+                        com.l0124005.sewain_rpl.ui.theme.profil.ReturnConfirmedScreen(
+                            transaksiId = id,
+                            token = token,
+                            viewModel = transaksiViewModel,
+                            onDone = {
+                                transaksiViewModel.getRiwayatTransaksi(token)
+                                currentScreen = Screen.MyRental
+                            }
                         )
                     }
                     Screen.RentalsOwner -> {
@@ -478,7 +550,10 @@ fun MainContainer(
                             onProfileClick = { currentScreen = Screen.Profile },
                             onMyRentalClick = { currentScreen = Screen.MyRental },
                             onWalletClick = { currentScreen = Screen.MyWallet },
-                            onRentalClick = { /* TODO */ },
+                            onRentalClick = { transaksi ->
+                                selectedTransaksiId = transaksi.id
+                                currentScreen = Screen.DetailTransaksi
+                            },
                             onSettingsClick = { currentScreen = Screen.Settings }
                         )
                     }
@@ -502,8 +577,27 @@ fun MainContainer(
                         onSettingsClick = { currentScreen = Screen.Settings }
                     )
                     Screen.Settings -> {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("Settings Screen (Placeholder)")
+                        var showDialog by remember { mutableStateOf(true) }
+                        if (showDialog) {
+                            AlertDialog(
+                                onDismissRequest = { 
+                                    showDialog = false
+                                    currentScreen = Screen.Profile 
+                                },
+                                title = { Text("Fitur Sedang Dikembangkan") },
+                                text = { Text("Halaman pengaturan saat ini masih dalam tahap pengembangan. Mohon tunggu pembaruan selanjutnya!") },
+                                confirmButton = {
+                                    TextButton(onClick = { 
+                                        showDialog = false
+                                        currentScreen = Screen.Profile 
+                                    }) {
+                                        Text("OK")
+                                    }
+                                },
+                                containerColor = Color.White,
+                                titleContentColor = Color.Black,
+                                textContentColor = Color.Gray
+                            )
                         }
                     }
                     Screen.DetailTransaksi -> selectedTransaksiId?.let { id ->

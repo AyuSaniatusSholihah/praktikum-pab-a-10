@@ -71,17 +71,22 @@ class TransaksiRepository {
         id: Int,
         fotoBukti: MultipartBody.Part,
         rating: RequestBody,
-        komentar: RequestBody? = null
+        komentar: RequestBody? = null,
+        tanggalKembali: RequestBody? = null,
+        totalDenda: RequestBody? = null
     ): Flow<Resource<KembalikanResponse>> = flow {
         emit(Resource.Loading())
         try {
-            val response = apiService.kembalikanBarang(token, id, fotoBukti, rating, komentar)
+            val response = apiService.kembalikanBarang(token, id, fotoBukti, rating, komentar, tanggalKembali, totalDenda)
             if (response.isSuccessful && response.body() != null) {
                 emit(Resource.Success(response.body()!!))
             } else {
-                emit(Resource.Error(response.message()))
+                val errorMsg = response.errorBody()?.string() ?: response.message()
+                android.util.Log.e("TransaksiRepository", "Error kembalikanBarang: $errorMsg")
+                emit(Resource.Error(errorMsg))
             }
         } catch (e: Exception) {
+            android.util.Log.e("TransaksiRepository", "Exception kembalikanBarang", e)
             emit(Resource.Error(e.message ?: "An error occurred"))
         }
     }

@@ -68,11 +68,19 @@ private val ColorBtn = Color(0xFF6A87A1)         // Menggunakan Brand Blue untuk
 class LandingActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val alreadyLoggedIn = intent.getBooleanExtra("ALREADY_LOGGED_IN", false)
+
         setContent {
             Sewain_rplTheme {
                 LandingScreen(
                     onGetStarted = {
-                        startActivity(Intent(this, LoginActivity::class.java))
+                        if (alreadyLoggedIn) {
+                            val intent = Intent(this, com.l0124005.sewain_rpl.ui.theme.MainActivity::class.java)
+                            intent.putExtra("IS_FIRST_RUN", false)
+                            startActivity(intent)
+                        } else {
+                            startActivity(Intent(this, LoginActivity::class.java))
+                        }
                         finish()
                     }
                 )
