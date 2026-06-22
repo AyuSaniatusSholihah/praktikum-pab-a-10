@@ -88,7 +88,12 @@ fun formatRupiah(number: Double): String {
 }
 
 @Composable
-fun ProductCard(product: CatalogData, onClick: () -> Unit, onAddToCart: () -> Unit) {
+fun ProductCard(
+    product: CatalogData,
+    onClick: () -> Unit,
+    onAddToCart: () -> Unit,
+    isOutOfStock: Boolean = product.stok <= 0 || product.status != "tersedia"
+) {
     val firstFoto = product.listFoto.firstOrNull()
     val imageUrl = if (firstFoto != null) {
         if (firstFoto.startsWith("http")) firstFoto
@@ -119,7 +124,10 @@ fun ProductCard(product: CatalogData, onClick: () -> Unit, onAddToCart: () -> Un
                         model = imageUrl,
                         contentDescription = product.nama_barang,
                         contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier
+                            .fillMaxSize()
+                            // Redupkan gambar saat stok habis
+                            .then(if (isOutOfStock) Modifier.background(Color.Black.copy(alpha = 0.35f)) else Modifier)
                     )
                 } else {
                     Icon(
@@ -130,17 +138,41 @@ fun ProductCard(product: CatalogData, onClick: () -> Unit, onAddToCart: () -> Un
                     )
                 }
 
+                // Badge "Stok Habis" di pojok kiri atas
+                if (isOutOfStock) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(6.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(Color(0xFFD8262C))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "Stok Habis",
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = White
+                        )
+                    }
+                }
+
+                // Tombol keranjang — disabled & abu-abu saat stok habis
                 IconButton(
-                    onClick = { onAddToCart() },
+                    onClick = { if (!isOutOfStock) onAddToCart() },
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .padding(6.dp)
                         .size(28.dp)
-                        .background(Primary, CircleShape)
+                        .background(
+                            if (isOutOfStock) Color(0xFFBDBDBD) else Primary,
+                            CircleShape
+                        ),
+                    enabled = !isOutOfStock
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.ShoppingCart,
-                        contentDescription = "Tambah ke Keranjang",
+                        contentDescription = if (isOutOfStock) "Stok habis" else "Tambah ke Keranjang",
                         tint = White,
                         modifier = Modifier.size(14.dp)
                     )
@@ -157,7 +189,7 @@ fun ProductCard(product: CatalogData, onClick: () -> Unit, onAddToCart: () -> Un
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     lineHeight = 15.sp,
-                    color = TextDark,
+                    color = if (isOutOfStock) TextMuted else TextDark,
                     modifier = Modifier.weight(1f)
                 )
                 Spacer(Modifier.width(4.dp))
@@ -184,7 +216,7 @@ fun ProductCard(product: CatalogData, onClick: () -> Unit, onAddToCart: () -> Un
                 text = "Rp ${formatRupiah(product.harga_sewa)}/hari",
                 fontWeight = FontWeight.Bold,
                 fontSize = 12.5.sp,
-                color = TextDark
+                color = if (isOutOfStock) TextMuted else TextDark
             )
         }
     }

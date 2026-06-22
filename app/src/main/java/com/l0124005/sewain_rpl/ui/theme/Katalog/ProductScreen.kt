@@ -170,6 +170,17 @@ fun ProductScreen(
                                 onItemClick(id)
                             },
                             onAddToCart = { product ->
+                                // Pengecekan stok di sisi UI sebelum memanggil API
+                                val isOutOfStock = product.stok <= 0 || product.status != "tersedia"
+                                if (isOutOfStock) {
+                                    Toast.makeText(
+                                        context,
+                                        "Stok ${product.nama_barang} sudah habis.",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                    return@ProductGrid
+                                }
+
                                 val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
                                 val calendar = Calendar.getInstance()
                                 val tglSewa = sdf.format(calendar.time)
