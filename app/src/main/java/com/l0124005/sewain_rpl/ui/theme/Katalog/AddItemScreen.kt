@@ -69,6 +69,22 @@ fun AddItemScreen(
         viewModel.getKategori()
     }
 
+    LaunchedEffect(profileState) {
+        if (profileState is Resource.Success) {
+            val user = profileState?.data?.data
+            if (user != null) {
+                // Auto-fill WhatsApp jika masih kosong
+                if (form.whatsApp.isEmpty() && !user.phone_number.isNullOrEmpty()) {
+                    form = form.copy(whatsApp = user.phone_number)
+                }
+                // Auto-fill Lokasi jika masih kosong (opsional, tapi seringkali membantu)
+                if (form.lokasi.isEmpty() && !user.alamat.isNullOrEmpty()) {
+                    form = form.copy(lokasi = user.alamat)
+                }
+            }
+        }
+    }
+
     LaunchedEffect(crudResult) {
         when (crudResult) {
             is Resource.Success -> {
