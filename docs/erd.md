@@ -4,7 +4,7 @@ Dokumen ini memuat Entity Relationship Diagram (ERD) database relasional dari si
 
 ---
 
-## 1. Diagram ERD (Mermaid)
+## 1. Diagram ERD 
 
 ```mermaid
 erDiagram

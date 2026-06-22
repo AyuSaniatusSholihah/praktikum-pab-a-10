@@ -4,7 +4,7 @@ Dokumen ini memuat Diagram Kelas (Class Diagram) yang menggambarkan struktur cla
 
 ---
 
-## 1. Diagram Kelas (Mermaid)
+## 1. Diagram Kelas 
 
 ```mermaid
 classDiagram
