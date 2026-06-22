@@ -63,15 +63,20 @@ fun mapCheckoutResponseToState(
     val data = response.data ?: return null
     val firstTx = data.transaksi.firstOrNull() ?: return null
     
+    val displayFormat = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault())
+
     val items = data.transaksi.map { tx ->
+        val startDate = com.l0124005.sewain_rpl.utils.RentalStatus.parseFlexibleDate(tx.tanggal_sewa)
+        val endDate = com.l0124005.sewain_rpl.utils.RentalStatus.parseFlexibleDate(tx.tanggal_kembali_rencana)
+
         CartItem(
             id = tx.id,
             nama = tx.barang?.nama_barang ?: "Produk",
             harga = tx.barang?.harga_sewa?.toLong() ?: 0L,
             qty = tx.jumlah,
             imageUrl = if (tx.barang?.foto_barang != null) "${ApiClient.IMAGE_BASE_URL}${tx.barang.foto_barang}" else "",
-            tglMulai = tx.tanggal_sewa,
-            tglSelesai = tx.tanggal_kembali_rencana,
+            tglMulai = startDate?.let { displayFormat.format(it) } ?: tx.tanggal_sewa,
+            tglSelesai = endDate?.let { displayFormat.format(it) } ?: tx.tanggal_kembali_rencana,
             dendaPerJam = tx.barang?.harga_denda_perjam?.toLong() ?: 0L,
             jaminanBase = tx.barang?.harga_jaminan?.toLong() ?: 0L
         )

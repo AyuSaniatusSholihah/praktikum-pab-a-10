@@ -30,16 +30,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.l0124005.sewain_rpl.network.ApiClient
+import com.l0124005.sewain_rpl.network.OwnerDashboardResponse
 import com.l0124005.sewain_rpl.network.ProfileResponse
+import com.l0124005.sewain_rpl.network.TransaksiListResponse
 import com.l0124005.sewain_rpl.network.UserData
 import com.l0124005.sewain_rpl.ui.theme.AbrilFatfaceFont
 import com.l0124005.sewain_rpl.ui.theme.MontaguSlabFont
-import com.l0124005.sewain_rpl.ui.theme.NavyPrimary
 import com.l0124005.sewain_rpl.ui.theme.SewainTopBar
 import com.l0124005.sewain_rpl.ui.theme.Sewain_rplTheme
-import com.l0124005.sewain_rpl.ui.theme.BluePrimary
 import com.l0124005.sewain_rpl.ui.theme.VolkhovFont
 import com.l0124005.sewain_rpl.utils.CurrencyUtils.formatRupiah
+import com.l0124005.sewain_rpl.utils.ImageUtils
+import com.l0124005.sewain_rpl.utils.RentalStatus
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.viewmodel.ProfileViewModel
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -51,7 +53,6 @@ import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.rememberDrawerState
 import kotlinx.coroutines.launch
 import okhttp3.MultipartBody
-import okhttp3.RequestBody
 import java.io.File
 import java.io.FileOutputStream
 
@@ -77,6 +78,8 @@ fun ProfileScreen(
 ) {
     val profileState by viewModel.profile.observeAsState()
     val updateState  by viewModel.updateState.observeAsState()
+    val ownerDashboardState by viewModel.ownerDashboard.observeAsState()
+    val transaksiListState by viewModel.transaksiList.observeAsState()
     val context = LocalContext.current
 
     // ── State buat drawer ──
@@ -84,7 +87,10 @@ fun ProfileScreen(
     val scope = rememberCoroutineScope()
     var isSaving by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) { viewModel.getProfile(token) }
+    LaunchedEffect(Unit) { 
+        viewModel.getProfile(token)
+        viewModel.getStats(token)
+    }
 
     // Pantau hasil UPDATE (bukan profile load)
     LaunchedEffect(updateState) {
@@ -103,14 +109,17 @@ fun ProfileScreen(
         }
     }
 
-    // ── Ambil nama user buat ditampilin di drawer header ──
-    val userName = (profileState as? Resource.Success<ProfileResponse>)?.data?.data?.name ?: "User"
+    // ── Ambil data user buat ditampilin di drawer ──
+    val user = (profileState as? Resource.Success<ProfileResponse>)?.data?.data
+    val userName = user?.name ?: "User"
+    val userPhoto = user?.foto_profil
 
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
             ProfileDrawerContent(
                 userName = userName,
+                userPhoto = userPhoto,
                 currentScreen = "Profile",
                 onProfileClick = { scope.launch { drawerState.close() } },
                 onMyRentalsClick = {
@@ -164,9 +173,20 @@ fun ProfileScreen(
                     }
                     is Resource.Success -> {
                         val user = (profileState as Resource.Success<ProfileResponse>).data?.data
+                        
+                        // Refine stats: count all transactions except those canceled or just pending payment
+                        val totalDisewa = (transaksiListState as? Resource.Success<TransaksiListResponse>)?.data?.data?.count { 
+                            val status = RentalStatus.fromTransaksi(it)
+                            status == RentalStatus.ACTIVE || status == RentalStatus.RETURN || status == RentalStatus.COMPLETED
+                        } ?: 0
+                        
+                        val jumlahKatalog = (ownerDashboardState as? Resource.Success<OwnerDashboardResponse>)?.data?.data?.total_barang ?: 0
+                        
                         if (user != null) {
                             ProfileContent(
                                 user = user,
+                                totalDisewa = totalDisewa,
+                                jumlahKatalog = jumlahKatalog,
                                 isSaving = isSaving,
                                 onLogout = onLogout,
                                 onSave = { updatedUser, imageUri ->
@@ -178,11 +198,11 @@ fun ProfileScreen(
 
                                     var imagePart: MultipartBody.Part? = null
                                     imageUri?.let { uri ->
-                                        try {
-                                            val file = uriToFile(context, uri)
+                                        val file = ImageUtils.compressImage(context, uri)
+                                        if (file != null) {
                                             val requestFile = file.readBytes().toRequestBody("image/*".toMediaTypeOrNull())
                                             imagePart = MultipartBody.Part.createFormData("foto_profil", file.name, requestFile)
-                                        } catch (e: Exception) {
+                                        } else {
                                             Toast.makeText(context, "Gagal memproses foto", Toast.LENGTH_SHORT).show()
                                         }
                                     }
@@ -253,6 +273,8 @@ private fun DrawerMenuItem(
 @Composable
 internal fun ProfileContent(
     user: UserData,
+    totalDisewa: Int = 0,
+    jumlahKatalog: Int = 0,
     isSaving: Boolean = false,
     onLogout: () -> Unit,
     onSave: (UserData, Uri?) -> Unit
@@ -470,10 +492,9 @@ internal fun ProfileContent(
             Spacer(Modifier.height(20.dp))
 
             // Total Disewa & Jumlah Katalog Barang -- sesuai .profile-stat di web
-            // TODO: ganti dengan data asli dari backend (user.total_disewa, user.jumlah_katalog)
-            StatRow(label = "Total Disewa", value = "${user.total_disewa ?: 0} Kali")
+            StatRow(label = "Total Disewa", value = "$totalDisewa Kali")
             Spacer(Modifier.height(10.dp))
-            StatRow(label = "Jumlah Katalog Barang", value = "${user.jumlah_katalog ?: 0} Barang")
+            StatRow(label = "Jumlah Katalog Barang", value = "$jumlahKatalog Barang")
 
             Spacer(Modifier.height(32.dp))
 
@@ -810,7 +831,7 @@ fun ProfileDrawerPreview() {
                         )
                     }
 
-                    Divider(color = Color.White.copy(alpha = 0.1f))
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
                     Spacer(Modifier.height(8.dp))
 
                     DrawerMenuItem(icon = Icons.Default.Person, label = "Profile", selected = true) {}
@@ -820,7 +841,7 @@ fun ProfileDrawerPreview() {
                     DrawerMenuItem(icon = Icons.Default.Settings, label = "Settings") {}
 
                     Spacer(Modifier.weight(1f))
-                    Divider(color = Color.White.copy(alpha = 0.1f))
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
 
                     DrawerMenuItem(
                         icon = Icons.AutoMirrored.Filled.Logout,

@@ -60,7 +60,7 @@ object CartColors {
 }
 
 object CartFonts {
-    val Heading = FontFamily.Serif
+    val Heading = com.l0124005.sewain_rpl.ui.theme.VolkhovFont
     val Body    = FontFamily.Default
 }
 
@@ -119,6 +119,7 @@ fun KeranjangScreen(
 
             // ── Header ──
             com.l0124005.sewain_rpl.ui.theme.SewainTopBar()
+            CartTitleHeader()
 
             HorizontalDivider(color = CartColors.DividerRow, thickness = 1.dp)
 
@@ -212,7 +213,20 @@ fun KeranjangScreen(
         }
     }
 }
-
+@Composable
+private fun CartTitleHeader() {
+    Text(
+        text = "Shopping Cart",
+        fontFamily = com.l0124005.sewain_rpl.ui.theme.VolkhovFont,
+        fontWeight = FontWeight.Bold,
+        fontSize = 28.sp,
+        color = CartColors.Black,
+        textAlign = TextAlign.Center,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp, bottom = 4.dp)
+    )
+}
 // ── Item row ─────────────────────────────────────────────────
 @Composable
 private fun CartRow(

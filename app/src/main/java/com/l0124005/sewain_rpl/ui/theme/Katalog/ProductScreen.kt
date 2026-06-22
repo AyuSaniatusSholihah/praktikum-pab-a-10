@@ -33,12 +33,12 @@ import com.l0124005.sewain_rpl.network.ApiClient
 import com.l0124005.sewain_rpl.network.CatalogData
 import com.l0124005.sewain_rpl.network.KategoriData
 import com.l0124005.sewain_rpl.utils.Resource
+import com.l0124005.sewain_rpl.utils.SessionManager
 import com.l0124005.sewain_rpl.viewmodel.KatalogViewModel
 import com.l0124005.sewain_rpl.viewmodel.KeranjangViewModel
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
-
 import androidx.compose.ui.tooling.preview.Preview
 import com.l0124005.sewain_rpl.ui.theme.*
 import com.l0124005.sewain_rpl.network.KatalogListResponse
@@ -46,10 +46,14 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.withStyle
 import com.l0124005.sewain_rpl.ui.theme.VidalokaFont
-private val BackgroundPage = Color(0xFFF8FAFB)
-private val CardWhite      = Color(0xFFFFFFFF)
-private val BorderColor    = Color(0xFFE8E8E8)
-
+import com.l0124005.sewain_rpl.ui.theme.VolkhovFont
+import androidx.compose.foundation.shape.CircleShape
+private val BackgroundPage   = Color(0xFFFFFFFF)
+private val CardWhite        = Color(0xFFFFFFFF)
+private val BorderColor      = Color(0xFFE2E2E2)
+private val AccentHome       = Color(0xFF6A87A1)
+private val IconStrokeHome   = Color(0xFF55959E)
+private val StarHome         = Color(0xFFF5B800)
 // Range harga -- disamakan persis dengan priceRanges di rentals.html
 private data class HargaRange(val label: String, val min: Long, val max: Long)
 
@@ -67,11 +71,13 @@ fun ProductScreen(
     token: String,
     viewModel: KatalogViewModel,
     keranjangViewModel: KeranjangViewModel,
+    sessionManager: SessionManager, // Tambahkan parameter
     initialSearchQuery: String = "",
     initialCategory: String = "Semua",
     onItemClick: (Int) -> Unit
 ) {
     val context = LocalContext.current
+    val currentUserId = sessionManager.getUserId() // Ambil current user ID
     var searchQuery     by remember { mutableStateOf(initialSearchQuery) }
     var activeKategori  by remember { mutableStateOf(initialCategory) }
     var activeHarga     by remember { mutableStateOf<HargaRange?>(null) }
@@ -83,12 +89,8 @@ fun ProductScreen(
     val addToCartState by keranjangViewModel.addToCartState.observeAsState()
 
     // Sync searchQuery with initialSearchQuery when navigating from Home
-    LaunchedEffect(initialSearchQuery) {
+    LaunchedEffect(initialSearchQuery, initialCategory) {
         searchQuery = initialSearchQuery
-    }
-    
-    // Sync activeKategori with initialCategory when navigating from Home
-    LaunchedEffect(initialCategory) {
         activeKategori = initialCategory
     }
 
@@ -124,8 +126,10 @@ fun ProductScreen(
             .fillMaxSize()
             .background(BackgroundPage)
     ) {
-        ProductTopBar(onFilterClick = { showFilterSheet = true })
-
+        ProductTopBar(
+            onFilterClick = { showFilterSheet = true }
+        )
+        ProductTitleHeader()
         ProductSearchBar(
             query = searchQuery,
             onQueryChange = { searchQuery = it }
@@ -147,12 +151,11 @@ fun ProductScreen(
                 is Resource.Success -> {
                     val allProducts = katalogState?.data?.data ?: emptyList()
 
-                    // Filter harga dilakukan di sisi klien (sama seperti getFiltered() di rentals.html).
-                    // PENTING: ganti `item.harga` di bawah ini kalau nama field di CatalogData kamu
-                    // bukan "harga" (misalnya harga_sewa / harga_per_hari).
+                    // Filter: Hanya tampilkan barang yang BUKAN milik user yang sedang login
                     val products = allProducts.filter { item ->
-                        val harga = item.harga_sewa
-                        activeHarga == null || (harga >= activeHarga!!.min && harga <= activeHarga!!.max)
+                        val matchesPrice = activeHarga == null || (item.harga_sewa >= activeHarga!!.min && item.harga_sewa <= activeHarga!!.max)
+                        val isNotMine = item.user_id != currentUserId
+                        matchesPrice && isNotMine
                     }
 
                     if (products.isEmpty()) {
@@ -213,14 +216,29 @@ fun ProductScreen(
 }
 
 @Composable
-private fun ProductTopBar(onFilterClick: () -> Unit) {
+private fun ProductTopBar(
+    onFilterClick: () -> Unit
+) {
     SewainTopBar(
         actionIcon = Icons.Default.Tune,
         actionTint = NavyPrimary,
         onActionClick = { onFilterClick() }
     )
 }
-
+@Composable
+private fun ProductTitleHeader() {
+    Text(
+        text = "Rentals",
+        fontFamily = VolkhovFont,
+        fontWeight = FontWeight.Bold,
+        fontSize = 28.sp,
+        color = TextDark,   // pakai TextDark dari SewainComponents.kt, jangan deklarasi ulang
+        textAlign = TextAlign.Center,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp, bottom = 4.dp)
+    )
+}
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ProductSearchBar(
@@ -324,7 +342,6 @@ private fun ProductGrid(
         }
     }
 }
-
 /**
  * Bottom sheet filter -- konten & gaya disamakan dengan section ".filters-section"
  * di rentals.html (judul Volkhov bold, daftar harga, grid kategori).
@@ -353,20 +370,20 @@ private fun FilterBottomSheet(
         ) {
             Text(
                 text = "Filters",
-                fontFamily = Volkhov,
+                fontFamily = VolkhovFont,
                 fontWeight = FontWeight.Bold,
                 fontSize = 24.sp,
-                color = Black,
+                color = Color.Black,
                 modifier = Modifier.padding(bottom = 18.dp)
             )
 
             // ---- Harga ----
             Text(
                 text = "Harga",
-                fontFamily = Volkhov,
+                fontFamily = VolkhovFont,
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp,
-                color = Black,
+                color = Color.Black,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
@@ -389,10 +406,10 @@ private fun FilterBottomSheet(
             // ---- Kategori ----
             Text(
                 text = "Kategori",
-                fontFamily = Volkhov,
+                fontFamily = VolkhovFont,
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp,
-                color = Black,
+                color = Color.Black,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 

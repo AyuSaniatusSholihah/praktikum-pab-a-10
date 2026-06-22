@@ -20,6 +20,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.l0124005.sewain_rpl.ui.theme.*
 
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
+import com.l0124005.sewain_rpl.network.ApiClient
+
 private val LocalMidBlue = Color(0xFF4D6674)
 private val LocalDarkNavy = Color(0xFF21394F)
 private val ActiveMenuBlue = Color(0xFF78A5B5)
@@ -27,6 +31,7 @@ private val ActiveMenuBlue = Color(0xFF78A5B5)
 @Composable
 fun ProfileDrawerContent(
     userName: String,
+    userPhoto: String? = null,
     currentScreen: String,
     onProfileClick: () -> Unit,
     onMyRentalsClick: () -> Unit,
@@ -52,7 +57,18 @@ fun ProfileDrawerContent(
                     .background(Color(0xFFB2B9B9)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Person, contentDescription = null, tint = Color.White)
+                if (!userPhoto.isNullOrEmpty()) {
+                    val fullPhotoUrl = if (userPhoto.startsWith("http")) userPhoto 
+                                     else "${ApiClient.IMAGE_BASE_URL}${if (userPhoto.startsWith("profiles/")) userPhoto else "profiles/$userPhoto"}"
+                    AsyncImage(
+                        model = fullPhotoUrl,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    Icon(Icons.Default.Person, contentDescription = null, tint = Color.White)
+                }
             }
             Spacer(Modifier.width(12.dp))
             Text(

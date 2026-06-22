@@ -105,6 +105,9 @@ fun RentalsScreen(
     onItemClick: (CatalogData) -> Unit
 ) {
     val context = LocalContext.current
+    val sessionManager = remember { SessionManager(context) }
+    val currentUserId = sessionManager.getUserId() // Pastikan SessionManager punya getUserId()
+
     val addToCartState by keranjangViewModel.addToCartState.observeAsState()
     val kategoriResult by viewModel.kategori.observeAsState()
 
@@ -218,11 +221,14 @@ fun RentalsScreen(
 
                 is Resource.Success -> {
                     val list = state.data?.data ?: emptyList()
-                    if (list.isEmpty()) {
+                    // FILTER: Sembunyikan barang milik sendiri
+                    val filteredList = list.filter { it.user_id != currentUserId }
+                    
+                    if (filteredList.isEmpty()) {
                         EmptyState(modifier = Modifier.align(Alignment.Center))
                     } else {
                         RentalsGrid(
-                            items       = list,
+                            items       = filteredList,
                             onItemClick = onItemClick,
                             onAddToCart = { barang ->
                                 val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
@@ -441,14 +447,9 @@ private fun RentalCard(
                     .height(110.dp)
                     .background(HomeBlueLight)
             ) {
-                if (!barang.foto_barang.isNullOrEmpty()) {
-                    val imageUrl = if (barang.foto_barang.startsWith("http")) {
-                        barang.foto_barang
-                    } else {
-                        "${ApiClient.IMAGE_BASE_URL}${barang.foto_barang}"
-                    }
+                if (barang.mainFotoUrl.isNotEmpty()) {
                     AsyncImage(
-                        model               = imageUrl,
+                        model               = barang.mainFotoUrl,
                         contentDescription  = barang.nama_barang,
                         contentScale        = ContentScale.Crop,
                         modifier            = Modifier.fillMaxSize()

@@ -1,6 +1,7 @@
 package com.l0124005.sewain_rpl.ui.theme.profil
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -11,6 +12,8 @@ import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import kotlinx.coroutines.delay
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -68,35 +71,57 @@ fun MyWalletScreen(
     onSettingsClick: () -> Unit = {}
 ) {
     val profileState by viewModel.profile.observeAsState()
-    val dashboardState by transaksiViewModel.ownerDashboard.observeAsState()
+    val savedRekening by viewModel.rekeningInfo.observeAsState()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         viewModel.getProfile(token)
         transaksiViewModel.getOwnerDashboard(token)
+        transaksiViewModel.getRiwayatTransaksi(token) // Ambil riwayat penyewa juga untuk "Pembayaran"
     }
 
-    val history = (dashboardState as? Resource.Success)?.data?.data?.daftar_transaksi?.map { txn ->
-        val isPemasukan = txn.status == "selesai" // Sederhananya, jika selesai berarti uang masuk
-        WalletTransaction(
-            title = txn.barang?.nama_barang ?: "Produk",
-            location = txn.barang?.lokasi ?: "Indonesia",
-            amount = "Rp ${formatRupiah(txn.total_harga)}",
-            dateStart = txn.tanggal_sewa,
-            dateEnd = txn.tanggal_kembali_rencana,
-            transactionDate = txn.tanggal_verifikasipengembalian ?: txn.tanggal_sewa,
-            imageUrl = if (!txn.barang?.foto_barang.isNullOrEmpty()) "${ApiClient.IMAGE_BASE_URL}products/${txn.barang?.foto_barang}" else "https://picsum.photos/seed/${txn.id}/300/200",
-            type = if (isPemasukan) WalletTxnType.PEMASUKAN else WalletTxnType.PEMBAYARAN
-        )
-    } ?: emptyList()
+    val ownerTxns = (transaksiViewModel.ownerDashboard.observeAsState().value as? Resource.Success)?.data?.data?.daftar_transaksi ?: emptyList()
+    val tenantTxns = (transaksiViewModel.transaksiList.observeAsState().value as? Resource.Success)?.data?.data ?: emptyList()
+
+    // Gabungkan data: Owner -> Pemasukan (Hijau), Tenant -> Pembayaran (Merah)
+    val history = remember(ownerTxns, tenantTxns) {
+        val income = ownerTxns.map { txn ->
+            WalletTransaction(
+                title = txn.barang?.nama_barang ?: "Produk",
+                location = txn.barang?.lokasi ?: "Indonesia",
+                amount = "+ Rp ${formatRupiah(txn.total_harga)}",
+                dateStart = txn.tanggal_sewa,
+                dateEnd = txn.tanggal_kembali_rencana,
+                transactionDate = txn.tanggal_verifikasipengembalian ?: txn.tanggal_sewa,
+                imageUrl = if (!txn.barang?.foto_barang.isNullOrEmpty()) "${ApiClient.IMAGE_BASE_URL}${txn.barang?.foto_barang}" else "https://picsum.photos/seed/${txn.id}/300/200",
+                type = WalletTxnType.PEMASUKAN
+            )
+        }
+        val expense = tenantTxns.map { txn ->
+            WalletTransaction(
+                title = txn.barang?.nama_barang ?: "Produk",
+                location = txn.barang?.lokasi ?: "Indonesia",
+                amount = "- Rp ${formatRupiah(txn.total_harga)}",
+                dateStart = txn.tanggal_sewa,
+                dateEnd = txn.tanggal_kembali_rencana,
+                transactionDate = txn.pembayaran?.tanggal_bayar ?: txn.tanggal_sewa,
+                imageUrl = if (!txn.barang?.foto_barang.isNullOrEmpty()) "${ApiClient.IMAGE_BASE_URL}${txn.barang?.foto_barang}" else "https://picsum.photos/seed/${txn.id}/300/200",
+                type = WalletTxnType.PEMBAYARAN
+            )
+        }
+        (income + expense).sortedByDescending { it.transactionDate }
+    }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            val userName = profileState?.data?.data?.name ?: "User"
+            val user = (profileState as? Resource.Success)?.data?.data
+            val userName = user?.name ?: "User"
+            val userPhoto = user?.foto_profil
             ProfileDrawerContent(
                 userName = userName,
+                userPhoto = userPhoto,
                 currentScreen = "My Wallet",
                 onProfileClick = {
                     scope.launch { drawerState.close() }
@@ -145,9 +170,12 @@ fun MyWalletScreen(
                         if (user != null) {
                             MyWalletContent(
                                 name = user.name,
+                                userPhoto = user.foto_profil,
                                 email = user.email,
                                 saldo = user.saldo,
                                 history = history,
+                                initialRekening = savedRekening ?: "",
+                                onRekeningSave = { viewModel.updateRekening(token, it) },
                                 onMenuClick = { scope.launch { drawerState.open() } }
                             )
                         }
@@ -175,110 +203,157 @@ fun MyWalletScreen(
 @Composable
 private fun MyWalletContent(
     name: String,
+    userPhoto: String?,
     email: String,
     saldo: Double,
     history: List<WalletTransaction>,
+    initialRekening: String,
+    onRekeningSave: (String) -> Unit,
     onMenuClick: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+            .background(Color.White)
     ) {
         SewainTopBar(
             navigationIcon = Icons.Default.Menu,
             onNavigationClick = onMenuClick
         )
-        
-        Column(modifier = Modifier.padding(16.dp)) {
-        // ── Panel luar warna #4D6674 (.dash-panel / .dash-content) ──
+
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(24.dp))
-                .background(LocalMidBlue)
-                .padding(20.dp)
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp)
         ) {
-            // ── Card konten dalam warna #21394F (.dash-content-card) ──
+            // ── Panel luar warna #4D6674 (.dash-panel / .dash-content) ──
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(LocalDarkNavy)
-                    .padding(24.dp)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(LocalMidBlue)
+                    .padding(20.dp)
             ) {
-                // ── Judul "My Wallet" + subjudul ──
-                Text(
-                    text = "My Wallet",
-                    fontFamily = VolkhovFont,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 22.sp,
-                    color = Color.White
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = "Informasi Keuangan User",
-                    fontFamily = VolkhovFont,
-                    fontSize = 12.sp,
-                    color = TextMuted
-                )
+                // ── Mini header: foto kecil + nama ──
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    AsyncImage(
+                        model = if (!userPhoto.isNullOrEmpty()) {
+                            if (userPhoto.startsWith("http")) userPhoto
+                            else "${ApiClient.IMAGE_BASE_URL}${if (userPhoto.startsWith("profiles/")) userPhoto else "profiles/$userPhoto"}"
+                        } else "https://ui-avatars.com/api/?name=$name",
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .border(2.dp, Color.White.copy(alpha = 0.3f), RoundedCornerShape(6.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                    Spacer(Modifier.width(14.dp))
+                    Text(
+                        text = name,
+                        fontFamily = VolkhovFont,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        color = Color.White
+                    )
+                }
 
                 Spacer(Modifier.height(20.dp))
 
-                // ── Saldo card di atas, lalu info akun di bawahnya (1 kolom, bukan 2 kolom) ──
-                WalletProfileSection(
-                    name = name,
-                    email = email,
-                    rekening = "Nama Rekening: BSI Syariah\nNo Rekening: 763098218847\nA/n: Camping Groups Bandung", // TODO: field ini belum ada di backend/UserData
-                    saldo = saldo
-                )
-
-                Spacer(Modifier.height(36.dp))
-
-                // ── Judul "My Wallet — History" + subjudul ──
-                Text(
-                    text = "My Wallet — History",
-                    fontFamily = VolkhovFont,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 22.sp,
-                    color = Color.White
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = "Riwayat penyewaan barangmu oleh penyewa.",
-                    fontFamily = VolkhovFont,
-                    fontSize = 12.sp,
-                    color = TextMuted
-                )
-
-                Spacer(Modifier.height(16.dp))
-
-                // ── Grid kartu transaksi (.txn-grid) ──
-                if (history.isEmpty()) {
+                // ── Card konten dalam warna #21394F (.dash-content-card) ──
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(LocalDarkNavy)
+                        .padding(24.dp)
+                ) {
+                    // ── Judul "My Wallet" + subjudul ──
                     Text(
-                        text = "Belum ada riwayat transaksi.",
-                        fontSize = 13.sp,
-                        color = TextMuted,
-                        modifier = Modifier.padding(vertical = 16.dp)
+                        text = "My Wallet",
+                        fontFamily = VolkhovFont,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 22.sp,
+                        color = Color.White
                     )
-                } else {
-                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        // Dibagi 2 kolom manual (LazyVerticalGrid nested-scroll ribet di dalam
-                        // verticalScroll luar, jadi pakai chunked + Row biasa -- aman & simpel)
-                        history.chunked(2).forEach { rowItems ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                rowItems.forEach { item ->
-                                    WalletTransactionCard(
-                                        item = item,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                }
-                                // biar layout tetap rapi kalau jumlah ganjil
-                                if (rowItems.size == 1) {
-                                    Spacer(modifier = Modifier.weight(1f))
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "Informasi Keuangan User",
+                        fontFamily = VolkhovFont,
+                        fontSize = 12.sp,
+                        color = TextMuted
+                    )
+
+                    Spacer(Modifier.height(20.dp))
+
+                    // State lokal untuk informasi rekening agar bisa di-edit langsung
+                    var rekeningState by rememberSaveable { 
+                        mutableStateOf(initialRekening.ifEmpty { "Nama Rekening: BSI Syariah\nNo Rekening: 763098218847\nA/n: Camping Groups Bandung" }) 
+                    }
+
+                    // Logika "Otomatis Simpan": Menunggu user berhenti mengetik selama 1.5 detik
+                    LaunchedEffect(rekeningState) {
+                        if (rekeningState.isNotEmpty() && rekeningState != initialRekening) {
+                            delay(1500) // Debounce delay
+                            onRekeningSave(rekeningState)
+                        }
+                    }
+
+                    // ── Saldo card di atas, lalu info akun di bawahnya ──
+                    WalletProfileSection(
+                        name = name,
+                        email = email,
+                        rekening = rekeningState,
+                        onRekeningChange = { rekeningState = it },
+                        saldo = saldo
+                    )
+
+                    Spacer(Modifier.height(36.dp))
+
+                    // ── Judul "My Wallet — History" + subjudul ──
+                    Text(
+                        text = "My Wallet — History",
+                        fontFamily = VolkhovFont,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 22.sp,
+                        color = Color.White
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "Riwayat penyewaan barangmu oleh penyewa.",
+                        fontFamily = VolkhovFont,
+                        fontSize = 12.sp,
+                        color = TextMuted
+                    )
+
+                    Spacer(Modifier.height(16.dp))
+
+                    // ── Grid kartu transaksi (.txn-grid) ──
+                    if (history.isEmpty()) {
+                        Text(
+                            text = "Belum ada riwayat transaksi.",
+                            fontSize = 13.sp,
+                            color = TextMuted,
+                            modifier = Modifier.padding(vertical = 16.dp)
+                        )
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            // Dibagi 2 kolom manual (Chunked + Row)
+                            history.chunked(2).forEach { rowItems ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                    rowItems.forEach { item ->
+                                        WalletTransactionCard(
+                                            item = item,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    }
+                                    if (rowItems.size == 1) {
+                                        Spacer(modifier = Modifier.weight(1f))
+                                    }
                                 }
                             }
                         }
@@ -288,7 +363,7 @@ private fun MyWalletContent(
         }
     }
 }
-}
+
 
 // ── Section "Form Profile" Wallet -- versi 1 kolom vertikal:
 // Saldo card paling atas, baru di bawahnya Name, Email, Informasi Rekening.
@@ -298,6 +373,7 @@ private fun WalletProfileSection(
     name: String,
     email: String,
     rekening: String,
+    onRekeningChange: (String) -> Unit,
     saldo: Double
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -307,21 +383,24 @@ private fun WalletProfileSection(
         Spacer(Modifier.height(20.dp))
 
         // ── Info akun di bawahnya ──
-        WalletField(label = "Name Account User", value = name)
-        WalletField(label = "Email", value = email)
+        WalletField(label = "Name Account User", value = name, readOnly = true)
+        WalletField(label = "Email", value = email, readOnly = true)
         WalletField(
             label = "Informasi Rekening",
             value = rekening,
+            onValueChange = onRekeningChange,
             multiline = true
         )
     }
 }
 
-// ── Field read-only ala .profile-field di web (label Abril Fatface + input pill InputBlue) ──
+// ── Field ala .profile-field di web (label Abril Fatface + input pill InputBlue) ──
 @Composable
 private fun WalletField(
     label: String,
     value: String,
+    onValueChange: (String) -> Unit = {},
+    readOnly: Boolean = false,
     multiline: Boolean = false
 ) {
     Column(
@@ -337,27 +416,32 @@ private fun WalletField(
             letterSpacing = 1.sp
         )
         Spacer(Modifier.height(6.dp))
-        Box(
+        
+        TextField(
+            value = value,
+            onValueChange = onValueChange,
+            readOnly = readOnly,
             modifier = Modifier
                 .fillMaxWidth()
                 .then(
-                    if (multiline) Modifier.heightIn(min = 90.dp)
-                    else Modifier.height(50.dp)
-                )
-                .clip(
-                    if (multiline) RoundedCornerShape(14.dp)
-                    else RoundedCornerShape(999.dp)
-                )
-                .background(InputBlue)
-                .padding(horizontal = 16.dp, vertical = if (multiline) 12.dp else 0.dp),
-            contentAlignment = if (multiline) Alignment.TopStart else Alignment.CenterStart
-        ) {
-            Text(
-                text = value,
+                    if (multiline) Modifier.heightIn(min = 100.dp)
+                    else Modifier.height(56.dp)
+                ),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = InputBlue,
+                unfocusedContainerColor = InputBlue,
+                disabledContainerColor = InputBlue,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+                disabledIndicatorColor = Color.Transparent,
+                cursorColor = DarkNavy
+            ),
+            shape = if (multiline) RoundedCornerShape(14.dp) else RoundedCornerShape(999.dp),
+            textStyle = LocalTextStyle.current.copy(
                 fontSize = 14.sp,
                 color = DarkNavy
             )
-        }
+        )
     }
 }
 
@@ -459,16 +543,14 @@ private fun WalletTransactionCard(item: WalletTransaction, modifier: Modifier = 
                 )
 
                 // Badge "Pemasukan Sewa" / "Pembayaran Sewa"
-                val (badgeColor, badgeText) = if (item.type == WalletTxnType.PEMASUKAN) {
-                    PemasukanGreen.copy(alpha = 0.55f) to "Pemasukan Sewa"
-                } else {
-                    PembayaranRed.copy(alpha = 0.55f) to "Pembayaran Sewa"
-                }
+                val badgeColor = if (item.type == WalletTxnType.PEMASUKAN) PemasukanGreen else PembayaranRed
+                val badgeText = if (item.type == WalletTxnType.PEMASUKAN) "Pemasukan Sewa" else "Pembayaran Sewa"
+                
                 Box(
                     modifier = Modifier
                         .padding(8.dp)
                         .clip(RoundedCornerShape(4.dp))
-                        .background(badgeColor)
+                        .background(badgeColor.copy(alpha = 0.9f))
                         .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
                     Text(
@@ -488,7 +570,7 @@ private fun WalletTransactionCard(item: WalletTransaction, modifier: Modifier = 
                 Text(
                     text = item.title,
                     color = Color.White,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     fontSize = 13.sp,
                     maxLines = 2
                 )
@@ -512,7 +594,7 @@ private fun WalletTransactionCard(item: WalletTransaction, modifier: Modifier = 
                     text = item.amount,
                     fontFamily = AbrilFatfaceFont,
                     fontSize = 16.sp,
-                    color = Color.White
+                    color = if (item.type == WalletTxnType.PEMASUKAN) PemasukanGreen else PembayaranRed
                 )
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -592,9 +674,12 @@ fun MyWalletScreenPreview() {
             ) {
                 MyWalletContent(
                     name = dummyName,
+                    userPhoto = null,
                     email = dummyEmail,
                     saldo = dummySaldo,
                     history = dummyHistoryPreview,
+                    initialRekening = "Nama Rekening: BSI Syariah\nNo Rekening: 763098218847\nA/n: Camping Groups Bandung",
+                    onRekeningSave = {},
                     onMenuClick = {}
                 )
             }

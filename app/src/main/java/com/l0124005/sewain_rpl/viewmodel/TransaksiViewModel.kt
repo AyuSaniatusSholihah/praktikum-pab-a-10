@@ -86,10 +86,12 @@ class TransaksiViewModel(private val repository: TransaksiRepository) : ViewMode
         id: Int,
         fotoBukti: MultipartBody.Part,
         rating: RequestBody,
-        komentar: RequestBody? = null
+        komentar: RequestBody? = null,
+        tanggalKembali: RequestBody? = null,
+        totalDenda: RequestBody? = null
     ) {
         viewModelScope.launch {
-            repository.kembalikanBarang(token, id, fotoBukti, rating, komentar).collect {
+            repository.kembalikanBarang(token, id, fotoBukti, rating, komentar, tanggalKembali, totalDenda).collect {
                 _kembalikanState.value = it
             }
         }

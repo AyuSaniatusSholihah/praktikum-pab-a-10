@@ -33,8 +33,14 @@ import coil.compose.AsyncImage
 import com.l0124005.sewain_rpl.network.ApiClient
 import com.l0124005.sewain_rpl.network.CatalogData
 import com.l0124005.sewain_rpl.network.KategoriData
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.runtime.remember
 import java.text.SimpleDateFormat
 import java.util.*
+import com.l0124005.sewain_rpl.ui.theme.MonsterratFont
+import com.l0124005.sewain_rpl.ui.theme.VolkhovFont
+import com.l0124005.sewain_rpl.ui.theme.LatoFont
+import com.l0124005.sewain_rpl.ui.theme.JostFont
 
 // ============================================================
 // WARNA TEMA — KATALOG SHARED
@@ -51,6 +57,11 @@ val BorderGray   = Color(0xFF8A8A8A)
 val SectionBg    = Color(0xFFEEF3F7)
 val SectionBorder= Color(0xFFD1DDE7)
 
+// Tambahan warna khusus Add Item, biar sama persis web (#DDE9F5, #C3D4E9, dst)
+val AddItemSectionBg     = Color(0xFFDDE9F5)
+val AddItemSectionBorder = Color(0xFFC3D4E9)
+val AddItemAccent        = Color(0xFF6A87A1)
+val AddItemSectionBg30 = Color(0xFFDDE9F5).copy(alpha = 0.3f)
 // Font Fallback
 val Volkhov = FontFamily.Default
 
@@ -78,29 +89,29 @@ fun formatRupiah(number: Double): String {
 
 @Composable
 fun ProductCard(product: CatalogData, onClick: () -> Unit, onAddToCart: () -> Unit) {
-    val imageUrl = if (product.foto_barang != null) {
-        if (product.foto_barang.startsWith("http")) {
-            product.foto_barang
-        } else {
-            "${ApiClient.IMAGE_BASE_URL}${product.foto_barang}"
-        }
+    val firstFoto = product.listFoto.firstOrNull()
+    val imageUrl = if (firstFoto != null) {
+        if (firstFoto.startsWith("http")) firstFoto
+        else "${ApiClient.IMAGE_BASE_URL}$firstFoto"
     } else null
+
+    val rating = 4
+    val reviewCount = remember(product.id) { (10..50).random() }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() },
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = BorderStroke(0.5.dp, SectionBorder),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        Column {
+        Column(modifier = Modifier.padding(12.dp)) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(130.dp)
-                    .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
+                    .aspectRatio(386f / 240f)
+                    .clip(RoundedCornerShape(8.dp))
                     .background(UploadBg)
             ) {
                 if (imageUrl != null) {
@@ -115,91 +126,66 @@ fun ProductCard(product: CatalogData, onClick: () -> Unit, onAddToCart: () -> Un
                         imageVector = Icons.Outlined.Inventory2,
                         contentDescription = null,
                         tint = Primary,
-                        modifier = Modifier.size(40.dp).align(Alignment.Center)
+                        modifier = Modifier.size(32.dp).align(Alignment.Center)
                     )
                 }
-                
-                if (product.stok > 0) {
-                     Surface(
-                        color = Primary,
-                        shape = RoundedCornerShape(bottomStart = 8.dp),
-                        modifier = Modifier.align(Alignment.TopEnd)
-                    ) {
-                        Text(
-                            text = "Tersedia",
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            fontSize = 8.sp,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+
+                IconButton(
+                    onClick = { onAddToCart() },
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(6.dp)
+                        .size(28.dp)
+                        .background(Primary, CircleShape)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.ShoppingCart,
+                        contentDescription = "Tambah ke Keranjang",
+                        tint = White,
+                        modifier = Modifier.size(14.dp)
+                    )
                 }
             }
 
-            Column(modifier = Modifier.padding(12.dp)) {
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Text(
                     text = product.nama_barang,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
-                    maxLines = 1,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 12.sp,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
-                    color = Black
+                    lineHeight = 15.sp,
+                    color = TextDark,
+                    modifier = Modifier.weight(1f)
                 )
-                
-                Spacer(modifier = Modifier.height(4.dp))
-                
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Outlined.LocationOn, null, Modifier.size(12.dp), tint = TextMuted)
-                            Spacer(Modifier.width(2.dp))
-                            Text(
-                                text = product.lokasi ?: "-",
-                                fontSize = 10.sp,
-                                color = TextMuted,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        Row(verticalAlignment = Alignment.Bottom) {
-                            Text(
-                                text = "Rp ${formatRupiah(product.harga_sewa)}",
-                                color = Primary,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp
-                            )
-                            Text(
-                                text = " / hari",
-                                color = TextMuted,
-                                fontSize = 10.sp,
-                                modifier = Modifier.padding(bottom = 1.dp)
-                            )
-                        }
-                    }
-
-                    // Tombol Keranjang Cepat
-                    IconButton(
-                        onClick = { onAddToCart() },
-                        modifier = Modifier
-                            .size(32.dp)
-                            .background(Primary, CircleShape)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.ShoppingCart,
-                            contentDescription = "Tambah ke Keranjang",
-                            tint = Color.White,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                }
+                Spacer(Modifier.width(4.dp))
+                Text("★".repeat(rating) + "☆".repeat(5 - rating), color = Color(0xFFF5B800), fontSize = 10.sp)
             }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Outlined.LocationOn, null, Modifier.size(10.dp), tint = Color(0xFF55959E))
+                Spacer(Modifier.width(3.dp))
+                Text(
+                    text = product.lokasi ?: "-",
+                    fontSize = 9.5.sp,
+                    color = TextMuted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Text("($reviewCount) Customer Reviews", fontSize = 9.5.sp, color = TextDark)
+
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Rp ${formatRupiah(product.harga_sewa)}/hari",
+                fontWeight = FontWeight.Bold,
+                fontSize = 12.5.sp,
+                color = TextDark
+            )
         }
     }
 }
@@ -232,62 +218,85 @@ data class AddItemFormState(
 @Composable
 fun ProfileCard(
     modifier: Modifier = Modifier,
-    nama: String = "Camping Groups Bandung",
-    lokasi: String = "Kota Bandung",
-    rating: Float = 4.3f,
-    totalUlasan: Int = 120,
-    jumlahKatalog: Int = 7,
-    whatsapp: String = "0821-5620-9034"
+    nama: String = "User",
+    lokasi: String = "Lokasi",
+    rating: Float = 4.5f,
+    totalUlasan: Int = 0,
+    jumlahKatalog: Int = 0,
+    whatsapp: String = "-",
+    fotoProfil: String? = null
 ) {
+    val photoUrl = remember(fotoProfil, nama) {
+        if (!fotoProfil.isNullOrEmpty()) {
+            if (fotoProfil.startsWith("http")) fotoProfil
+            else {
+                val cleanPath = if (fotoProfil.startsWith("profiles/")) fotoProfil else "profiles/$fotoProfil"
+                "${ApiClient.IMAGE_BASE_URL}$cleanPath"
+            }
+        } else {
+            "https://ui-avatars.com/api/?name=$nama&background=4D6674&color=fff"
+        }
+    }
+
     Row(
         modifier = modifier
+            .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .border(0.5.dp, SectionBorder, RoundedCornerShape(12.dp))
-            .background(SectionBg)
+            .background(Color(0xFFE0E0E0))
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // Avatar placeholder
-        Box(
+        // Avatar
+        AsyncImage(
+            model = photoUrl,
+            contentDescription = null,
             modifier = Modifier
                 .size(64.dp)
                 .clip(CircleShape)
                 .background(UploadBorder),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                Icons.Outlined.Person,
-                contentDescription = null,
-                tint = Primary,
-                modifier = Modifier.size(32.dp)
-            )
-        }
+            contentScale = ContentScale.Crop
+        )
 
-        Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
                 text = nama,
-                fontFamily = Volkhov,
+                fontFamily = VolkhovFont,
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp,
                 color = Black
             )
             ProfileInfoRow(
                 icon = Icons.Outlined.LocationOn,
-                label = lokasi
+                label = lokasi,
+                tint = TextMuted
             )
-            ProfileInfoRow(
-                icon = Icons.Outlined.Star,
-                label = "$rating  ($totalUlasan Ulasan)"
-            )
-            ProfileInfoRow(
-                icon = Icons.Outlined.Inventory2,
-                label = "$jumlahKatalog Barang"
-            )
-            ProfileInfoRow(
-                icon = Icons.Outlined.Phone,
-                label = whatsapp
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Filled.Star,
+                    contentDescription = null,
+                    modifier = Modifier.size(12.dp),
+                    tint = Color(0xFFF5B800)
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    text = "$rating  ($totalUlasan Ulasan)",
+                    fontSize = 11.sp,
+                    color = TextMuted
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                ProfileInfoRow(
+                    icon = Icons.Outlined.Inventory2,
+                    label = "$jumlahKatalog Barang",
+                    tint = TextMuted
+                )
+            }
         }
     }
 }
@@ -295,16 +304,18 @@ fun ProfileCard(
 @Composable
 fun ProfileInfoRow(
     icon: ImageVector,
-    label: String
+    label: String,
+    tint: Color = TextMuted
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        Icon(icon, contentDescription = null, tint = TextMuted, modifier = Modifier.size(13.dp))
+        Icon(icon, contentDescription = null, tint = Color(0xFF55959E), modifier = Modifier.size(13.dp))
         Text(
             text = label,
-            fontFamily = FontFamily.Default,
+            fontFamily = MonsterratFont,
+            fontWeight = FontWeight.Bold,
             fontSize = 12.sp,
             color = TextDark
         )
@@ -333,7 +344,7 @@ fun DatePickerBox(
     ) {
         Text(
             text = label,
-            fontFamily = FontFamily.Default,
+            fontFamily = LatoFont,
             fontWeight = FontWeight.Bold,
             fontSize = 12.sp,
             color = Black,
@@ -352,7 +363,7 @@ fun DatePickerBox(
             )
             Text(
                 text = if (value.isEmpty()) "Pilih tanggal" else value,
-                fontFamily = FontFamily.Default,
+                fontFamily = LatoFont,
                 fontSize = 12.sp,
                 color = if (value.isEmpty()) TextMuted else Black,
                 textAlign = TextAlign.Center
@@ -368,7 +379,7 @@ fun DatePickerBox(
 fun SewainFormLabel(label: String) {
     Text(
         text = label,
-        fontFamily = Volkhov,
+        fontFamily = VolkhovFont,
         fontWeight = FontWeight.Bold,
         fontSize = 15.sp,
         color = TextDark
@@ -395,7 +406,7 @@ fun SewainFormField(
             placeholder = {
                 Text(
                     text = placeholder,
-                    fontFamily = FontFamily.Default,
+                    fontFamily = JostFont,
                     fontSize = 13.sp,
                     color = TextMuted
                 )
@@ -404,17 +415,17 @@ fun SewainFormField(
             minLines = minLines,
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
             textStyle = LocalTextStyle.current.copy(
-                fontFamily = FontFamily.Default,
+                fontFamily = JostFont,
                 fontSize = 13.sp,
-                color = TextDark
+                color = Color(0xFF484848)
             ),
             shape = RoundedCornerShape(6.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor   = Primary,
+                focusedBorderColor   = AddItemAccent,
                 unfocusedBorderColor = BorderGray,
-                unfocusedContainerColor = FormBg,
-                focusedContainerColor   = FormBg,
-                cursorColor = Primary
+                unfocusedContainerColor = Color(0xFFB2C9DD).copy(alpha = 0.5f),
+                focusedContainerColor   = Color(0xFFB2C9DD).copy(alpha = 0.5f),
+                cursorColor = AddItemAccent
             )
         )
         Spacer(Modifier.height(14.dp))
@@ -444,7 +455,7 @@ fun StockQtyStepper(
             text = qty.toString().padStart(2, '0'),
             modifier = Modifier.defaultMinSize(minWidth = 44.dp),
             textAlign = TextAlign.Center,
-            fontFamily = FontFamily.Default,
+            fontFamily = JostFont,
             fontWeight = FontWeight.Medium,
             fontSize = 15.sp,
             color = Black

@@ -27,6 +27,9 @@ import com.l0124005.sewain_rpl.ui.theme.katalog.formatRupiah
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.viewmodel.TransaksiViewModel
 
+import com.l0124005.sewain_rpl.utils.RentalStatus
+import java.text.SimpleDateFormat
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RiwayatTransaksiScreen(
@@ -43,7 +46,10 @@ fun RiwayatTransaksiScreen(
 
     Scaffold(
         topBar = {
-            com.l0124005.sewain_rpl.ui.theme.SewainTopBar()
+            com.l0124005.sewain_rpl.ui.theme.SewainTopBar(
+                navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
+                onNavigationClick = onBack
+            )
         }
     ) { padding ->
         Box(modifier = Modifier.padding(padding).fillMaxSize()) {
@@ -87,6 +93,7 @@ fun RiwayatTransaksiScreen(
 
 @Composable
 fun TransaksiItem(transaksi: TransaksiData, onClick: (Int) -> Unit) {
+    val rentalStatus = RentalStatus.fromTransaksi(transaksi)
     Card(
         onClick = { onClick(transaksi.id) },
         modifier = Modifier.fillMaxWidth(),
@@ -98,9 +105,15 @@ fun TransaksiItem(transaksi: TransaksiData, onClick: (Int) -> Unit) {
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (!transaksi.barang?.foto_barang.isNullOrEmpty()) {
+            val barang = transaksi.barang
+            val imageUrl = if (!barang?.foto_barang.isNullOrEmpty()) {
+                if (barang?.foto_barang?.startsWith("http") == true) barang.foto_barang
+                else "${ApiClient.IMAGE_BASE_URL}${barang?.foto_barang}"
+            } else null
+
+            if (imageUrl != null) {
                 AsyncImage(
-                    model = "${ApiClient.IMAGE_BASE_URL}${transaksi.barang?.foto_barang}",
+                    model = imageUrl,
                     contentDescription = null,
                     modifier = Modifier.size(70.dp).clip(RoundedCornerShape(8.dp)),
                     contentScale = ContentScale.Crop
@@ -115,20 +128,24 @@ fun TransaksiItem(transaksi: TransaksiData, onClick: (Int) -> Unit) {
                 Text(text = transaksi.barang?.nama_barang ?: "Barang", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 Spacer(modifier = Modifier.height(4.dp))
                 Surface(
-                    color = getStatusColor(transaksi.status).copy(alpha = 0.1f),
+                    color = rentalStatus.badgeColor.copy(alpha = 0.2f),
                     shape = RoundedCornerShape(4.dp)
                 ) {
                     Text(
-                        text = transaksi.status.uppercase(),
+                        text = rentalStatus.label.uppercase(),
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                        color = getStatusColor(transaksi.status),
+                        color = rentalStatus.badgeTextColor,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(text = "Total: Rp ${formatRupiah(transaksi.total_harga)}", fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                Text(text = "${transaksi.tanggal_sewa}", fontSize = 11.sp, color = Color.Gray)
+                
+                val outputSdf = SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault())
+                val tglSewa = RentalStatus.parseFlexibleDate(transaksi.tanggal_sewa)
+                val tglDisplay = if (tglSewa != null) outputSdf.format(tglSewa) else transaksi.tanggal_sewa
+                Text(text = "$tglDisplay", fontSize = 11.sp, color = Color.Gray)
             }
         }
     }

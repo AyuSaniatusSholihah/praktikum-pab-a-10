@@ -48,6 +48,10 @@ class KatalogViewModel(private val repository: KatalogRepository) : ViewModel() 
         _crudResult.value = null
     }
 
+    fun resetMyKatalogDetail() {
+        _myKatalogDetail.value = null
+    }
+
     fun getKategori() {
         viewModelScope.launch {
             repository.getKategori().collect {
@@ -104,15 +108,24 @@ class KatalogViewModel(private val repository: KatalogRepository) : ViewModel() 
         hargaDendaPerjam: RequestBody,
         stok: RequestBody,
         lokasi: RequestBody,
+        whatsapp: RequestBody? = null,
+        tanggalMulai: RequestBody? = null,
+        tanggalAkhir: RequestBody? = null,
         additionalInformation: RequestBody?,
-        fotoBarang: MultipartBody.Part?,
+        fotoUtama: MultipartBody.Part?,
+        fotoAngle1: MultipartBody.Part? = null,
+        fotoAngle2: MultipartBody.Part? = null,
+        fotoAngle3: MultipartBody.Part? = null,
+        fotoAngle4: MultipartBody.Part? = null,
         status: RequestBody? = null
     ) {
         viewModelScope.launch {
             repository.createKatalog(
                 token, kategoriId, namaBarang, deskripsi, hargaSewa,
                 hargaJaminan, hargaDendaPerjam, stok, lokasi,
-                additionalInformation, fotoBarang, status
+                whatsapp, tanggalMulai, tanggalAkhir,
+                additionalInformation, fotoUtama, fotoAngle1, fotoAngle2, 
+                fotoAngle3, fotoAngle4, status
             ).collect {
                 _crudResult.value = it
             }
@@ -130,15 +143,24 @@ class KatalogViewModel(private val repository: KatalogRepository) : ViewModel() 
         hargaDendaPerjam: RequestBody? = null,
         stok: RequestBody? = null,
         lokasi: RequestBody? = null,
+        whatsapp: RequestBody? = null,
+        tanggalMulai: RequestBody? = null,
+        tanggalAkhir: RequestBody? = null,
         additionalInformation: RequestBody? = null,
-        fotoBarang: MultipartBody.Part? = null,
+        fotoUtama: MultipartBody.Part? = null,
+        fotoAngle1: MultipartBody.Part? = null,
+        fotoAngle2: MultipartBody.Part? = null,
+        fotoAngle3: MultipartBody.Part? = null,
+        fotoAngle4: MultipartBody.Part? = null,
         status: RequestBody? = null
     ) {
         viewModelScope.launch {
             repository.updateKatalog(
                 token, id, kategoriId, namaBarang, deskripsi, hargaSewa,
                 hargaJaminan, hargaDendaPerjam, stok, lokasi,
-                additionalInformation, fotoBarang, status
+                whatsapp, tanggalMulai, tanggalAkhir,
+                additionalInformation, fotoUtama, fotoAngle1, fotoAngle2,
+                fotoAngle3, fotoAngle4, status
             ).collect {
                 _crudResult.value = it
             }

@@ -102,10 +102,108 @@ data class CatalogData(
     val harga_denda_perjam: Double,
     val stok: Int,
     val lokasi: String,
-    val foto_barang: String?,
+    val whatsapp: String? = null,
+    val tanggal_mulai: String? = null,
+    val tanggal_akhir: String? = null,
+    val foto_barang: String?, // Foto Utama
+    val fotoproduk1: String? = null, // Angle 1
+    val fotoproduk2: String? = null, // Angle 2
+    val fotoproduk3: String? = null, // Angle 3
+    val fotoproduk4: String? = null, // Angle 4
     val status: String,
-    val kategori: KategoriData? = null
-)
+    val kategori: KategoriData? = null,
+    val user: UserData? = null
+) {
+    companion object {
+        val EMPTY = CatalogData(
+            id = 0,
+            user_id = 0,
+            kategori_id = 0,
+            nama_barang = "",
+            deskripsi = null,
+            additional_information = null,
+            harga_sewa = 0.0,
+            harga_jaminan = 0.0,
+            harga_denda_perjam = 0.0,
+            stok = 0,
+            lokasi = "",
+            whatsapp = null,
+            tanggal_mulai = null,
+            tanggal_akhir = null,
+            foto_barang = null,
+            fotoproduk1 = null,
+            fotoproduk2 = null,
+            fotoproduk3 = null,
+            fotoproduk4 = null,
+            status = ""
+        )
+    }
+
+    val listFoto: List<String>
+        get() {
+            val allPhotos = mutableListOf<String>()
+            
+            // Masukkan foto utama (WAJIB ADA)
+            foto_barang?.let { allPhotos.addAll(parseFotoString(it)) }
+            
+            // Masukkan foto angle tambahan (OPSIONAL)
+            fotoproduk1?.let { allPhotos.addAll(parseFotoString(it)) }
+            fotoproduk2?.let { allPhotos.addAll(parseFotoString(it)) }
+            fotoproduk3?.let { allPhotos.addAll(parseFotoString(it)) }
+            fotoproduk4?.let { allPhotos.addAll(parseFotoString(it)) }
+            
+            // Jangan gunakan distinct() di sini karena jika backend mengembalikan 
+            // placeholder yang sama, kita tetap ingin menunjukkan slotnya (atau biarkan saja)
+            // Tapi untuk amannya, filter yang kosong saja.
+            return allPhotos.filter { it.isNotBlank() }
+        }
+
+    /**
+     * Mengambil URL lengkap untuk foto utama
+     */
+    val mainFotoUrl: String
+        get() = getFullUrl(foto_barang)
+
+    /**
+     * Mengambil URL lengkap dari path/string foto mentah
+     */
+    fun getFullUrl(rawPath: String?): String {
+        val clean = getCleanPath(rawPath)
+        return when {
+            clean.isEmpty() -> ""
+            clean.startsWith("http") -> clean
+            else -> "${ApiClient.IMAGE_BASE_URL}$clean"
+        }
+    }
+
+    /**
+     * Mengambil path foto pertama yang bersih (tanpa karakter JSON jika ada)
+     */
+    fun getCleanPath(rawPath: String?): String {
+        if (rawPath.isNullOrEmpty()) return ""
+        return parseFotoString(rawPath).firstOrNull() ?: ""
+    }
+
+    private fun parseFotoString(foto: String): List<String> {
+        if (foto.isBlank()) return emptyList()
+        // Menangani format: ["img1.jpg","img2.jpg"] atau img1.jpg,img2.jpg
+        return foto
+            .replace("[", "").replace("]", "")
+            .replace("\"", "")
+            .replace("\\/", "/")
+            .split(",")
+            .map { it.trim() }
+            // Menghapus prefix 'storage/' atau '/storage/' jika ada agar tidak double saat digabung IMAGE_BASE_URL
+            .map { 
+                var path = it
+                if (path.startsWith("/storage/")) path = path.substring(9)
+                else if (path.startsWith("storage/")) path = path.substring(8)
+                path
+            }
+            .filter { it.isNotEmpty() }
+    }
+}
+
 
 data class KatalogListResponse(
     val status: String, 

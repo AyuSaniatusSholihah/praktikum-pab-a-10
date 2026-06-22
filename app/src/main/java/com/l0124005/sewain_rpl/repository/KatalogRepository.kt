@@ -84,8 +84,15 @@ class KatalogRepository {
         hargaDendaPerjam: RequestBody,
         stok: RequestBody,
         lokasi: RequestBody,
+        whatsapp: RequestBody? = null,
+        tanggalMulai: RequestBody? = null,
+        tanggalAkhir: RequestBody? = null,
         additionalInformation: RequestBody?,
-        fotoBarang: MultipartBody.Part?,
+        fotoUtama: MultipartBody.Part?,
+        fotoAngle1: MultipartBody.Part? = null,
+        fotoAngle2: MultipartBody.Part? = null,
+        fotoAngle3: MultipartBody.Part? = null,
+        fotoAngle4: MultipartBody.Part? = null,
         status: RequestBody? = null
     ): Flow<Resource<KatalogCrudResponse>> = flow {
         emit(Resource.Loading())
@@ -93,12 +100,16 @@ class KatalogRepository {
             val response = apiService.createKatalog(
                 token, kategoriId, namaBarang, deskripsi,
                 hargaSewa, hargaJaminan, hargaDendaPerjam, stok, lokasi,
-                additionalInformation, fotoBarang, status
+                whatsapp, tanggalMulai, tanggalAkhir,
+                additionalInformation, 
+                fotoUtama, fotoAngle1, fotoAngle2, fotoAngle3, fotoAngle4, 
+                status
             )
             if (response.isSuccessful && response.body() != null) {
                 emit(Resource.Success(response.body()!!))
             } else {
-                emit(Resource.Error(response.message()))
+                val errorBody = response.errorBody()?.string() ?: response.message()
+                emit(Resource.Error(errorBody))
             }
         } catch (e: Exception) {
             emit(Resource.Error(e.message ?: "An error occurred"))
@@ -116,8 +127,15 @@ class KatalogRepository {
         hargaDendaPerjam: RequestBody? = null,
         stok: RequestBody? = null,
         lokasi: RequestBody? = null,
+        whatsapp: RequestBody? = null,
+        tanggalMulai: RequestBody? = null,
+        tanggalAkhir: RequestBody? = null,
         additionalInformation: RequestBody? = null,
-        fotoBarang: MultipartBody.Part? = null,
+        fotoUtama: MultipartBody.Part? = null,
+        fotoAngle1: MultipartBody.Part? = null,
+        fotoAngle2: MultipartBody.Part? = null,
+        fotoAngle3: MultipartBody.Part? = null,
+        fotoAngle4: MultipartBody.Part? = null,
         status: RequestBody? = null
     ): Flow<Resource<KatalogCrudResponse>> = flow {
         emit(Resource.Loading())
@@ -125,12 +143,16 @@ class KatalogRepository {
             val response = apiService.updateKatalog(
                 token, id, "PUT", kategoriId, namaBarang, deskripsi,
                 hargaSewa, hargaJaminan, hargaDendaPerjam, stok, lokasi,
-                additionalInformation, fotoBarang, status
+                whatsapp, tanggalMulai, tanggalAkhir,
+                additionalInformation, 
+                fotoUtama, fotoAngle1, fotoAngle2, fotoAngle3, fotoAngle4, 
+                status
             )
             if (response.isSuccessful && response.body() != null) {
                 emit(Resource.Success(response.body()!!))
             } else {
-                emit(Resource.Error(response.message()))
+                val errorBody = response.errorBody()?.string() ?: response.message()
+                emit(Resource.Error(errorBody))
             }
         } catch (e: Exception) {
             emit(Resource.Error(e.message ?: "An error occurred"))

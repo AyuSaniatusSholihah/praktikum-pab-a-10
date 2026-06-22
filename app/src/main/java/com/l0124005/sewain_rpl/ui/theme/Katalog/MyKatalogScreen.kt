@@ -8,8 +8,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
@@ -20,7 +22,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -36,15 +37,7 @@ import com.l0124005.sewain_rpl.ui.theme.BluePrimary
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.viewmodel.KatalogViewModel
 import com.l0124005.sewain_rpl.viewmodel.ProfileViewModel
-import com.l0124005.sewain_rpl.ui.theme.katalog.formatRupiah
-import com.l0124005.sewain_rpl.ui.theme.katalog.ProfileCard
-import com.l0124005.sewain_rpl.ui.theme.katalog.Volkhov
-import com.l0124005.sewain_rpl.ui.theme.katalog.Primary
-import com.l0124005.sewain_rpl.ui.theme.katalog.White
-import com.l0124005.sewain_rpl.ui.theme.katalog.Black
-import com.l0124005.sewain_rpl.ui.theme.katalog.TextMuted
-import com.l0124005.sewain_rpl.ui.theme.katalog.UploadBg
-import com.l0124005.sewain_rpl.ui.theme.katalog.UploadBorder
+import com.l0124005.sewain_rpl.ui.theme.VolkhovFont
 
 // ═══════════════════════════════════════
 // ACTIVITY
@@ -55,8 +48,6 @@ class MyKatalogActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             Sewain_rplTheme {
-                // Mencoba memanggil dengan parameter yang benar jika ini untuk testing mandiri
-                // Namun MyKatalogActivity sepertinya tidak benar-benar digunakan jika navigasi via MainActivity
                 Text("Activity ini butuh ViewModel & Token")
             }
         }
@@ -66,6 +57,20 @@ class MyKatalogActivity : ComponentActivity() {
 // ═══════════════════════════════════════
 // MAIN SCREEN
 // ═══════════════════════════════════════
+@Composable
+private fun MyKatalogTitleHeader() {
+    Text(
+        text = "My Katalogs",
+        fontFamily = VolkhovFont,
+        fontWeight = FontWeight.Bold,
+        fontSize = 30.sp,
+        color = Black,
+        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 0.dp, bottom = 4.dp)
+    )
+}
 
 @Composable
 fun MyKatalogScreen(
@@ -84,28 +89,27 @@ fun MyKatalogScreen(
     val profileState by profileViewModel.profile.observeAsState()
     val deleteResult by viewModel.deleteResult.observeAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         viewModel.getMyKatalog(token)
         profileViewModel.getProfile(token)
     }
 
-    // Refresh list setelah delete berhasil
     LaunchedEffect(deleteResult) {
         when (deleteResult) {
             is Resource.Success -> {
                 snackbarHostState.showSnackbar("Barang berhasil dihapus")
                 viewModel.getMyKatalog(token)
+                viewModel.resetStates()
             }
             is Resource.Error -> {
                 snackbarHostState.showSnackbar("Gagal menghapus: ${(deleteResult as Resource.Error).message}")
+                viewModel.resetStates()
             }
             else -> {}
         }
     }
 
-    // Dialog konfirmasi hapus
     itemToDelete?.let { barang ->
         AlertDialog(
             onDismissRequest = { itemToDelete = null },
@@ -129,17 +133,18 @@ fun MyKatalogScreen(
         )
     }
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
-    ) { innerPadding ->
+    Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
                 .background(White)
         ) {
-            // ── Top Bar ──
-            SewainTopBar()
+            // Gunakan SewainTopBar tanpa navigation icon (panah)
+            SewainTopBar(
+                navigationIcon = null
+            )
+            
+            MyKatalogTitleHeader()
 
             when (val state = myKatalogState) {
                 is Resource.Loading -> {
@@ -162,39 +167,35 @@ fun MyKatalogScreen(
                         }
                     }
 
-                    LazyColumn(
+                    LazyVerticalGrid(
+                        columns             = GridCells.Fixed(2),
                         modifier            = Modifier.fillMaxSize(),
-                        contentPadding      = PaddingValues(bottom = 80.dp)
+                        contentPadding      = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement   = Arrangement.spacedBy(10.dp)
                     ) {
-                        // ── Profile Card ──
-                        item {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
                             val user = (profileState as? Resource.Success)?.data?.data
                             ProfileCard(
-                                modifier = Modifier.padding(16.dp),
-                                nama          = user?.name ?: "Loading...",
-                                lokasi        = user?.alamat ?: (if (allItems.isNotEmpty()) allItems[0].lokasi else "Unknown"),
+                                modifier = Modifier.padding(bottom = 10.dp),
+                                nama          = user?.name ?: "User",
+                                lokasi        = user?.alamat ?: (if (allItems.isNotEmpty()) allItems[0].lokasi else "Lokasi"),
                                 rating        = 4.5f,
                                 totalUlasan   = 12,
                                 jumlahKatalog = allItems.size,
-                                whatsapp      = user?.phone_number ?: ""
+                                whatsapp      = user?.phone_number ?: "",
+                                fotoProfil    = user?.foto_profil
                             )
                         }
 
-                        // ── Search Bar ──
-                        item {
+                        item (span = { GridItemSpan(maxLineSpan) }) {
                             MyKatalogSearchBar(
                                 query         = searchQuery,
                                 onQueryChange = { searchQuery = it }
                             )
                         }
 
-                        // ── Tombol Tambah ──
-                        item {
-                            AddItemButton(onClick = onAddItem)
-                        }
-
-                        // ── Label jumlah ──
-                        item {
+                        item (span = { GridItemSpan(maxLineSpan) }) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
                                 verticalAlignment = Alignment.CenterVertically
@@ -204,7 +205,7 @@ fun MyKatalogScreen(
                                     fontSize   = 13.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     color      = Black,
-                                    fontFamily = Volkhov
+                                    fontFamily = VolkhovFont
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
@@ -215,10 +216,11 @@ fun MyKatalogScreen(
                             }
                         }
 
-                        // ── List Katalog ──
                         if (filteredItems.isEmpty()) {
-                            item { MyKatalogEmpty() }
+                            item { AddItemButton(onClick = onAddItem) }
+                            item (span = { GridItemSpan(maxLineSpan) })  { MyKatalogEmpty() }
                         } else {
+                            item { AddItemButton(onClick = onAddItem) }
                             items(filteredItems) { item ->
                                 MyKatalogCard(
                                     item            = item,
@@ -230,57 +232,16 @@ fun MyKatalogScreen(
                         }
                     }
                 }
-
                 else -> {}
             }
         }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp)
+        )
     }
 }
-
-// ═══════════════════════════════════════
-// TOP BAR
-// ═══════════════════════════════════════
-
-@Composable
-private fun MyKatalogTopBar(onBack: () -> Unit) {
-    Column {
-        Row(
-            modifier              = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 14.dp),
-            verticalAlignment     = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(
-                    imageVector = Icons.Outlined.ArrowBack,
-                    contentDescription = "Kembali",
-                    tint = Black
-                )
-            }
-
-            Text(
-                text       = "My Katalog",
-                fontSize   = 16.sp,
-                fontWeight = FontWeight.SemiBold,
-                color      = Black,
-                fontFamily = Volkhov
-            )
-
-            Icon(
-                imageVector        = Icons.Outlined.MoreVert,
-                contentDescription = "Menu",
-                tint               = Black,
-                modifier           = Modifier.size(22.dp)
-            )
-        }
-        HorizontalDivider(color = UploadBorder, thickness = 0.5.dp)
-    }
-}
-
-// ═══════════════════════════════════════
-// SEARCH BAR
-// ═══════════════════════════════════════
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -294,7 +255,7 @@ private fun MyKatalogSearchBar(
         placeholder   = {
             Text(
                 text     = "Search something here",
-                color    = Primary,
+                color    = Color(0xFF3D5278),
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold
             )
@@ -303,7 +264,7 @@ private fun MyKatalogSearchBar(
             Icon(
                 imageVector        = Icons.Outlined.Search,
                 contentDescription = "Cari",
-                tint               = Primary,
+                tint               = Color(0xFF3D5278),
                 modifier           = Modifier.size(20.dp)
             )
         },
@@ -323,13 +284,13 @@ private fun MyKatalogSearchBar(
         shape      = RoundedCornerShape(999.dp),
         modifier   = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(vertical = 8.dp)
             .height(50.dp),
         colors     = OutlinedTextFieldDefaults.colors(
-            focusedContainerColor   = UploadBg,
-            unfocusedContainerColor = UploadBg,
-            focusedBorderColor      = UploadBorder,
-            unfocusedBorderColor    = UploadBorder,
+            focusedContainerColor   = Color(0xFFE0E0E0),
+            unfocusedContainerColor = Color(0xFFE0E0E0),
+            focusedBorderColor      = Color(0xFFC3D4E9),
+            unfocusedBorderColor    = Color(0xFFC3D4E9),
             cursorColor             = Primary
         ),
         textStyle = androidx.compose.ui.text.TextStyle(
@@ -340,41 +301,53 @@ private fun MyKatalogSearchBar(
     )
 }
 
-// ═══════════════════════════════════════
-// TOMBOL TAMBAH ITEM
-// ═══════════════════════════════════════
-
 @Composable
 private fun AddItemButton(onClick: () -> Unit) {
-    Button(
-        onClick   = onClick,
-        modifier  = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .height(50.dp),
-        shape     = RoundedCornerShape(14.dp),
-        colors    = ButtonDefaults.buttonColors(containerColor = Primary)
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        border = BorderStroke(1.dp, Color(0xFFEDEDED))
     ) {
-        Icon(
-            imageVector        = Icons.Outlined.Add,
-            contentDescription = null,
-            tint               = Color.White,
-            modifier           = Modifier.size(20.dp)
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text       = "Tambah Barang Baru",
-            fontSize   = 14.sp,
-            fontWeight = FontWeight.Bold,
-            color      = Color.White,
-            fontFamily = Volkhov
-        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f / 1.6f),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(androidx.compose.foundation.shape.CircleShape)
+                        .background(Color(0xFFE0E0E0))
+                        .border(BorderStroke(2.dp, Color(0xFF484848)), androidx.compose.foundation.shape.CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Add,
+                        contentDescription = null,
+                        tint = Color(0xFF484848),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Text(
+                    text = "ADD NEW ITEM",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color(0xFF484848),
+                    fontFamily = VolkhovFont,
+                    letterSpacing = 1.sp
+                )
+            }
+        }
     }
 }
-
-// ═══════════════════════════════════════
-// CARD ITEM KATALOG
-// ═══════════════════════════════════════
 
 @Composable
 private fun MyKatalogCard(
@@ -384,217 +357,114 @@ private fun MyKatalogCard(
     onDeleteClick: () -> Unit
 ) {
     val isDisewa  = item.status == "disewa"
-    val badgeBg   = if (isDisewa) Primary else UploadBorder
+    val badgeBg   = if (isDisewa) Color(0xFF1E3A5F) else Color(0xFFC3D4E9)
     val badgeText = if (isDisewa) "ACTIVE RENTAL" else "AVAILABLE"
-    val badgeTextColor = if (isDisewa) Color.White else Primary
+    val badgeTextColor = if (isDisewa) Color.White else Color(0xFF1E3A5F)
+    val rating = 4
+    val reviewCount = remember(item.id) { (10..50).random() }
 
     Card(
-        modifier  = Modifier
+        modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp)
             .clickable { onClick() },
-        shape     = RoundedCornerShape(12.dp),
-        colors    = CardDefaults.cardColors(containerColor = White),
-        border    = BorderStroke(0.5.dp, UploadBorder),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        Row(
-            modifier          = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // ── Gambar barang ──
+        Column(modifier = Modifier.padding(12.dp)) {
             Box(
                 modifier = Modifier
-                    .size(80.dp)
-                    .clip(RoundedCornerShape(10.dp))
+                    .fillMaxWidth()
+                    .aspectRatio(386f / 240f)
+                    .clip(RoundedCornerShape(8.dp))
                     .background(UploadBg)
             ) {
-                if (!item.foto_barang.isNullOrEmpty()) {
-                    val imageUrl = if (item.foto_barang.startsWith("http")) {
-                        item.foto_barang
-                    } else {
-                        "${ApiClient.IMAGE_BASE_URL}${item.foto_barang}"
-                    }
+                if (item.mainFotoUrl.isNotEmpty()) {
                     AsyncImage(
-                        model              = imageUrl,
+                        model = item.mainFotoUrl,
                         contentDescription = item.nama_barang,
-                        contentScale       = ContentScale.Crop,
-                        modifier           = Modifier.fillMaxSize()
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
                     )
                 } else {
                     Icon(
-                        imageVector        = Icons.Outlined.Inventory2,
-                        contentDescription = null,
-                        tint               = Primary,
-                        modifier           = Modifier
-                            .size(32.dp)
-                            .align(Alignment.Center)
+                        Icons.Outlined.Inventory2,
+                        null,
+                        tint = Primary,
+                        modifier = Modifier.size(32.dp).align(Alignment.Center)
                     )
                 }
-            }
 
-            // ── Info ──
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                // Badge status
                 Box(
                     modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(10.dp)
                         .clip(RoundedCornerShape(999.dp))
                         .background(badgeBg)
-                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
                 ) {
-                    Text(
-                        text       = badgeText,
-                        fontSize   = 8.sp,
-                        fontWeight = FontWeight.Bold,
-                        color      = badgeTextColor,
-                        letterSpacing = 0.5.sp
-                    )
+                    Text(text = badgeText, fontFamily = VolkhovFont, fontSize = 8.sp, fontWeight = FontWeight.Bold, color = badgeTextColor, letterSpacing = 0.8.sp)
                 }
 
-                // Nama barang
-                Text(
-                    text       = item.nama_barang,
-                    fontSize   = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color      = Black,
-                    maxLines   = 2,
-                    overflow   = TextOverflow.Ellipsis,
-                    fontFamily = Volkhov
-                )
-
-                // Lokasi
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector        = Icons.Outlined.LocationOn,
-                        contentDescription = null,
-                        tint               = Primary,
-                        modifier           = Modifier.size(11.dp)
-                    )
-                    Spacer(modifier = Modifier.width(2.dp))
-                    Text(text = item.lokasi, fontSize = 10.sp, color = TextMuted)
-                }
-
-                // Harga
-                Text(
-                    text       = "Rp ${formatRupiah(item.harga_sewa)}/hari",
-                    fontSize   = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color      = Primary,
-                    fontFamily = Volkhov
-                )
-
-                // Stok
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector        = Icons.Outlined.Inventory,
-                        contentDescription = null,
-                        tint               = TextMuted,
-                        modifier           = Modifier.size(11.dp)
-                    )
-                    Spacer(modifier = Modifier.width(3.dp))
-                    Text(
-                        text     = "${item.stok} unit in stock",
-                        fontSize = 10.sp,
-                        color    = TextMuted
-                    )
+                Row(
+                    modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Box(modifier = Modifier.size(20.dp).clip(RoundedCornerShape(4.dp)).background(White).clickable { onEditClick() }, contentAlignment = Alignment.Center) {
+                        Icon(Icons.Outlined.Edit, "Edit", tint = Primary, modifier = Modifier.size(12.dp))
+                    }
+                    Box(modifier = Modifier.size(20.dp).clip(RoundedCornerShape(4.dp)).background(White).clickable { onDeleteClick() }, contentAlignment = Alignment.Center) {
+                        Icon(Icons.Outlined.Delete, "Hapus", tint = Color(0xFFE24B4A), modifier = Modifier.size(12.dp))
+                    }
                 }
             }
 
-            // ── Tombol aksi ──
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                // Tombol Edit
-                IconButton(
-                    onClick  = onEditClick,
-                    modifier = Modifier
-                        .size(34.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .border(0.5.dp, UploadBorder, RoundedCornerShape(8.dp))
-                        .background(White)
-                ) {
-                    Icon(
-                        imageVector        = Icons.Outlined.Edit,
-                        contentDescription = "Edit",
-                        tint               = Primary,
-                        modifier           = Modifier.size(16.dp)
-                    )
-                }
-
-                // Tombol Hapus
-                IconButton(
-                    onClick  = onDeleteClick,
-                    modifier = Modifier
-                        .size(34.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .border(0.5.dp, UploadBorder, RoundedCornerShape(8.dp))
-                        .background(White)
-                ) {
-                    Icon(
-                        imageVector        = Icons.Outlined.Delete,
-                        contentDescription = "Hapus",
-                        tint               = Color(0xFFE24B4A),
-                        modifier           = Modifier.size(16.dp)
-                    )
-                }
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                Text(text = item.nama_barang, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = Black, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 15.sp, modifier = Modifier.weight(1f))
+                Spacer(Modifier.width(4.dp))
+                Text("★".repeat(rating) + "☆".repeat(5 - rating), color = Color(0xFFF5B800), fontSize = 10.sp)
+            }
+            Spacer(Modifier.height(4.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Outlined.LocationOn, null, Modifier.size(10.dp), tint = Color(0xFF55959E))
+                Spacer(Modifier.width(3.dp))
+                Text(item.lokasi, fontSize = 9.5.sp, color = TextMuted)
+            }
+            Text("($reviewCount) Customer Reviews", fontSize = 9.5.sp, color = Color(0xFF484848))
+            Spacer(Modifier.height(4.dp))
+            Text(text = "Rp ${formatRupiah(item.harga_sewa)}/hari", fontWeight = FontWeight.Bold, fontSize = 12.5.sp, color = Black)
+            Spacer(Modifier.height(6.dp))
+            HorizontalDivider(color = Color(0xFFF0F0F0), thickness = 1.dp)
+            Spacer(Modifier.height(6.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Outlined.Inventory, null, Modifier.size(12.dp), tint = TextMuted)
+                Spacer(Modifier.width(5.dp))
+                Text(text = "${item.stok} Units in Stock", fontSize = 10.sp, color = Color(0xFF484848))
             }
         }
     }
 }
-
-// ═══════════════════════════════════════
-// EMPTY STATE
-// ═══════════════════════════════════════
 
 @Composable
 private fun MyKatalogEmpty() {
     Column(
-        modifier            = Modifier
-            .fillMaxWidth()
-            .padding(48.dp),
+        modifier = Modifier.fillMaxWidth().padding(48.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Box(
-            modifier         = Modifier
-                .size(80.dp)
-                .clip(androidx.compose.foundation.shape.CircleShape)
-                .background(UploadBg),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector        = Icons.Outlined.Inventory2,
-                contentDescription = null,
-                tint               = TextMuted,
-                modifier           = Modifier.size(36.dp)
-            )
+        Box(modifier = Modifier.size(80.dp).clip(androidx.compose.foundation.shape.CircleShape).background(UploadBg), contentAlignment = Alignment.Center) {
+            Icon(Icons.Outlined.Inventory2, null, tint = TextMuted, modifier = Modifier.size(36.dp))
         }
         Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text       = "Belum ada barang",
-            fontSize   = 15.sp,
-            fontWeight = FontWeight.SemiBold,
-            color      = Black,
-            fontFamily = Volkhov
-        )
+        Text(text = "Belum ada barang", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Black, fontFamily = VolkhovFont)
         Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text      = "Tambahkan barangmu untuk mulai menyewakan",
-            fontSize  = 12.sp,
-            color     = TextMuted,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-        )
+        Text(text = "Tambahkan barangmu untuk mulai menyewakan", fontSize = 12.sp, color = TextMuted, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
     }
 }
-
-// ═══════════════════════════════════════
-// HELPER
-// ═══════════════════════════════════════
 
 @Preview(showBackground = true)
 @Composable
 fun MyKatalogScreenPreview() {
-    // MyKatalogScreen(...)
+    // Preview
 }
