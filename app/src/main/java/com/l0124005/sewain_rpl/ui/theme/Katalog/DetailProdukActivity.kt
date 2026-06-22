@@ -256,25 +256,32 @@ fun ProductDetailScreen(
         },
         bottomBar = {
             if (detailState is Resource.Success) {
+                val product = (detailState as Resource.Success).data!!.data
+                val isOutOfStock = product.stok <= 0 || product.status != "tersedia"
                 val isLoading = addToCartState is Resource.Loading || checkoutState is Resource.Loading
                 DetailBottomActionBar(
                     onAddToCart = {
-                        isRentNowClicked = false
-                        keranjangViewModel.addToKeranjang(
-                            token, productId, quantity,
-                            sdfApi.format(dateStartRaw),
-                            sdfApi.format(dateEndRaw)
-                        )
+                        if (!isOutOfStock) {
+                            isRentNowClicked = false
+                            keranjangViewModel.addToKeranjang(
+                                token, productId, quantity,
+                                sdfApi.format(dateStartRaw),
+                                sdfApi.format(dateEndRaw)
+                            )
+                        }
                     },
                     onRentNow = {
-                        isRentNowClicked = true
-                        keranjangViewModel.addToKeranjang(
-                            token, productId, quantity,
-                            sdfApi.format(dateStartRaw),
-                            sdfApi.format(dateEndRaw)
-                        )
+                        if (!isOutOfStock) {
+                            isRentNowClicked = true
+                            keranjangViewModel.addToKeranjang(
+                                token, productId, quantity,
+                                sdfApi.format(dateStartRaw),
+                                sdfApi.format(dateEndRaw)
+                            )
+                        }
                     },
-                    isLoading = isLoading
+                    isLoading = isLoading,
+                    isOutOfStock = isOutOfStock
                 )
             }
         },
@@ -635,15 +642,27 @@ fun DetailDateBox(label: String, value: String, onClick: () -> Unit, modifier: M
 @Composable
 fun DetailStockSection(stock: Int) {
     Column {
-        Text(text = buildAnnotatedString {
-            append("Only ")
-            withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append("$stock") }
-            append(" item(s) left in stock!")
-        }, fontFamily = JostFont, fontSize = 14.sp, color = DetailColors.PriceOld)
+        if (stock <= 0) {
+            Text(
+                text = "⚠ Stok Habis",
+                fontFamily = JostFont,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = DetailColors.StockRed
+            )
+        } else {
+            Text(text = buildAnnotatedString {
+                append("Only ")
+                withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append("$stock") }
+                append(" item(s) left in stock!")
+            }, fontFamily = JostFont, fontSize = 14.sp,
+                color = if (stock < 3) DetailColors.StockRed else DetailColors.PriceOld)
+        }
         Spacer(Modifier.height(6.dp))
         Box(modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)).background(DetailColors.Border)) {
             val fraction = if (stock > 0) 1f else 0f
-            Box(modifier = Modifier.fillMaxHeight().fillMaxWidth(fraction).clip(RoundedCornerShape(2.dp)).background(if (stock < 3) DetailColors.StockRed else DetailColors.Primary))
+            Box(modifier = Modifier.fillMaxHeight().fillMaxWidth(fraction).clip(RoundedCornerShape(2.dp))
+                .background(if (stock <= 0) DetailColors.StockRed else if (stock < 3) DetailColors.StockRed else DetailColors.Primary))
         }
     }
 }
@@ -653,13 +672,21 @@ fun DetailQuantitySection(qty: Int, maxStock: Int, onMinus: () -> Unit, onPlus: 
     Column {
         Text(text = "Jumlah", fontFamily = Volkhov, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = DetailColors.Black)
         Spacer(Modifier.height(10.dp))
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(modifier = Modifier.border(1.dp, DetailColors.Border, RoundedCornerShape(6.dp)), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onMinus, modifier = Modifier.size(40.dp)) { Text("−", fontSize = 18.sp, color = DetailColors.TextDark) }
-                Text(text = "$qty", modifier = Modifier.defaultMinSize(minWidth = 32.dp), textAlign = TextAlign.Center, fontSize = 15.sp, color = DetailColors.Black)
-                IconButton(onClick = onPlus, modifier = Modifier.size(40.dp)) { Text("+", fontSize = 18.sp, color = DetailColors.TextDark) }
+        if (maxStock <= 0) {
+            Text(
+                text = "Tidak dapat memesan — stok tidak tersedia.",
+                fontSize = 12.sp,
+                color = DetailColors.StockRed
+            )
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(modifier = Modifier.border(1.dp, DetailColors.Border, RoundedCornerShape(6.dp)), verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onMinus, modifier = Modifier.size(40.dp)) { Text("−", fontSize = 18.sp, color = DetailColors.TextDark) }
+                    Text(text = "$qty", modifier = Modifier.defaultMinSize(minWidth = 32.dp), textAlign = TextAlign.Center, fontSize = 15.sp, color = DetailColors.Black)
+                    IconButton(onClick = onPlus, modifier = Modifier.size(40.dp)) { Text("+", fontSize = 18.sp, color = DetailColors.TextDark) }
+                }
+                Text(text = "/ $maxStock tersedia", fontSize = 12.sp, color = DetailColors.TextMuted)
             }
-            Text(text = "/ $maxStock tersedia", fontSize = 12.sp, color = DetailColors.TextMuted)
         }
     }
 }
@@ -863,7 +890,12 @@ fun DetailReviewSection(reviews: List<DetailReview>) {
     }
 }
 @Composable
-fun DetailBottomActionBar(onAddToCart: () -> Unit, onRentNow: () -> Unit, isLoading: Boolean) {
+fun DetailBottomActionBar(
+    onAddToCart: () -> Unit,
+    onRentNow: () -> Unit,
+    isLoading: Boolean,
+    isOutOfStock: Boolean = false
+) {
     Surface(shadowElevation = 8.dp, color = DetailColors.White) {
         Row(
             modifier = Modifier
@@ -876,10 +908,13 @@ fun DetailBottomActionBar(onAddToCart: () -> Unit, onRentNow: () -> Unit, isLoad
                 onClick = onAddToCart,
                 modifier = Modifier.weight(1f).heightIn(min = 48.dp),
                 shape = RoundedCornerShape(8.dp),
-                border = BorderStroke(1.dp, DetailColors.Black),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = DetailColors.TextDark),
+                border = BorderStroke(1.dp, if (isOutOfStock) Color.Gray else DetailColors.Black),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = if (isOutOfStock) Color.Gray else DetailColors.TextDark,
+                    disabledContentColor = Color.Gray
+                ),
                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),
-                enabled = !isLoading
+                enabled = !isLoading && !isOutOfStock
             ) {
                 Text(
                     text = "Add To Cart",
@@ -897,16 +932,18 @@ fun DetailBottomActionBar(onAddToCart: () -> Unit, onRentNow: () -> Unit, isLoad
                 modifier = Modifier.weight(2f).heightIn(min = 48.dp),
                 shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = DetailColors.Accent,
-                    contentColor = DetailColors.Black
+                    containerColor = if (isOutOfStock) Color(0xFFBDBDBD) else DetailColors.Accent,
+                    contentColor = DetailColors.Black,
+                    disabledContainerColor = Color(0xFFBDBDBD),
+                    disabledContentColor = Color(0xFF757575)
                 ),
                 border = BorderStroke(0.5.dp, DetailColors.Black),
-                enabled = !isLoading
+                enabled = !isLoading && !isOutOfStock
             ) {
-                if (isLoading) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = DetailColors.Black)
-                } else {
-                    Text(text = "Rent Now!", fontFamily = VolkhovFont, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                when {
+                    isLoading -> CircularProgressIndicator(modifier = Modifier.size(24.dp), color = DetailColors.Black)
+                    isOutOfStock -> Text(text = "Stok Habis", fontFamily = VolkhovFont, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    else -> Text(text = "Rent Now!", fontFamily = VolkhovFont, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 }
             }
         }

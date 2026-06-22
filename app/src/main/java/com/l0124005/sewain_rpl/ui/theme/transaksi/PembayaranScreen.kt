@@ -24,12 +24,12 @@ import com.l0124005.sewain_rpl.ui.theme.SewainTopBar
 import com.l0124005.sewain_rpl.ui.theme.BluePrimary
 import com.l0124005.sewain_rpl.ui.theme.katalog.formatRupiah
 import com.l0124005.sewain_rpl.utils.Resource
-import com.l0124005.sewain_rpl.viewmodel.TransaksiViewModel
+import com.l0124005.sewain_rpl.viewmodel.PaymentViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PembayaranScreen(
-    viewModel: TransaksiViewModel,
+    viewModel: PaymentViewModel,
     token: String,
     transaksiIds: List<Int>,
     onBack: () -> Unit,
