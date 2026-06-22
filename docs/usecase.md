@@ -4,7 +4,7 @@ Dokumen ini memuat diagram Use Case beserta penjelasan rinci mengenai aktor dan 
 
 ---
 
-## 1. Diagram Use Case (Mermaid)
+## 1. Diagram Use Case 
 
 ```mermaid
 graph LR
