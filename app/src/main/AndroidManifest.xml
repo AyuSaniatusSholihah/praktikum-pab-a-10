@@ -43,6 +43,10 @@
             android:exported="false" />
 
         <activity
+            android:name=".ui.theme.auth.OtpLoginActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".ui.theme.katalog.DetailProdukActivity"
             android:exported="false" />
 

@@ -35,14 +35,19 @@ fun DetailTransaksiScreen(
     viewModel: TransaksiViewModel,
     token: String,
     transaksiId: Int,
+    isOwner: Boolean = false,
     onBack: () -> Unit,
     onPayClick: (List<Int>) -> Unit,
     onProductClick: (Int) -> Unit
 ) {
     val transaksiDetailState by viewModel.transaksiDetail.observeAsState()
 
-    LaunchedEffect(transaksiId) {
-        viewModel.getDetailTransaksi(token, transaksiId)
+    LaunchedEffect(transaksiId, isOwner) {
+        if (isOwner) {
+            viewModel.getOwnerTransaksiDetail(token, transaksiId)
+        } else {
+            viewModel.getDetailTransaksi(token, transaksiId)
+        }
     }
 
     Scaffold(
@@ -111,9 +116,10 @@ fun TransaksiDetailContent(
                         color = getStatusColor(transaksi.status)
                     )
                 }
-                if (!transaksi.barang?.foto_barang.isNullOrEmpty()) {
+                val imageUrl = transaksi.barang?.mainFotoUrl
+                if (!imageUrl.isNullOrEmpty()) {
                     AsyncImage(
-                        model = "${ApiClient.IMAGE_BASE_URL}${transaksi.barang?.foto_barang}",
+                        model = imageUrl,
                         contentDescription = null,
                         modifier = Modifier.size(60.dp).clip(RoundedCornerShape(8.dp)),
                         contentScale = ContentScale.Crop

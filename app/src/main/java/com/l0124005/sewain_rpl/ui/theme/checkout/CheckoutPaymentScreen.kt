@@ -121,7 +121,8 @@ fun CheckoutPaymentScreen(
     // Jika selectedItems kosong (misal navigasi langsung), ambil semua dari keranjang
     val keranjangState by keranjangViewModel.keranjang.observeAsState()
     val checkoutState by transaksiViewModel.checkoutState.observeAsState()
-    val isLoading = checkoutState is Resource.Loading
+    val pembayaranState by transaksiViewModel.pembayaranState.observeAsState()
+    val isLoading = checkoutState is Resource.Loading || pembayaranState is Resource.Loading
 
     val displayItems = if (selectedItems.isNotEmpty()) {
         selectedItems.map { it.toCartItem() }

@@ -86,9 +86,16 @@ fun MyWalletScreen(
     val tenantTxns = (transaksiViewModel.transaksiList.observeAsState().value as? Resource.Success)?.data?.data ?: emptyList()
 
     val outputSdf = remember { java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault()) }
+    val outputFullSdf = remember { java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault()) }
+
     val formatTgl = { dateStr: String? ->
         val parsed = RentalStatus.parseFlexibleDate(dateStr)
         if (parsed != null) outputSdf.format(parsed) else dateStr ?: "-"
+    }
+
+    val formatTglFull = { dateStr: String? ->
+        val parsed = RentalStatus.parseFlexibleDate(dateStr)
+        if (parsed != null) outputFullSdf.format(parsed) else dateStr ?: "-"
     }
 
     // Gabungkan data: Owner -> Pemasukan, Tenant -> Pembayaran
@@ -96,7 +103,12 @@ fun MyWalletScreen(
         val income = ownerTxns.map { txn ->
             val rDate = RentalStatus.parseFlexibleDate(txn.tanggal_verifikasipengembalian ?: txn.tanggal_sewa)
             val isReturned = !txn.tanggal_kembali_aktual.isNullOrEmpty() && !txn.tanggal_kembali_aktual.startsWith("0000")
-            val returnDateStr = if (isReturned) txn.tanggal_kembali_aktual else txn.tanggal_kembali_rencana
+            
+            val returnTimeText = if (isReturned) {
+                "${formatTglFull(txn.tanggal_kembali_aktual)} WIB"
+            } else {
+                "${formatTgl(txn.tanggal_kembali_rencana)} 23:59 WIB"
+            }
 
             WalletTransaction(
                 title = txn.barang?.nama_barang ?: "Produk",
@@ -104,7 +116,7 @@ fun MyWalletScreen(
                 amount = "+ Rp ${formatRupiah(txn.total_harga)}",
                 dateStart = formatTgl(txn.tanggal_sewa),
                 dateEnd = formatTgl(txn.tanggal_kembali_rencana),
-                dateReturn = formatTgl(returnDateStr),
+                dateReturn = returnTimeText,
                 isReturned = isReturned,
                 transactionDate = formatTgl(txn.tanggal_verifikasipengembalian ?: txn.tanggal_sewa),
                 rawDate = rDate,
@@ -115,7 +127,12 @@ fun MyWalletScreen(
         val expense = tenantTxns.map { txn ->
             val rDate = RentalStatus.parseFlexibleDate(txn.pembayaran?.tanggal_bayar ?: txn.tanggal_sewa)
             val isReturned = !txn.tanggal_kembali_aktual.isNullOrEmpty() && !txn.tanggal_kembali_aktual.startsWith("0000")
-            val returnDateStr = if (isReturned) txn.tanggal_kembali_aktual else txn.tanggal_kembali_rencana
+
+            val returnTimeText = if (isReturned) {
+                "${formatTglFull(txn.tanggal_kembali_aktual)} WIB"
+            } else {
+                "${formatTgl(txn.tanggal_kembali_rencana)} 23:59 WIB"
+            }
 
             WalletTransaction(
                 title = txn.barang?.nama_barang ?: "Produk",
@@ -123,7 +140,7 @@ fun MyWalletScreen(
                 amount = "- Rp ${formatRupiah(txn.total_harga)}",
                 dateStart = formatTgl(txn.tanggal_sewa),
                 dateEnd = formatTgl(txn.tanggal_kembali_rencana),
-                dateReturn = formatTgl(returnDateStr),
+                dateReturn = returnTimeText,
                 isReturned = isReturned,
                 transactionDate = formatTgl(txn.pembayaran?.tanggal_bayar ?: txn.tanggal_sewa),
                 rawDate = rDate,
@@ -168,46 +185,46 @@ fun MyWalletScreen(
             )
         }
     ) {
-        Scaffold(
-            containerColor = Color.White
-        ) { padding ->
-            Box(
-                modifier = Modifier
-                    .padding(padding)
-                    .fillMaxSize()
-                    .background(Color.White)
-            ) {
-                when (profileState) {
-                    is Resource.Loading -> {
+// SESUDAH
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.White)
+        ) {
+            when (profileState) {
+                is Resource.Loading -> {
+                    Box(modifier = Modifier.fillMaxSize()) {
                         CircularProgressIndicator(
                             modifier = Modifier.align(Alignment.Center),
                             color = BluePrimary
                         )
                     }
-                    is Resource.Success -> {
-                        val user = profileState?.data?.data
-                        if (user != null) {
-                            MyWalletContent(
-                                name = user.name,
-                                userPhoto = user.foto_profil,
-                                email = user.email,
-                                saldo = user.saldo,
-                                history = history,
-                                initialRekening = savedRekening ?: "",
-                                onRekeningSave = { viewModel.updateRekening(token, it) },
-                                onMenuClick = { scope.launch { drawerState.open() } }
-                            )
-                        }
+                }
+                is Resource.Success -> {
+                    val user = profileState?.data?.data
+                    if (user != null) {
+                        MyWalletContent(
+                            name = user.name,
+                            userPhoto = user.foto_profil,
+                            email = user.email,
+                            saldo = user.saldo,
+                            history = history,
+                            initialRekening = savedRekening ?: "",
+                            onRekeningSave = { viewModel.updateRekening(token, it) },
+                            onMenuClick = { scope.launch { drawerState.open() } }
+                        )
                     }
-                    is Resource.Error -> {
+                }
+                is Resource.Error -> {
+                    Box(modifier = Modifier.fillMaxSize()) {
                         Text(
                             text = profileState?.message ?: "Error",
                             color = Color.Red,
                             modifier = Modifier.align(Alignment.Center)
                         )
                     }
-                    else -> {}
                 }
+                else -> {}
             }
         }
     }
@@ -231,7 +248,8 @@ private fun MyWalletContent(
     ) {
         SewainTopBar(
             navigationIcon = Icons.Default.Menu,
-            onNavigationClick = onMenuClick
+            onNavigationClick = onMenuClick,
+            actionIcon = null
         )
 
         Column(
@@ -250,10 +268,7 @@ private fun MyWalletContent(
                 // Header Profil Kecil
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     AsyncImage(
-                        model = if (!userPhoto.isNullOrEmpty()) {
-                            if (userPhoto.startsWith("http")) userPhoto
-                            else "${ApiClient.IMAGE_BASE_URL}${if (userPhoto.startsWith("profiles/")) userPhoto else "profiles/$userPhoto"}"
-                        } else "https://ui-avatars.com/api/?name=$name",
+                        model = RentalStatus.buildPhotoUrl(userPhoto, name),
                         contentDescription = null,
                         modifier = Modifier
                             .size(48.dp)
@@ -610,7 +625,7 @@ private fun WalletTransactionCard(item: WalletTransaction, modifier: Modifier = 
                 )
                 Spacer(Modifier.width(4.dp))
                 Text(
-                    text = "Return item: ${item.dateReturn} 23:59 WIB",
+                    text = "Return item: ${item.dateReturn}",
                     fontFamily = VolkhovFont,
                     color = if (item.isReturned) Color.White else Color.White.copy(alpha = 0.7f),
                     fontSize = 10.sp

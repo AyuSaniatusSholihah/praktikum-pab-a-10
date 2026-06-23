@@ -118,6 +118,7 @@ fun LoginScreen(
 ) {
     val loginState by viewModel.loginState.observeAsState()
     val context = LocalContext.current
+    var lastTypedEmail by remember { mutableStateOf("") }
 
     LaunchedEffect(loginState) {
         when (loginState) {
@@ -126,7 +127,15 @@ fun LoginScreen(
                 onLoginSuccess()
             }
             is Resource.Error<*> -> {
-                Toast.makeText(context, (loginState as Resource.Error<*>).message ?: "Error", Toast.LENGTH_SHORT).show()
+                val errorMsg = (loginState as Resource.Error<*>).message ?: "Error"
+                if (errorMsg.contains("403")) {
+                    Toast.makeText(context, "Akun belum terverifikasi. Silakan verifikasi OTP.", Toast.LENGTH_LONG).show()
+                    val intent = Intent(context, OtpLoginActivity::class.java)
+                    intent.putExtra("EXTRA_EMAIL", lastTypedEmail)
+                    context.startActivity(intent)
+                } else {
+                    Toast.makeText(context, errorMsg, Toast.LENGTH_SHORT).show()
+                }
             }
             else -> {}
         }
@@ -134,7 +143,10 @@ fun LoginScreen(
 
     LoginScreenContent(
         loginState = loginState,
-        onLogin = { email, password -> viewModel.login(email, password) },
+        onLogin = { email, password -> 
+            lastTypedEmail = email
+            viewModel.login(email, password) 
+        },
         onNavigateToRegister = onNavigateToRegister
     )
 }

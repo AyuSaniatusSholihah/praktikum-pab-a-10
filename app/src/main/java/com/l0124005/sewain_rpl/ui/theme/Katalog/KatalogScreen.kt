@@ -47,8 +47,7 @@ fun KatalogScreen(
     Scaffold(
         topBar = {
             SewainTopBar(
-                actionIcon = Icons.Default.ShoppingCart,
-                onActionClick = onCartClick
+                actionIcon = null
             )
         }
     ) { padding ->

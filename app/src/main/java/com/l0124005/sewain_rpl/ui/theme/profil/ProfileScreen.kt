@@ -1,5 +1,6 @@
 package com.l0124005.sewain_rpl.ui.theme.profil
 
+import android.app.DatePickerDialog
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -55,6 +56,9 @@ import kotlinx.coroutines.launch
 import okhttp3.MultipartBody
 import java.io.File
 import java.io.FileOutputStream
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 
 // ── Warna tema ──
 val DarkNavy   = Color(0xFF21394F) // Menggunakan NavyPrimary
@@ -190,11 +194,26 @@ fun ProfileScreen(
                                 isSaving = isSaving,
                                 onLogout = onLogout,
                                 onSave = { updatedUser, imageUri ->
+                                    val formattedToken = if (token.startsWith("Bearer ")) token else "Bearer $token"
+                                    
+                                    // Menggunakan text/plain untuk field teks di multipart
                                     val namePart = updatedUser.name.toRequestBody("text/plain".toMediaTypeOrNull())
+                                    val usernamePart = updatedUser.username?.toRequestBody("text/plain".toMediaTypeOrNull())
                                     val phonePart = updatedUser.phone_number?.toRequestBody("text/plain".toMediaTypeOrNull())
                                     val alamatPart = updatedUser.alamat?.toRequestBody("text/plain".toMediaTypeOrNull())
-                                    val tanggalLahirPart = updatedUser.tanggal_lahir?.toRequestBody("text/plain".toMediaTypeOrNull())
-                                    val jenisKelaminPart = updatedUser.jenis_kelamin?.toRequestBody("text/plain".toMediaTypeOrNull())
+                                    
+                                    // Kirim tanggal_lahir jika tidak kosong. 
+                                    // Pastikan format yyyy-MM-dd (sudah dihandle oleh DatePickerDialog)
+                                    val tanggalLahirPart = if (!updatedUser.tanggal_lahir.isNullOrBlank()) {
+                                        updatedUser.tanggal_lahir.toRequestBody("text/plain".toMediaTypeOrNull())
+                                    } else null
+
+                                    // Gunakan nilai full "Laki-laki" / "Perempuan" sesuai dropdown
+                                    // jika pemetaan ke "L"/"P" dianggap invalid oleh backend
+                                    val genderValue = updatedUser.jenis_kelamin
+                                    val jenisKelaminPart = if (!genderValue.isNullOrBlank()) {
+                                        genderValue.toRequestBody("text/plain".toMediaTypeOrNull())
+                                    } else null
 
                                     var imagePart: MultipartBody.Part? = null
                                     imageUri?.let { uri ->
@@ -202,13 +221,11 @@ fun ProfileScreen(
                                         if (file != null) {
                                             val requestFile = file.readBytes().toRequestBody("image/*".toMediaTypeOrNull())
                                             imagePart = MultipartBody.Part.createFormData("foto_profil", file.name, requestFile)
-                                        } else {
-                                            Toast.makeText(context, "Gagal memproses foto", Toast.LENGTH_SHORT).show()
                                         }
                                     }
 
                                     isSaving = true
-                                    viewModel.updateProfile(token, namePart, null, phonePart, alamatPart, tanggalLahirPart, jenisKelaminPart, imagePart)
+                                    viewModel.updateProfile(formattedToken, namePart, usernamePart, phonePart, alamatPart, tanggalLahirPart, jenisKelaminPart, imagePart)
                                 }
                             )
                         }
@@ -282,9 +299,47 @@ internal fun ProfileContent(
     var name          by remember { mutableStateOf(user.name) }
     var phone         by remember { mutableStateOf(user.phone_number ?: "") }
     var tanggalLahir  by remember { mutableStateOf(user.tanggal_lahir ?: "") }
-    var jenisKelamin  by remember { mutableStateOf(user.jenis_kelamin ?: "Laki-laki") }
+    var jenisKelamin  by remember { 
+        mutableStateOf(
+            when(user.jenis_kelamin) {
+                "L" -> "Laki-laki"
+                "P" -> "Perempuan"
+                else -> user.jenis_kelamin ?: "Laki-laki"
+            }
+        )
+    }
     var alamat        by remember { mutableStateOf(user.alamat ?: "") }
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    
+    val context = LocalContext.current
+    val calendar = Calendar.getInstance()
+    
+    // Inisialisasi calendar dari tanggalLahir jika ada
+    LaunchedEffect(user.tanggal_lahir) {
+        if (!user.tanggal_lahir.isNullOrBlank()) {
+            try {
+                val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                val date = sdf.parse(user.tanggal_lahir)
+                if (date != null) calendar.time = date
+            } catch (e: Exception) {}
+        }
+    }
+
+    val datePickerDialog = DatePickerDialog(
+        context,
+        { _, year, month, dayOfMonth ->
+            val selectedDate = Calendar.getInstance().apply {
+                set(Calendar.YEAR, year)
+                set(Calendar.MONTH, month)
+                set(Calendar.DAY_OF_MONTH, dayOfMonth)
+            }
+            val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            tanggalLahir = formatter.format(selectedDate.time)
+        },
+        calendar.get(Calendar.YEAR),
+        calendar.get(Calendar.MONTH),
+        calendar.get(Calendar.DAY_OF_MONTH)
+    )
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -304,7 +359,7 @@ internal fun ProfileContent(
         // ── Mini header: foto kecil + nama ──
         Row(verticalAlignment = Alignment.CenterVertically) {
             AsyncImage(
-                model = buildPhotoUrl(user.foto_profil, user.name),
+                model = RentalStatus.buildPhotoUrl(user.foto_profil, user.name),
                 contentDescription = null,
                 modifier = Modifier
                     .size(48.dp)
@@ -339,7 +394,7 @@ internal fun ProfileContent(
                 modifier = Modifier.clickable { launcher.launch("image/*") }
             ) {
                 AsyncImage(
-                    model = selectedImageUri ?: buildPhotoUrl(user.foto_profil, user.name),
+                    model = selectedImageUri ?: RentalStatus.buildPhotoUrl(user.foto_profil, user.name),
                     contentDescription = null,
                     modifier = Modifier
                         .size(80.dp)
@@ -410,8 +465,12 @@ internal fun ProfileContent(
 
             ProfileField(
                 label = "Tanggal Lahir",
-                value = tanggalLahir
-            ) { tanggalLahir = it }
+                value = tanggalLahir,
+                enabled = true,
+                readOnly = true,
+                placeholder = "YYYY-MM-DD",
+                onClick = { datePickerDialog.show() }
+            ) { /* Diupdate via DatePickerDialog */ }
 
             // Jenis Kelamin = <select> di web -> dropdown di Compose
             ProfileGenderField(
@@ -565,12 +624,16 @@ private fun ProfileField(
     value: String,
     enabled: Boolean = true,
     multiline: Boolean = false,
+    readOnly: Boolean = false,
+    placeholder: String = "",
+    onClick: (() -> Unit)? = null,
     onValueChange: (String) -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp)
+            .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier)
     ) {
         Text(
             text = label,
@@ -583,8 +646,10 @@ private fun ProfileField(
         TextField(
             value = value,
             onValueChange = onValueChange,
-            enabled = enabled,
+            enabled = enabled && onClick == null,
+            readOnly = readOnly || onClick != null,
             singleLine = !multiline,
+            placeholder = { if (placeholder.isNotEmpty()) Text(placeholder, color = DarkNavy.copy(alpha = 0.5f)) },
             modifier = Modifier
                 .fillMaxWidth()
                 .then(
@@ -594,17 +659,18 @@ private fun ProfileField(
                 .clip(
                     if (multiline) RoundedCornerShape(14.dp)
                     else RoundedCornerShape(999.dp)
-                ),
+                )
+                .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier),
             colors = TextFieldDefaults.colors(
                 focusedContainerColor   = InputBlue,
                 unfocusedContainerColor = InputBlue,
-                disabledContainerColor  = InputBlue, // sama persis, tidak dipudarkan -- samain sama web
+                disabledContainerColor  = InputBlue,
                 focusedIndicatorColor   = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
                 disabledIndicatorColor  = Color.Transparent,
                 focusedTextColor        = DarkNavy,
                 unfocusedTextColor      = DarkNavy,
-                disabledTextColor       = DarkNavy // sama persis, tidak dipudarkan
+                disabledTextColor       = DarkNavy
             ),
             textStyle = TextStyle(
                 fontFamily = MontaguSlabFont,
@@ -717,18 +783,6 @@ private fun StatRow(label: String, value: String) {
                 color = DarkNavy
             )
         }
-    }
-}
-
-private fun buildPhotoUrl(foto: String?, name: String): String {
-    return if (!foto.isNullOrEmpty()) {
-        if (foto.startsWith("http")) foto
-        else {
-            val path = if (foto.startsWith("profiles/")) foto else "profiles/$foto"
-            "${ApiClient.IMAGE_BASE_URL}$path"
-        }
-    } else {
-        "https://ui-avatars.com/api/?name=$name"
     }
 }
 

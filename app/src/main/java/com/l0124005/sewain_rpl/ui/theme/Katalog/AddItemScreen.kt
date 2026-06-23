@@ -29,6 +29,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
+import com.l0124005.sewain_rpl.utils.DateUtils
 import com.l0124005.sewain_rpl.utils.ImageUtils
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.viewmodel.KatalogViewModel
@@ -77,7 +78,7 @@ fun AddItemScreen(
                 if (form.whatsApp.isEmpty() && !user.phone_number.isNullOrEmpty()) {
                     form = form.copy(whatsApp = user.phone_number)
                 }
-                // Auto-fill Lokasi jika masih kosong (opsional, tapi seringkali membantu)
+                // Auto-fill Lokasi jika masih kosong
                 if (form.lokasi.isEmpty() && !user.alamat.isNullOrEmpty()) {
                     form = form.copy(lokasi = user.alamat)
                 }
@@ -132,30 +133,35 @@ fun AddItemScreen(
                     }
 
                     val namePart = form.itemName.toRequestBody("text/plain".toMediaTypeOrNull())
-                    val catPart = form.categoryId.toRequestBody("text/plain".toMediaTypeOrNull())
+                    val catPart  = form.categoryId.toRequestBody("text/plain".toMediaTypeOrNull())
                     
                     val cleanPrice = form.price.filter { it.isDigit() }.ifEmpty { "0" }
                     val cleanJaminan = form.jaminan.filter { it.isDigit() }.ifEmpty { "0" }
                     val cleanDenda = form.denda.filter { it.isDigit() }.ifEmpty { "0" }
 
-                    val sewaPart = cleanPrice.toRequestBody("text/plain".toMediaTypeOrNull())
+                    val sewaPart    = cleanPrice.toRequestBody("text/plain".toMediaTypeOrNull())
                     val jaminanPart = cleanJaminan.toRequestBody("text/plain".toMediaTypeOrNull())
-                    val dendaPart = cleanDenda.toRequestBody("text/plain".toMediaTypeOrNull())
-                    val stokPart = form.stockQty.toString().toRequestBody("text/plain".toMediaTypeOrNull())
-                    val locPart = form.lokasi.toRequestBody("text/plain".toMediaTypeOrNull())
-                    val waPart  = form.whatsApp.toRequestBody("text/plain".toMediaTypeOrNull())
-                    val dStartPart = form.dateStart.toRequestBody("text/plain".toMediaTypeOrNull())
-                    val dEndPart   = form.dateEnd.toRequestBody("text/plain".toMediaTypeOrNull())
-                    val descPart = form.description.toRequestBody("text/plain".toMediaTypeOrNull())
-                    val addInfoPart = form.additionalInfo.toRequestBody("text/plain".toMediaTypeOrNull())
-                    val statusPart = "tersedia".toRequestBody("text/plain".toMediaTypeOrNull())
+                    val dendaPart   = cleanDenda.toRequestBody("text/plain".toMediaTypeOrNull())
+                    val stokPart    = form.stockQty.toString().toRequestBody("text/plain".toMediaTypeOrNull())
+                    val locPart     = form.lokasi.toRequestBody("text/plain".toMediaTypeOrNull())
+                    val statusPart  = "tersedia".toRequestBody("text/plain".toMediaTypeOrNull())
+
+                    // Gunakan null jika field opsional kosong agar tidak error di backend
+                    val waPart      = if (form.whatsApp.isNotBlank()) form.whatsApp.toRequestBody("text/plain".toMediaTypeOrNull()) else null
+                    val descPart    = if (form.description.isNotBlank()) form.description.toRequestBody("text/plain".toMediaTypeOrNull()) else null
+                    val addInfoPart = if (form.additionalInfo.isNotBlank()) form.additionalInfo.toRequestBody("text/plain".toMediaTypeOrNull()) else null
+                    
+                    val dateStartBackend = DateUtils.formatDateForBackend(form.dateStart)
+                    val dateEndBackend   = DateUtils.formatDateForBackend(form.dateEnd)
+                    
+                    val dStartPart = if (dateStartBackend.isNotBlank()) dateStartBackend.toRequestBody("text/plain".toMediaTypeOrNull()) else null
+                    val dEndPart   = if (dateEndBackend.isNotBlank()) dateEndBackend.toRequestBody("text/plain".toMediaTypeOrNull()) else null
 
                     // Helper function to create MultipartBody.Part for a specific field name
                     fun createPart(uri: Uri?, fieldName: String): MultipartBody.Part? {
                         if (uri == null) return null
                         return try {
-                            val file = ImageUtils.compressImage(context, uri) ?: return null
-                            
+                            val file = ImageUtils.compressImage(context, uri, 1024) ?: return null
                             val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
                             MultipartBody.Part.createFormData(fieldName, file.name, requestFile)
                         } catch (e: Exception) {

@@ -65,6 +65,7 @@ data class ReturnFormDetail(
     val tanggalSewa: String,
     val tanggalPengambilan: String,
     val tanggalPengembalian: String,
+    val tanggalPengembalianAktual: String,
     val dendaText: String
 )
 
@@ -111,11 +112,14 @@ fun FormPengembalianScreen(
             onSuccess()
             viewModel.resetStates()
         } else if (kembalikanState is Resource.Error) {
-            Toast.makeText(
-                context,
-                kembalikanState?.message ?: "Gagal mengajukan pengembalian",
-                Toast.LENGTH_LONG
-            ).show()
+            val msg = kembalikanState?.message ?: "Gagal mengajukan pengembalian"
+            val displayMsg = if (msg.contains("<html>", ignoreCase = true) || msg.contains("<!DOCTYPE", ignoreCase = true)) {
+                "Gagal mengajukan: Terjadi kesalahan pada server."
+            } else {
+                msg
+            }
+            Toast.makeText(context, displayMsg, Toast.LENGTH_LONG).show()
+            viewModel.resetStates()
         }
     }
 
@@ -156,21 +160,21 @@ fun FormPengembalianScreen(
                         val currentDateDisplay = sdfFull.format(now)
 
                         val calculatedDenda = RentalStatus.calculateFine(transaksi)
+                        val dendaInt = calculatedDenda.toInt().coerceAtLeast(0)
 
                         val detail = ReturnFormDetail(
                             itemName = transaksi.barang?.nama_barang ?: "-",
-                            itemImageUrl = if (transaksi.barang?.foto_barang?.startsWith("http") == true) 
-                                transaksi.barang.foto_barang 
-                                else "${ApiClient.IMAGE_BASE_URL}${transaksi.barang?.foto_barang}",
+                            itemImageUrl = transaksi.barang?.mainFotoUrl ?: "",
                             status = status,
-                            idTransaksi = "T${transaksi.id}",
-                            owner = transaksi.barang?.user?.name ?: "Owner",
+                            idTransaksi = "TRX-${transaksi.id}",
+                            owner = transaksi.barang?.user?.name ?: "-",
                             user = currentUser,
                             infoDenda = "Rp ${CurrencyUtils.formatRupiah(transaksi.barang?.harga_denda_perjam ?: 0.0)}/jam",
                             tanggalSewa = formatTgl(transaksi.tanggal_sewa),
                             tanggalPengambilan = formatTgl(transaksi.tanggal_sewa),
-                            tanggalPengembalian = currentDateDisplay,
-                            dendaText = if (calculatedDenda > 0) "Rp ${CurrencyUtils.formatRupiah(calculatedDenda)}" else "Tidak ada denda"
+                            tanggalPengembalian = formatTgl(transaksi.tanggal_kembali_rencana),
+                            tanggalPengembalianAktual = currentDateDisplay,
+                            dendaText = if (dendaInt > 0) "Rp ${CurrencyUtils.formatRupiah(dendaInt.toDouble())}" else "Tidak ada denda"
                         )
 
                         val isoFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
@@ -188,10 +192,11 @@ fun FormPengembalianScreen(
                             review = review,
                             onReviewChange = { review = it },
                             isLoading = isLoading,
-                            calculatedDendaValue = calculatedDenda,
+                            calculatedDendaValue = dendaInt.toDouble(),
                             currentDateIso = currentDateIso,
                             showConfirmDialog = showConfirmDialog,
-                            onConfirmDialogChange = { showConfirmDialog = it }
+                            onConfirmDialogChange = { showConfirmDialog = it },
+                            currentTime = now
                         )
                     }
                 }
@@ -217,7 +222,8 @@ private fun FormContent(
     calculatedDendaValue: Double,
     currentDateIso: String,
     showConfirmDialog: Boolean,
-    onConfirmDialogChange: (Boolean) -> Unit
+    onConfirmDialogChange: (Boolean) -> Unit,
+    currentTime: java.util.Date
 ) {
     val context = LocalContext.current
 
@@ -247,7 +253,7 @@ private fun FormContent(
                         val ratingBody = rating.toString().toRequestBody("text/plain".toMediaTypeOrNull())
                         val komentarBody = review.toRequestBody("text/plain".toMediaTypeOrNull())
                         val sendSdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-                        val tglBody = sendSdf.format(Calendar.getInstance().time).toRequestBody("text/plain".toMediaTypeOrNull())
+                        val tglBody = sendSdf.format(currentTime).toRequestBody("text/plain".toMediaTypeOrNull())
                         val dendaInt = calculatedDendaValue.toInt().coerceAtLeast(0)
                         val dendaBody = dendaInt.toString().toRequestBody("text/plain".toMediaTypeOrNull())
 
@@ -403,7 +409,8 @@ private fun RentalDetailHeader(detail: ReturnFormDetail) {
         Spacer(Modifier.width(18.dp))
         Text(
             text = detail.itemName,
-            fontFamily = AbrilFatfaceFont,
+            fontFamily = VolkhovFont,
+            fontWeight = FontWeight.Bold,
             fontSize = 22.sp,
             color = TextLight,
             lineHeight = 28.sp,
@@ -418,9 +425,9 @@ private fun ReturnInfoGrid(detail: ReturnFormDetail) {
         "ID Transaksi" to detail.idTransaksi,
         "Owner" to detail.owner,
         "User" to detail.user,
-        "Informasi Denda" to detail.infoDenda,
+        "Denda" to detail.dendaText,
         "Tanggal Sewa" to detail.tanggalSewa,
-        "Tanggal Pengembalian" to detail.tanggalPengembalian
+        "Rencana Kembali" to detail.tanggalPengembalian
     )
 
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -498,15 +505,15 @@ private fun ReturnBox(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = detail.tanggalPengembalian,
+                        text = detail.tanggalPengembalianAktual,
                         color = LightBlueLn,
-                        fontSize = 13.sp
+                        fontSize = 11.sp
                     )
                     Icon(
                         Icons.Default.CalendarToday,
                         contentDescription = null,
                         tint = LightBlueLn,
-                        modifier = Modifier.size(15.dp)
+                        modifier = Modifier.size(13.dp)
                     )
                 }
             }
@@ -580,7 +587,8 @@ private fun ReturnBox(
                             Text(
                                 text = "Klik untuk upload foto",
                                 color = Color.White.copy(alpha = 0.6f),
-                                fontSize = 12.sp
+                                fontSize = 12.sp,
+                                textAlign = TextAlign.Center
                             )
                         }
                     }
@@ -613,7 +621,9 @@ private fun ReturnBox(
                     placeholder = {
                         Text(
                             text = "Tulis review kamu di sini...",
-                            color = LightBlueLn.copy(alpha = 0.5f)
+                            color = LightBlueLn.copy(alpha = 0.5f),
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center
                         )
                     },
                     modifier = Modifier
@@ -628,7 +638,10 @@ private fun ReturnBox(
                         unfocusedTextColor      = LightBlueLn
                     ),
                     shape = RoundedCornerShape(10.dp),
-                    textStyle = TextStyle(fontSize = 14.sp)
+                    textStyle = TextStyle(
+                        fontSize = 14.sp,
+                        textAlign = TextAlign.Center
+                    )
                 )
             }
         }

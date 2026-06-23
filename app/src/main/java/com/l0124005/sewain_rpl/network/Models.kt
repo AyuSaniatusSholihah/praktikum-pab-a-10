@@ -103,7 +103,9 @@ data class CatalogData(
     val stok: Int,
     val lokasi: String,
     val whatsapp: String? = null,
+    @SerializedName("tanggal_item_mulai")
     val tanggal_mulai: String? = null,
+    @SerializedName("tanggal_item_tidak_tersedia")
     val tanggal_akhir: String? = null,
     val foto_barang: String?, // Foto Utama
     val fotoproduk1: String? = null, // Angle 1
@@ -293,7 +295,37 @@ data class TransaksiData(
     val user: UserData? = null,
     val pembayaran: PembayaranData? = null,
     val review: ReviewData? = null
-)
+) {
+    val buktiPengembalianUrl: String
+        get() = getFullUrl(foto_buktipengembalian)
+
+    private fun getFullUrl(rawPath: String?): String {
+        if (rawPath.isNullOrEmpty()) return ""
+        val clean = parseFotoString(rawPath).firstOrNull() ?: ""
+        return when {
+            clean.isEmpty() -> ""
+            clean.startsWith("http") -> clean
+            else -> "${ApiClient.IMAGE_BASE_URL}$clean"
+        }
+    }
+
+    private fun parseFotoString(foto: String): List<String> {
+        if (foto.isBlank()) return emptyList()
+        return foto
+            .replace("[", "").replace("]", "")
+            .replace("\"", "")
+            .replace("\\/", "/")
+            .split(",")
+            .map { it.trim() }
+            .map { 
+                var path = it
+                if (path.startsWith("/storage/")) path = path.substring(9)
+                else if (path.startsWith("storage/")) path = path.substring(8)
+                path
+            }
+            .filter { it.isNotEmpty() }
+    }
+}
 
 data class TransaksiListResponse(
     val status: String, 
@@ -362,7 +394,9 @@ data class OwnerDashboardData(
 )
 
 data class VerifikasiPengembalianRequest(
+    @SerializedName("status_kondisi")
     val status_kondisi: String,
+    @SerializedName("denda_kerusakan")
     val denda_kerusakan: Double? = null
 )
 

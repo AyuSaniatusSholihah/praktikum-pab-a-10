@@ -124,39 +124,39 @@ fun MyRentalsScreen(
             )
         }
     ) {
-        Scaffold(
-            containerColor = Color.White
-        ) { padding ->
-            Box(
-                modifier = Modifier
-                    .padding(padding)
-                    .fillMaxSize()
-                    .background(Color.White)
-            ) {
-                when (val state = transaksiState) {
-                    is Resource.Loading -> {
+// SESUDAH — sama persis struktur ProfileScreen
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.White)
+        ) {
+            when (val state = transaksiState) {
+                is Resource.Loading -> {
+                    Box(modifier = Modifier.fillMaxSize()) {
                         CircularProgressIndicator(
                             modifier = Modifier.align(Alignment.Center),
                             color = BluePrimary
                         )
                     }
-                    is Resource.Error -> {
+                }
+                is Resource.Error -> {
+                    Box(modifier = Modifier.fillMaxSize()) {
                         Text(
                             text = state.message ?: "Error loading rentals",
                             color = Color.Red,
                             modifier = Modifier.align(Alignment.Center)
                         )
                     }
-                    else -> {
-                        MyRentalsContent(
-                            userName = userName,
-                            userPhoto = userPhoto,
-                            active = activeTransactions,
-                            history = historyTransactions,
-                            onRentalClick = onRentalClick,
-                            onMenuClick = { scope.launch { drawerState.open() } }
-                        )
-                    }
+                }
+                else -> {
+                    MyRentalsContent(
+                        userName = userName,
+                        userPhoto = userPhoto,
+                        active = activeTransactions,
+                        history = historyTransactions,
+                        onRentalClick = onRentalClick,
+                        onMenuClick = { scope.launch { drawerState.open() } }
+                    )
                 }
             }
         }
@@ -198,10 +198,7 @@ private fun MyRentalsContent(
                 // ── Mini header: foto kecil + nama ──
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     AsyncImage(
-                        model = if (!userPhoto.isNullOrEmpty()) {
-                            if (userPhoto.startsWith("http")) userPhoto
-                            else "${ApiClient.IMAGE_BASE_URL}${if (userPhoto.startsWith("profiles/")) userPhoto else "profiles/$userPhoto"}"
-                        } else "https://ui-avatars.com/api/?name=$userName",
+                        model = RentalStatus.buildPhotoUrl(userPhoto, userName),
                         contentDescription = null,
                         modifier = Modifier
                             .size(48.dp)
@@ -312,9 +309,16 @@ private fun RentalCard(
     val status = RentalStatus.fromTransaksi(item)
     
     val outputSdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    val outputFullSdf = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+    
     val formatTgl = { dateStr: String? ->
         val parsed = RentalStatus.parseFlexibleDate(dateStr)
         if (parsed != null) outputSdf.format(parsed) else "N/A"
+    }
+    
+    val formatTglFull = { dateStr: String? ->
+        val parsed = RentalStatus.parseFlexibleDate(dateStr)
+        if (parsed != null) outputFullSdf.format(parsed) else "N/A"
     }
 
     val barang = item.barang
@@ -371,8 +375,9 @@ private fun RentalCard(
         ) {
             Text(
                 text = barang?.nama_barang ?: "Produk",
+                fontFamily = VolkhovFont,
                 color = Color.White,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 fontSize = 13.sp,
                 maxLines = 2
             )
@@ -418,7 +423,6 @@ private fun RentalCard(
 
             // Tampilkan info Return (Selalu tampilkan sesuai permintaan)
             val isReturned = !item.tanggal_kembali_aktual.isNullOrEmpty() && !item.tanggal_kembali_aktual.startsWith("0000")
-            val returnDateToDisplay = if (isReturned) item.tanggal_kembali_aktual else item.tanggal_kembali_rencana
             
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
@@ -429,7 +433,11 @@ private fun RentalCard(
                 )
                 Spacer(Modifier.width(4.dp))
                 Text(
-                    text = "Return item: ${formatTgl(returnDateToDisplay)} 23:59 WIB",
+                    text = if (isReturned) {
+                        "Return item: ${formatTglFull(item.tanggal_kembali_aktual)} WIB"
+                    } else {
+                        "Return item: ${formatTgl(item.tanggal_kembali_rencana)} 23:59 WIB"
+                    },
                     color = if (isReturned) Color.White else Color.White.copy(alpha = 0.7f),
                     fontSize = 10.sp
                 )

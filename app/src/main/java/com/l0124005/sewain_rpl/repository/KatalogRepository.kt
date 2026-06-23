@@ -4,8 +4,10 @@ import com.l0124005.sewain_rpl.network.*
 import com.l0124005.sewain_rpl.utils.Resource
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 
 class KatalogRepository {
     private val apiService = ApiClient.instance
@@ -140,8 +142,9 @@ class KatalogRepository {
     ): Flow<Resource<KatalogCrudResponse>> = flow {
         emit(Resource.Loading())
         try {
+            val methodPart = "PUT".toRequestBody("text/plain".toMediaTypeOrNull())
             val response = apiService.updateKatalog(
-                token, id, "PUT", kategoriId, namaBarang, deskripsi,
+                token, id, methodPart, kategoriId, namaBarang, deskripsi,
                 hargaSewa, hargaJaminan, hargaDendaPerjam, stok, lokasi,
                 whatsapp, tanggalMulai, tanggalAkhir,
                 additionalInformation, 

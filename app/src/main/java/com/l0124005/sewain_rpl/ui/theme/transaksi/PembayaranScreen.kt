@@ -78,11 +78,17 @@ fun PembayaranScreen(
 
             Button(
                 onClick = {
+                    val metodeRequest = when (selectedMetode) {
+                        "Transfer Bank" -> "transfer bank"
+                        "E-Wallet (Gopay/OVO)" -> "e-wallet"
+                        "Saldo App" -> "qris" // Mapping ke qris karena backend hanya terima: transfer bank, e-wallet, qris
+                        else -> selectedMetode.lowercase()
+                    }
                     viewModel.bayar(
                         token,
                         BayarRequest(
                             transaksi_ids = transaksiIds,
-                            metode = selectedMetode,
+                            metode = metodeRequest,
                             detail_metode = "Pembayaran via $selectedMetode"
                         )
                     )

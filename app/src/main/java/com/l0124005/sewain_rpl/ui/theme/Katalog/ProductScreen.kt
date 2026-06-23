@@ -220,6 +220,7 @@ private fun ProductTopBar(
     onFilterClick: () -> Unit
 ) {
     SewainTopBar(
+        navigationIcon = null,
         actionIcon = Icons.Default.Tune,
         actionTint = NavyPrimary,
         onActionClick = { onFilterClick() }

@@ -9,13 +9,11 @@ import java.util.concurrent.TimeUnit
 object ApiClient {
 
     // Ganti IP di bawah sesuai dengan IP Laptop Anda (cek cmd: ipconfig)
-    private const val IP_LAPTOP = "10.76.36.196" // IP Wi-Fi Anda sekarang
+    private const val IP_LAPTOP = "10.76.36.196"
 
-    // Jika pakai emulator gunakan "10.39.247.248", jika HP fisik gunakan IP_LAPTOP
-    private const val BASE_URL = "http://10.76.36.196:8000/api/"
+    private const val BASE_URL = "http://$IP_LAPTOP:8000/api/"
 
-    // URL tanpa /api/ — untuk load gambar
-    const val IMAGE_BASE_URL = "http://10.76.36.196:8000/storage/"
+    const val IMAGE_BASE_URL = "http://$IP_LAPTOP:8000/storage/"
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY
@@ -23,8 +21,15 @@ object ApiClient {
 
     private val okHttpClient = OkHttpClient.Builder()
         .addInterceptor(loggingInterceptor)
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
+        .addInterceptor { chain ->
+            val request = chain.request().newBuilder()
+                .addHeader("Accept", "application/json")
+                .build()
+            chain.proceed(request)
+        }
+        .connectTimeout(60, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
+        .writeTimeout(60, TimeUnit.SECONDS)
         .build()
 
     val instance: ApiService by lazy {

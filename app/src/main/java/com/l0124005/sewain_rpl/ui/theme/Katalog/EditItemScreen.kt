@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.l0124005.sewain_rpl.network.ApiClient
 import com.l0124005.sewain_rpl.network.CatalogData
+import com.l0124005.sewain_rpl.utils.DateUtils
 import com.l0124005.sewain_rpl.utils.ImageUtils
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.viewmodel.KatalogViewModel
@@ -112,18 +113,21 @@ fun EditItemScreen(
         if (itemDetailState is Resource.Success) {
             val data = (itemDetailState as Resource.Success).data?.data
             data?.let {
-                itemName              = it.nama_barang
+                itemName              = it.nama_barang ?: ""
                 categoryId            = it.kategori_id
-                priceSewa             = it.harga_sewa.toInt().toString()
-                priceJaminan          = it.harga_jaminan.toInt().toString()
-                priceDenda            = it.harga_denda_perjam.toInt().toString()
+                priceSewa             = it.harga_sewa.toLong().toString()
+                priceJaminan          = it.harga_jaminan.toLong().toString()
+                priceDenda            = it.harga_denda_perjam.toLong().toString()
                 description           = it.deskripsi ?: ""
                 additionalInformation = it.additional_information ?: ""
                 stock                 = it.stok.toString()
-                location              = it.lokasi
+                location              = it.lokasi ?: ""
                 whatsApp              = it.whatsapp ?: ""
-                dateStart             = it.tanggal_mulai ?: ""
-                dateEnd               = it.tanggal_akhir ?: ""
+                
+                // Konversi format tanggal dari yyyy-MM-dd ke dd MMMM yyyy untuk UI
+                dateStart             = DateUtils.formatDateForUI(it.tanggal_mulai)
+                dateEnd               = DateUtils.formatDateForUI(it.tanggal_akhir)
+                
                 existingImageUrl      = it.foto_barang ?: ""
                 existingAngle1Url     = it.fotoproduk1 ?: ""
                 existingAngle2Url     = it.fotoproduk2 ?: ""
@@ -132,6 +136,8 @@ fun EditItemScreen(
 
                 val cats = (kategoriResult as? Resource.Success)?.data?.data
                 categoryName = cats?.find { c -> c.id == it.kategori_id }?.nama_kategori ?: ""
+                
+                Log.d("EditItem", "Loaded Data: WA=$whatsApp, Info=$additionalInformation, Start=$dateStart, End=$dateEnd")
             }
         }
     }
@@ -553,17 +559,25 @@ fun EditItemScreen(
                         val dendaPart    = priceDenda.ifEmpty { "0" }.toRequestBody("text/plain".toMediaTypeOrNull())
                         val stokPart     = stock.ifEmpty { "1" }.toRequestBody("text/plain".toMediaTypeOrNull())
                         val locPart      = location.toRequestBody("text/plain".toMediaTypeOrNull())
-                        val waPart       = whatsApp.toRequestBody("text/plain".toMediaTypeOrNull())
-                        val startPart    = dateStart.toRequestBody("text/plain".toMediaTypeOrNull())
-                        val endPart      = dateEnd.toRequestBody("text/plain".toMediaTypeOrNull())
-                        val descPart     = description.toRequestBody("text/plain".toMediaTypeOrNull())
-                        val addInfoPart  = additionalInformation.toRequestBody("text/plain".toMediaTypeOrNull())
                         val statusPart   = "tersedia".toRequestBody("text/plain".toMediaTypeOrNull())
+
+                        // Gunakan null jika kosong agar server tidak menerima string kosong
+                        val waPart       = if (whatsApp.isNotBlank()) whatsApp.toRequestBody("text/plain".toMediaTypeOrNull()) else null
+                        val descPart     = if (description.isNotBlank()) description.toRequestBody("text/plain".toMediaTypeOrNull()) else null
+                        val addInfoPart  = if (additionalInformation.isNotBlank()) additionalInformation.toRequestBody("text/plain".toMediaTypeOrNull()) else null
+                        
+                        val startBackend = DateUtils.formatDateForBackend(dateStart)
+                        val endBackend   = DateUtils.formatDateForBackend(dateEnd)
+                        val startPart    = if (startBackend.isNotBlank()) startBackend.toRequestBody("text/plain".toMediaTypeOrNull()) else null
+                        val endPart      = if (endBackend.isNotBlank()) endBackend.toRequestBody("text/plain".toMediaTypeOrNull()) else null
+                        
+                        Log.d("EditItem", "Saving: Start=$startBackend, End=$endBackend")
 
                         fun prepareImagePart(uri: Uri?, fieldName: String): MultipartBody.Part? {
                             if (uri == null) return null
                             return try {
-                                val file = ImageUtils.compressImage(context, uri) ?: return null
+                                // Kurangi ukuran ke 1024KB (1MB) agar tidak timeout saat upload banyak foto
+                                val file = ImageUtils.compressImage(context, uri, 1024) ?: return null
                                 val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
                                 MultipartBody.Part.createFormData(fieldName, file.name, requestFile)
                             } catch (e: Exception) {

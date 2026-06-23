@@ -42,6 +42,8 @@ import com.l0124005.sewain_rpl.ui.theme.VolkhovFont
 import com.l0124005.sewain_rpl.ui.theme.LatoFont
 import com.l0124005.sewain_rpl.ui.theme.JostFont
 
+import com.l0124005.sewain_rpl.utils.DateUtils
+
 // ============================================================
 // WARNA TEMA — KATALOG SHARED
 // ============================================================
@@ -548,7 +550,7 @@ fun SewainDatePickerDialog(
         confirmButton = {
             TextButton(onClick = {
                 datePickerState.selectedDateMillis?.let { millis ->
-                    val date = java.text.SimpleDateFormat("dd MMMM yyyy", java.util.Locale("id")).format(java.util.Date(millis))
+                    val date = DateUtils.millisToUiString(millis)
                     onDateSelected(date)
                 }
             }) {
