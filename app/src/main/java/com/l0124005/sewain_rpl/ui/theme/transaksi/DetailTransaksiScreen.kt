@@ -1,6 +1,7 @@
 package com.l0124005.sewain_rpl.ui.theme.transaksi
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -19,20 +20,25 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
 import com.l0124005.sewain_rpl.network.ApiClient
 import com.l0124005.sewain_rpl.network.TransaksiData
+import com.l0124005.sewain_rpl.network.VerifikasiPengembalianRequest
 import com.l0124005.sewain_rpl.ui.theme.BluePrimary
 import com.l0124005.sewain_rpl.ui.theme.NavyPrimary
 import com.l0124005.sewain_rpl.ui.theme.SewainTopBar
 import com.l0124005.sewain_rpl.ui.theme.katalog.formatRupiah
 import com.l0124005.sewain_rpl.utils.Resource
+import com.l0124005.sewain_rpl.utils.SessionManager
 import com.l0124005.sewain_rpl.viewmodel.TransaksiViewModel
+import com.l0124005.sewain_rpl.viewmodel.VerificationViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetailTransaksiScreen(
     viewModel: TransaksiViewModel,
+    verificationViewModel: VerificationViewModel,
     token: String,
     transaksiId: Int,
     isOwner: Boolean = false,
@@ -41,12 +47,25 @@ fun DetailTransaksiScreen(
     onProductClick: (Int) -> Unit
 ) {
     val transaksiDetailState by viewModel.transaksiDetail.observeAsState()
+    val verifikasiState by verificationViewModel.verifikasiState.observeAsState()
+    val context = LocalContext.current
 
     LaunchedEffect(transaksiId, isOwner) {
         if (isOwner) {
             viewModel.getOwnerTransaksiDetail(token, transaksiId)
         } else {
             viewModel.getDetailTransaksi(token, transaksiId)
+        }
+    }
+
+    LaunchedEffect(verifikasiState) {
+        if (verifikasiState is Resource.Success) {
+            android.widget.Toast.makeText(context, "Berhasil memverifikasi pengembalian!", android.widget.Toast.LENGTH_SHORT).show()
+            viewModel.getDetailTransaksi(token, transaksiId)
+            verificationViewModel.resetState()
+        } else if (verifikasiState is Resource.Error) {
+            android.widget.Toast.makeText(context, "Gagal: ${verifikasiState?.message}", android.widget.Toast.LENGTH_LONG).show()
+            verificationViewModel.resetState()
         }
     }
 
@@ -65,7 +84,14 @@ fun DetailTransaksiScreen(
                 is Resource.Success -> {
                     val transaksi = transaksiDetailState?.data?.data
                     if (transaksi != null) {
-                        TransaksiDetailContent(transaksi, onPayClick, onProductClick)
+                        TransaksiDetailContent(
+                            transaksi = transaksi,
+                            verificationViewModel = verificationViewModel,
+                            token = token,
+                            onPayClick = onPayClick,
+                            onProductClick = onProductClick,
+                            isLoadingVerification = verifikasiState is Resource.Loading
+                        )
                     } else {
                         Text("Data tidak ditemukan", modifier = Modifier.align(Alignment.Center))
                     }
@@ -88,9 +114,25 @@ fun DetailTransaksiScreen(
 @Composable
 fun TransaksiDetailContent(
     transaksi: TransaksiData,
+    verificationViewModel: VerificationViewModel,
+    token: String,
     onPayClick: (List<Int>) -> Unit,
-    onProductClick: (Int) -> Unit
+    onProductClick: (Int) -> Unit,
+    isLoadingVerification: Boolean
 ) {
+    val context = LocalContext.current
+    val sessionManager = remember { SessionManager(context) }
+    val currentUserId = sessionManager.getUserId()
+    
+    val isOwner = transaksi.barang?.user_id == currentUserId
+    
+    // Status is waiting for verification if status is "dikembalikan" or "menunggu_verifikasi"
+    // or if the photo proof of return is uploaded but verification date is null.
+    val isWaitingVerification = transaksi.status.lowercase() in listOf("dikembalikan", "menunggu_verifikasi", "menunggu verifikasi") ||
+            (!transaksi.foto_buktipengembalian.isNullOrEmpty() && transaksi.tanggal_verifikasipengembalian.isNullOrEmpty())
+
+    var showVerificationDialog by remember { mutableStateOf(false) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -168,6 +210,7 @@ fun TransaksiDetailContent(
             }
         }
 
+        // Action Buttons
         if (transaksi.status.lowercase() == "menunggu pembayaran") {
             Button(
                 onClick = { onPayClick(listOf(transaksi.id)) },
@@ -178,6 +221,39 @@ fun TransaksiDetailContent(
                 Text("Bayar Sekarang", fontWeight = FontWeight.Bold, color = Color.White)
             }
         }
+
+        if (isOwner && isWaitingVerification) {
+            Button(
+                onClick = { showVerificationDialog = true },
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = BluePrimary),
+                enabled = !isLoadingVerification
+            ) {
+                if (isLoadingVerification) {
+                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                } else {
+                    Text("Verifikasi Pengembalian", fontWeight = FontWeight.Bold, color = Color.White)
+                }
+            }
+        }
+    }
+
+    if (showVerificationDialog) {
+        VerificationDialog(
+            onDismiss = { showVerificationDialog = false },
+            onSubmit = { statusKondisi, dendaKerusakan ->
+                showVerificationDialog = false
+                verificationViewModel.verifikasiPengembalian(
+                    token,
+                    transaksi.id,
+                    VerifikasiPengembalianRequest(
+                        status_kondisi = statusKondisi,
+                        denda_kerusakan = dendaKerusakan
+                    )
+                )
+            }
+        )
     }
 }
 
@@ -207,4 +283,96 @@ fun InfoRow(label: String, value: String, color: Color = Color.Black) {
         Text(label, fontSize = 14.sp, color = Color.Gray)
         Text(value, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = color)
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun VerificationDialog(
+    onDismiss: () -> Unit,
+    onSubmit: (statusKondisi: String, dendaKerusakan: Double?) -> Unit
+) {
+    var statusKondisi by remember { mutableStateOf("ok") } // "ok" or "tolak"
+    var dendaInput by remember { mutableStateOf("") }
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Verifikasi Pengembalian", fontWeight = FontWeight.Bold) },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text("Pilih kondisi barang setelah pengembalian:")
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Card(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { statusKondisi = "ok" }
+                            .border(
+                                width = if (statusKondisi == "ok") 2.dp else 1.dp,
+                                color = if (statusKondisi == "ok") BluePrimary else Color.LightGray,
+                                shape = RoundedCornerShape(8.dp)
+                            ),
+                        colors = CardDefaults.cardColors(containerColor = Color.White)
+                    ) {
+                        Box(modifier = Modifier.padding(12.dp).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            Text("Kondisi Baik", fontWeight = if (statusKondisi == "ok") FontWeight.Bold else FontWeight.Normal)
+                        }
+                    }
+                    
+                    Card(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { statusKondisi = "tolak" }
+                            .border(
+                                width = if (statusKondisi == "tolak") 2.dp else 1.dp,
+                                color = if (statusKondisi == "tolak") BluePrimary else Color.LightGray,
+                                shape = RoundedCornerShape(8.dp)
+                            ),
+                        colors = CardDefaults.cardColors(containerColor = Color.White)
+                    ) {
+                        Box(modifier = Modifier.padding(12.dp).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            Text("Barang Rusak", fontWeight = if (statusKondisi == "tolak") FontWeight.Bold else FontWeight.Normal)
+                        }
+                    }
+                }
+                
+                if (statusKondisi == "tolak") {
+                    OutlinedTextField(
+                        value = dendaInput,
+                        onValueChange = { dendaInput = it },
+                        label = { Text("Denda Kerusakan (Rp)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                        ),
+                        singleLine = true
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val denda = if (statusKondisi == "tolak") dendaInput.toDoubleOrNull() else null
+                    onSubmit(statusKondisi, denda)
+                },
+                enabled = statusKondisi == "ok" || (statusKondisi == "tolak" && dendaInput.toDoubleOrNull() != null),
+                colors = ButtonDefaults.buttonColors(containerColor = BluePrimary)
+            ) {
+                Text("Kirim", color = Color.White)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Batal", color = Color.Gray)
+            }
+        },
+        containerColor = Color.White,
+        shape = RoundedCornerShape(16.dp)
+    )
 }
