@@ -58,3 +58,31 @@ class ProfileViewModelFactory(private val repo: ProfileRepository) : ViewModelPr
         throw IllegalArgumentException("ViewModel tidak dikenali")
     }
 }
+
+// Factory untuk PaymentViewModel
+class PaymentViewModelFactory(
+    private val transaksiRepo: TransaksiRepository,
+    private val profileRepo: ProfileRepository
+) : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(PaymentViewModel::class.java)) {
+            @Suppress("UNCHECKED_CAST")
+            return PaymentViewModel(transaksiRepo, profileRepo) as T
+        }
+        throw IllegalArgumentException("ViewModel tidak dikenali")
+    }
+}
+
+// Factory untuk VerificationViewModel
+class VerificationViewModelFactory(
+    private val transaksiRepo: TransaksiRepository,
+    private val profileRepo: ProfileRepository
+) : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(VerificationViewModel::class.java)) {
+            @Suppress("UNCHECKED_CAST")
+            return VerificationViewModel(transaksiRepo, profileRepo) as T
+        }
+        throw IllegalArgumentException("ViewModel tidak dikenali")
+    }
+}

@@ -135,6 +135,8 @@ class MainActivity : ComponentActivity() {
                 val profileViewModel: ProfileViewModel = viewModel(factory = ProfileViewModelFactory(ProfileRepository()))
                 val keranjangViewModel: KeranjangViewModel = viewModel(factory = KeranjangViewModelFactory(KeranjangRepository()))
                 val transaksiViewModel: TransaksiViewModel = viewModel(factory = TransaksiViewModelFactory(TransaksiRepository()))
+                val paymentViewModel: PaymentViewModel = viewModel(factory = PaymentViewModelFactory(TransaksiRepository(), ProfileRepository()))
+                val verificationViewModel: VerificationViewModel = viewModel(factory = VerificationViewModelFactory(TransaksiRepository(), ProfileRepository()))
 
                 MainContainer(
                     token = token,
@@ -142,6 +144,8 @@ class MainActivity : ComponentActivity() {
                     profileViewModel = profileViewModel,
                     keranjangViewModel = keranjangViewModel,
                     transaksiViewModel = transaksiViewModel,
+                    paymentViewModel = paymentViewModel,
+                    verificationViewModel = verificationViewModel,
                     initialScreen = _initialScreen.value,
                     onLogout = {
                         sessionManager.clearSession()
@@ -186,6 +190,8 @@ fun MainContainer(
     profileViewModel: ProfileViewModel,
     keranjangViewModel: KeranjangViewModel,
     transaksiViewModel: TransaksiViewModel,
+    paymentViewModel: PaymentViewModel,
+    verificationViewModel: VerificationViewModel,
     initialScreen: ScreenTarget = ScreenTarget(Screen.Home),
     onLogout: () -> Unit
 ) {
@@ -228,6 +234,21 @@ fun MainContainer(
     val keranjangState by keranjangViewModel.keranjang.observeAsState()
     val addToCartState by keranjangViewModel.addToCartState.observeAsState()
     val checkoutState by transaksiViewModel.checkoutState.observeAsState()
+    val pembayaranState by paymentViewModel.pembayaranState.observeAsState()
+    val verifikasiState by verificationViewModel.verifikasiState.observeAsState()
+
+    LaunchedEffect(pembayaranState) {
+        if (pembayaranState is Resource.Success) {
+            profileViewModel.getProfile(token)
+        }
+    }
+
+    LaunchedEffect(verifikasiState) {
+        if (verifikasiState is Resource.Success) {
+            profileViewModel.getProfile(token)
+            transaksiViewModel.getOwnerDashboard(token)
+        }
+    }
 
     LaunchedEffect(initialScreen) {
         currentScreen = initialScreen.screen
@@ -491,11 +512,12 @@ fun MainContainer(
                     }
                     Screen.Pembayaran -> {
                         com.l0124005.sewain_rpl.ui.theme.transaksi.PembayaranScreen(
-                            viewModel = transaksiViewModel,
+                            viewModel = paymentViewModel,
                             token = token,
                             transaksiIds = selectedTransaksiIdsForPayment,
                             onBack = { currentScreen = Screen.DetailTransaksi },
                             onPaymentSuccess = {
+                                transaksiViewModel.getRiwayatTransaksi(token)
                                 currentScreen = Screen.RiwayatTransaksi
                             }
                         )
@@ -692,11 +714,8 @@ fun MainContainer(
                             transaksiId = id,
                             token = token,
                             viewModel = transaksiViewModel,
-                            isOwner = isOwnerDetail,
-                            onBack = { 
-                                if (isOwnerDetail) currentScreen = Screen.RentalsOwner
-                                else currentScreen = Screen.RiwayatTransaksi 
-                            },
+                            verificationViewModel = verificationViewModel,
+                            onBack = { currentScreen = Screen.RiwayatTransaksi },
                             onPayClick = { ids ->
                                 selectedTransaksiIdsForPayment = ids
                                 currentScreen = Screen.Pembayaran
