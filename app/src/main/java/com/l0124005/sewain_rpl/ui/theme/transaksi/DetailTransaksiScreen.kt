@@ -41,6 +41,7 @@ fun DetailTransaksiScreen(
     verificationViewModel: VerificationViewModel,
     token: String,
     transaksiId: Int,
+    isOwner: Boolean = false,
     onBack: () -> Unit,
     onPayClick: (List<Int>) -> Unit,
     onProductClick: (Int) -> Unit
@@ -49,8 +50,12 @@ fun DetailTransaksiScreen(
     val verifikasiState by verificationViewModel.verifikasiState.observeAsState()
     val context = LocalContext.current
 
-    LaunchedEffect(transaksiId) {
-        viewModel.getDetailTransaksi(token, transaksiId)
+    LaunchedEffect(transaksiId, isOwner) {
+        if (isOwner) {
+            viewModel.getOwnerTransaksiDetail(token, transaksiId)
+        } else {
+            viewModel.getDetailTransaksi(token, transaksiId)
+        }
     }
 
     LaunchedEffect(verifikasiState) {
@@ -153,9 +158,10 @@ fun TransaksiDetailContent(
                         color = getStatusColor(transaksi.status)
                     )
                 }
-                if (!transaksi.barang?.foto_barang.isNullOrEmpty()) {
+                val imageUrl = transaksi.barang?.mainFotoUrl
+                if (!imageUrl.isNullOrEmpty()) {
                     AsyncImage(
-                        model = "${ApiClient.IMAGE_BASE_URL}${transaksi.barang?.foto_barang}",
+                        model = imageUrl,
                         contentDescription = null,
                         modifier = Modifier.size(60.dp).clip(RoundedCornerShape(8.dp)),
                         contentScale = ContentScale.Crop

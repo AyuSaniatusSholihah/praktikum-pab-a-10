@@ -5,7 +5,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -35,12 +34,13 @@ import com.l0124005.sewain_rpl.ui.theme.BluePrimary
 import com.l0124005.sewain_rpl.ui.theme.SewainTopBar
 import com.l0124005.sewain_rpl.ui.theme.TextMuted
 import com.l0124005.sewain_rpl.ui.theme.VolkhovFont
-import com.l0124005.sewain_rpl.utils.CurrencyUtils.formatRupiah
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.viewmodel.ProfileViewModel
 import com.l0124005.sewain_rpl.viewmodel.TransaksiViewModel
 import kotlinx.coroutines.launch
 
+// ── Warna tema -- SAMA PERSIS dengan MyRentalsScreen.kt ──
+private val CardBlue   = Color(0xFF21394F)
 private val LocalMidBlue = Color(0xFF4D6674)
 private val LocalDarkNavy = Color(0xFF21394F)
 
@@ -55,7 +55,7 @@ fun RentalsOwnerScreen(
     onProfileClick: () -> Unit,
     onMyRentalClick: () -> Unit,
     onWalletClick: () -> Unit,
-    onRentalClick: (TransaksiData) -> Unit,
+    onRentalClick: (com.l0124005.sewain_rpl.network.TransaksiData) -> Unit,
     onSettingsClick: () -> Unit = {}
 ) {
     val dashboardState by viewModel.ownerDashboard.observeAsState()
@@ -116,39 +116,38 @@ fun RentalsOwnerScreen(
             )
         }
     ) {
-        Scaffold(
-            containerColor = Color.White
-        ) { padding ->
-            Box(
-                modifier = Modifier
-                    .padding(padding)
-                    .fillMaxSize()
-                    .background(Color.White)
-            ) {
-                when (dashboardState) {
-                    is Resource.Loading -> {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.White)
+        ) {
+            when (dashboardState) {
+                is Resource.Loading -> {
+                    Box(modifier = Modifier.fillMaxSize()) {
                         CircularProgressIndicator(
                             modifier = Modifier.align(Alignment.Center),
                             color = BluePrimary
                         )
                     }
-                    is Resource.Error -> {
+                }
+                is Resource.Error -> {
+                    Box(modifier = Modifier.fillMaxSize()) {
                         Text(
                             text = (dashboardState as Resource.Error).message ?: "Error",
                             color = Color.Red,
                             modifier = Modifier.align(Alignment.Center)
                         )
                     }
-                    else -> {
-                        RentalsOwnerContent(
-                            userName = userName,
-                            avatarUrl = avatarUrl,
-                            activeRentals = activeRentals,
-                            historyRentals = historyRentals,
-                            onMenuClick = { scope.launch { drawerState.open() } },
-                            onRentalClick = onRentalClick
-                        )
-                    }
+                }
+                else -> {
+                    RentalsOwnerContent(
+                        userName = userName,
+                        avatarUrl = avatarUrl,
+                        activeRentals = activeRentals,
+                        historyRentals = historyRentals,
+                        onMenuClick = { scope.launch { drawerState.open() } },
+                        onRentalClick = onRentalClick
+                    )
                 }
             }
         }
@@ -162,7 +161,7 @@ fun RentalsOwnerContent(
     activeRentals: List<TransaksiData>,
     historyRentals: List<TransaksiData>,
     onMenuClick: () -> Unit,
-    onRentalClick: (TransaksiData) -> Unit
+    onRentalClick: (com.l0124005.sewain_rpl.network.TransaksiData) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -187,13 +186,9 @@ fun RentalsOwnerContent(
                     .background(LocalMidBlue)
                     .padding(20.dp)
             ) {
-                // ── Mini header: foto kecil + nama ──
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     AsyncImage(
-                        model = if (!avatarUrl.isNullOrEmpty()) {
-                            if (avatarUrl.startsWith("http")) avatarUrl
-                            else "${ApiClient.IMAGE_BASE_URL}${if (avatarUrl.startsWith("profiles/")) avatarUrl else "profiles/$avatarUrl"}"
-                        } else "https://ui-avatars.com/api/?name=$userName",
+                        model = RentalStatus.buildPhotoUrl(avatarUrl, userName),
                         contentDescription = null,
                         modifier = Modifier
                             .size(48.dp)
@@ -227,17 +222,18 @@ fun RentalsOwnerContent(
                         fontSize = 22.sp,
                         color = Color.White
                     )
+                    Spacer(Modifier.height(4.dp))
                     Text(
                         text = "Barang-barang kamu yang sedang disewa",
-                        fontFamily = MontaguSlabFont,
+                        fontFamily = VolkhovFont,
                         fontSize = 12.sp,
-                        color = TextMuted,
-                        modifier = Modifier.padding(bottom = 16.dp)
+                        color = TextMuted
                     )
 
+                    Spacer(Modifier.height(16.dp))
                     RentalGrid(items = activeRentals, onRentalClick = onRentalClick)
 
-                    Spacer(Modifier.height(32.dp))
+                    Spacer(Modifier.height(36.dp))
 
                     Text(
                         text = "Rentals Owner — History",
@@ -246,14 +242,15 @@ fun RentalsOwnerContent(
                         fontSize = 22.sp,
                         color = Color.White
                     )
+                    Spacer(Modifier.height(4.dp))
                     Text(
                         text = "Barang-barang kamu yang telah disewa",
-                        fontFamily = MontaguSlabFont,
+                        fontFamily = VolkhovFont,
                         fontSize = 12.sp,
-                        color = TextMuted,
-                        modifier = Modifier.padding(bottom = 16.dp)
+                        color = TextMuted
                     )
 
+                    Spacer(Modifier.height(16.dp))
                     RentalGrid(items = historyRentals, onRentalClick = onRentalClick)
                 }
             }
@@ -262,41 +259,31 @@ fun RentalsOwnerContent(
 }
 
 @Composable
-private fun RentalGrid(items: List<TransaksiData>, onRentalClick: (TransaksiData) -> Unit) {
+private fun RentalGrid(items: List<TransaksiData>, onRentalClick: (com.l0124005.sewain_rpl.network.TransaksiData) -> Unit) {
     if (items.isEmpty()) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(Color.White.copy(alpha = 0.04f))
-                .padding(28.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                "Tidak ada data.",
-                fontFamily = MontaguSlabFont,
-                fontSize = 12.sp,
-                color = Color.White.copy(alpha = 0.4f)
-            )
-        }
-        return
-    }
-
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        items.chunked(2).forEach { rowItems ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                rowItems.forEach { item ->
-                    RentalCard(
-                        item = item,
-                        onClick = { onRentalClick(item) },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                if (rowItems.size == 1) {
-                    Spacer(modifier = Modifier.weight(1f))
+        Text(
+            text = "Tidak ada data.",
+            fontSize = 13.sp,
+            color = TextMuted,
+            modifier = Modifier.padding(vertical = 16.dp)
+        )
+    } else {
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            items.chunked(2).forEach { rowItems ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    rowItems.forEach { item ->
+                        RentalCard(
+                            item = item,
+                            onItemClick = onRentalClick,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    if (rowItems.size == 1) {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
                 }
             }
         }
@@ -304,43 +291,50 @@ private fun RentalGrid(items: List<TransaksiData>, onRentalClick: (TransaksiData
 }
 
 @Composable
-private fun RentalCard(item: TransaksiData, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun RentalCard(
+    item: TransaksiData,
+    onItemClick: (com.l0124005.sewain_rpl.network.TransaksiData) -> Unit,
+    modifier: Modifier = Modifier
+) {
     val status = RentalStatus.fromTransaksi(item)
     
     val outputSdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    val outputFullSdf = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+    
     val formatTgl = { dateStr: String? ->
         val parsed = RentalStatus.parseFlexibleDate(dateStr)
         if (parsed != null) outputSdf.format(parsed) else "N/A"
     }
-    
-    val barang = item.barang
-    val imageUrl = if (!barang?.foto_barang.isNullOrEmpty()) {
-        if (barang.foto_barang.startsWith("http")) {
-            barang.foto_barang
-        } else {
-            "${ApiClient.IMAGE_BASE_URL}${barang.foto_barang}"
-        }
-    } else {
-        "https://picsum.photos/seed/${barang?.id ?: 0}/300/200"
+
+    val formatTglFull = { dateStr: String? ->
+        val parsed = RentalStatus.parseFlexibleDate(dateStr)
+        if (parsed != null) outputFullSdf.format(parsed) else "N/A"
     }
+
+    val barang = item.barang
+    val imageUrl = barang?.mainFotoUrl ?: "https://picsum.photos/seed/${barang?.id ?: 0}/300/200"
 
     Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(LocalDarkNavy)
-            .clickable { onClick() }
+            .background(CardBlue)
+            .clickable { onItemClick(item) }
     ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(16f / 11f)
+        ) {
             AsyncImage(
                 model = imageUrl,
                 contentDescription = barang?.nama_barang,
+                contentScale = ContentScale.Crop,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1f)
-                    .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)),
-                contentScale = ContentScale.Crop
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
             )
+
             Box(
                 modifier = Modifier
                     .padding(8.dp)
@@ -350,23 +344,26 @@ private fun RentalCard(item: TransaksiData, onClick: () -> Unit, modifier: Modif
             ) {
                 Text(
                     text = status.label,
-                    fontFamily = MontaguSlabFont,
+                    color = status.badgeTextColor,
                     fontSize = 10.sp,
-                    color = status.badgeTextColor
+                    fontWeight = FontWeight.Bold
                 )
             }
         }
 
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
             Text(
                 text = barang?.nama_barang ?: "Produk",
-                fontFamily = MontaguSlabFont,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 13.sp,
+                fontFamily = VolkhovFont,
                 color = Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp,
                 maxLines = 2
             )
-            Spacer(Modifier.height(4.dp))
+
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     Icons.Default.LocationOn,
@@ -377,67 +374,68 @@ private fun RentalCard(item: TransaksiData, onClick: () -> Unit, modifier: Modif
                 Spacer(Modifier.width(3.dp))
                 Text(
                     text = barang?.lokasi ?: "Indonesia",
-                    fontFamily = MontaguSlabFont,
-                    fontSize = 11.sp,
                     color = TextMuted,
+                    fontSize = 11.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            Spacer(Modifier.height(4.dp))
+
             Text(
-                text = "Rp ${formatRupiah(barang?.harga_sewa ?: 0.0)}/hari",
+                text = "Rp ${com.l0124005.sewain_rpl.utils.CurrencyUtils.formatRupiah(barang?.harga_sewa ?: 0.0)}/hari",
                 fontFamily = AbrilFatfaceFont,
                 fontSize = 16.sp,
                 color = Color.White
             )
-            Spacer(Modifier.height(6.dp))
+
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     Icons.Default.CalendarMonth,
                     contentDescription = null,
                     tint = Color.White,
-                    modifier = Modifier.size(13.dp)
+                    modifier = Modifier.size(11.dp)
                 )
                 Spacer(Modifier.width(4.dp))
                 Text(
                     text = "Sewa: ${formatTgl(item.tanggal_sewa)} s.d ${formatTgl(item.tanggal_kembali_rencana)}",
-                    fontFamily = MontaguSlabFont,
-                    fontSize = 10.sp,
-                    color = Color.White
+                    color = Color.White,
+                    fontSize = 10.sp
                 )
             }
 
+            // Tampilkan info Return
             val isReturned = !item.tanggal_kembali_aktual.isNullOrEmpty() && !item.tanggal_kembali_aktual.startsWith("0000")
-            val returnDateToDisplay = if (isReturned) item.tanggal_kembali_aktual else item.tanggal_kembali_rencana
-
-            Spacer(Modifier.height(2.dp))
+            
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     Icons.Default.CalendarMonth,
                     contentDescription = null,
                     tint = if (isReturned) Color.White else Color.White.copy(alpha = 0.7f),
-                    modifier = Modifier.size(13.dp)
+                    modifier = Modifier.size(11.dp)
                 )
                 Spacer(Modifier.width(4.dp))
                 Text(
-                    text = "Return item: ${formatTgl(returnDateToDisplay)} 23:59 WIB",
-                    fontFamily = MontaguSlabFont,
-                    fontSize = 10.sp,
-                    color = if (isReturned) Color.White else Color.White.copy(alpha = 0.7f)
+                    text = if (isReturned) {
+                        "Return item: ${formatTglFull(item.tanggal_kembali_aktual)} WIB"
+                    } else {
+                        "Return item: ${formatTgl(item.tanggal_kembali_rencana)} 23:59 WIB"
+                    },
+                    color = if (isReturned) Color.White else Color.White.copy(alpha = 0.7f),
+                    fontSize = 10.sp
                 )
             }
 
             if (status == RentalStatus.RETURN && !isReturned) {
                 Text(
-                    text = "⚠ Segera kembalikan!",
+                    text = "⚠ Menunggu Pengembalian",
                     color = Color(0xFFFFCC00),
                     fontSize = 9.sp,
                     fontWeight = FontWeight.Bold,
                     fontStyle = FontStyle.Italic,
-                    modifier = Modifier.padding(start = 17.dp)
+                    modifier = Modifier.padding(start = 15.dp)
                 )
             }
         }
     }
 }
+

@@ -494,8 +494,8 @@ private fun CustomerInfoSection(customer: CustomerInfo) {
             contentAlignment = Alignment.Center
         ) {
             Row {
-                Text("SEWA", fontFamily = CkVolkhov, fontSize = 26.sp, color = CkColors.Dark)
-                Text("IN", fontFamily = CkVolkhov, fontSize = 26.sp, color = Color(0xFF6A87A1))
+                Text("SEWA", fontFamily = VolkhovFont, fontSize = 26.sp, color = CkColors.Dark)
+                Text("IN", fontFamily = VolkhovFont, fontSize = 26.sp, color = Color(0xFF6A87A1))
             }
         }
     }

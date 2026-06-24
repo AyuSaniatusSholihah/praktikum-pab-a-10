@@ -42,6 +42,7 @@ import com.l0124005.sewain_rpl.ui.theme.MainActivity
 import com.l0124005.sewain_rpl.ui.theme.SewainTopBar
 import com.l0124005.sewain_rpl.ui.theme.Sewain_rplTheme
 import com.l0124005.sewain_rpl.utils.CurrencyUtils
+import com.l0124005.sewain_rpl.utils.DateUtils
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.utils.SessionManager
 import com.l0124005.sewain_rpl.viewmodel.KatalogViewModel
@@ -166,9 +167,6 @@ fun ProductDetailScreen(
     var quantity      by remember { mutableStateOf(1) }
     var selectedTab   by remember { mutableStateOf(0) }
 
-    val sdfDisplay = SimpleDateFormat("dd MMMM yyyy", Locale("id"))
-    val sdfApi = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-
     var dateStartRaw by remember { mutableStateOf(Date()) }
     var dateEndRaw by remember { mutableStateOf(Date(System.currentTimeMillis() + 86400000)) }
 
@@ -204,6 +202,20 @@ fun ProductDetailScreen(
             }
         } else if (state is Resource.Success) {
             Log.d("DetailProduk", "Detail produk berhasil dimuat untuk ID: $productId")
+            
+            // Sync tanggal dari data backend ke state UI (dateStartRaw & dateEndRaw)
+            state.data?.data?.let { p ->
+                try {
+                    p.tanggal_mulai?.let { startStr ->
+                        DateUtils.backendStringToDate(startStr)?.let { dateStartRaw = it }
+                    }
+                    p.tanggal_akhir?.let { endStr ->
+                        DateUtils.backendStringToDate(endStr)?.let { dateEndRaw = it }
+                    }
+                } catch (e: Exception) {
+                    Log.e("DetailProduk", "Gagal parsing tanggal dari backend: ${e.message}")
+                }
+            }
         }
     }
 
@@ -230,7 +242,7 @@ fun ProductDetailScreen(
             title = "Pilih Tanggal Mulai",
             onDismiss = { showDatePickerStart = false },
             onDateSelected = { dateStr ->
-                sdfDisplay.parse(dateStr)?.let { dateStartRaw = it }
+                DateUtils.backendStringToDate(DateUtils.formatDateForBackend(dateStr))?.let { dateStartRaw = it }
                 showDatePickerStart = false
             }
         )
@@ -241,7 +253,7 @@ fun ProductDetailScreen(
             title = "Pilih Tanggal Selesai",
             onDismiss = { showDatePickerEnd = false },
             onDateSelected = { dateStr ->
-                sdfDisplay.parse(dateStr)?.let { dateEndRaw = it }
+                DateUtils.backendStringToDate(DateUtils.formatDateForBackend(dateStr))?.let { dateEndRaw = it }
                 showDatePickerEnd = false
             }
         )
@@ -374,8 +386,8 @@ fun ProductDetailScreen(
                             Spacer(Modifier.height(22.dp))
 
                             DetailDateSelectorRow(
-                                dateStart = sdfDisplay.format(dateStartRaw),
-                                dateEnd = sdfDisplay.format(dateEndRaw),
+                                dateStart = DateUtils.dateToUiString(dateStartRaw),
+                                dateEnd = DateUtils.dateToUiString(dateEndRaw),
                                 onDateStartClick = { showDatePickerStart = true },
                                 onDateEndClick   = { showDatePickerEnd = true }
                             )
@@ -423,12 +435,28 @@ fun ProductDetailScreen(
                                     text = product.deskripsi ?: "Tidak ada deskripsi.",
                                     fontFamily = LatoFont, fontSize = 14.sp, color = DetailColors.Black, lineHeight = 22.sp, textAlign = TextAlign.Justify
                                 )
-                                1 -> DetailAdditionalInfoContent(specs = listOf(
-                                    DetailSpecItem("Lokasi Barang", product.lokasi ?: "-"),
-                                    DetailSpecItem("Uang Jaminan", "Rp ${CurrencyUtils.formatRupiah(product.harga_jaminan)}"),
-                                    DetailSpecItem("Denda Keterlambatan", "Rp ${CurrencyUtils.formatRupiah(product.harga_denda_perjam)}/jam"),
-                                    DetailSpecItem("Kategori", product.kategori?.nama_kategori ?: "Umum")
-                                ), ownerName = "Owner #${product.user_id}", ownerDenda = "Rp ${CurrencyUtils.formatRupiah(product.harga_denda_perjam)}")
+                                1 -> {
+                                    val specs = mutableListOf(
+                                        DetailSpecItem("Lokasi Barang", product.lokasi ?: "-"),
+                                        DetailSpecItem("Uang Jaminan", "Rp ${CurrencyUtils.formatRupiah(product.harga_jaminan)}"),
+                                        DetailSpecItem("Denda Keterlambatan", "Rp ${CurrencyUtils.formatRupiah(product.harga_denda_perjam)}/jam"),
+                                        DetailSpecItem("Kategori", product.kategori?.nama_kategori ?: "Umum")
+                                    )
+                                    
+                                    if (!product.additional_information.isNullOrBlank()) {
+                                        specs.add(DetailSpecItem("Info Tambahan", product.additional_information))
+                                    }
+
+                                    if (!product.whatsapp.isNullOrBlank()) {
+                                        specs.add(DetailSpecItem("WhatsApp", product.whatsapp))
+                                    }
+
+                                    DetailAdditionalInfoContent(
+                                        specs = specs,
+                                        ownerName = product.user?.name ?: "Owner #${product.user_id}",
+                                        ownerDenda = "Rp ${CurrencyUtils.formatRupiah(product.harga_denda_perjam)}"
+                                    )
+                                }
                                 2 -> DetailReviewSection(reviews = emptyList())
                             }
 
@@ -813,9 +841,25 @@ fun DetailTabSection(tabs: List<String>, selectedTab: Int, onTabChange: (Int) ->
 fun DetailAdditionalInfoContent(specs: List<DetailSpecItem>, ownerName: String, ownerDenda: String) {
     Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
         specs.forEachIndexed { i, spec ->
-            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp).let { if (i > 0) it.drawBehind { drawLine(Color(0xFFF0F0F0), Offset(0f, 0f), Offset(size.width, 0f), 1.dp.toPx()) } else it }) {
-                Text(text = spec.label, modifier = Modifier.weight(1f), fontSize = 13.sp, color = DetailColors.Black)
-                Text(text = spec.value, modifier = Modifier.weight(1f), fontWeight = FontWeight.Medium, fontSize = 13.sp, color = DetailColors.Black, textAlign = TextAlign.End)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 10.dp)
+                    .let { 
+                        if (i > 0) it.drawBehind { 
+                            drawLine(Color(0xFFF0F0F0), Offset(0f, 0f), Offset(size.width, 0f), 1.dp.toPx()) 
+                        } else it 
+                    }
+            ) {
+                Text(text = spec.label, fontSize = 12.sp, color = DetailColors.TextMuted, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = spec.value, 
+                    fontWeight = FontWeight.Medium, 
+                    fontSize = 14.sp, 
+                    color = DetailColors.Black,
+                    lineHeight = 20.sp
+                )
             }
         }
         Spacer(Modifier.height(16.dp))

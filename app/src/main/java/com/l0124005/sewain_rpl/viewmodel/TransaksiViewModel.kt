@@ -35,6 +35,9 @@ class TransaksiViewModel(private val repository: TransaksiRepository) : ViewMode
     private val _verifikasiState = MutableLiveData<Resource<VerifikasiPengembalianResponse>?>()
     val verifikasiState: LiveData<Resource<VerifikasiPengembalianResponse>?> = _verifikasiState
 
+    private val _cancelStatus = MutableLiveData<Resource<GenericResponse>?>()
+    val cancelStatus: LiveData<Resource<GenericResponse>?> = _cancelStatus
+
     fun resetCheckoutState() {
         _checkoutState.value = null
     }
@@ -47,6 +50,7 @@ class TransaksiViewModel(private val repository: TransaksiRepository) : ViewMode
         _kembalikanState.value = null
         _ownerDashboard.value = null
         _verifikasiState.value = null
+        _cancelStatus.value = null
     }
 
     fun getRiwayatTransaksi(token: String) {
@@ -106,10 +110,26 @@ class TransaksiViewModel(private val repository: TransaksiRepository) : ViewMode
         }
     }
 
+    fun getOwnerTransaksiDetail(token: String, id: Int) {
+        viewModelScope.launch {
+            repository.getOwnerTransaksiDetail(token, id).collect {
+                _transaksiDetail.value = it
+            }
+        }
+    }
+
     fun verifikasiPengembalian(token: String, id: Int, request: VerifikasiPengembalianRequest) {
         viewModelScope.launch {
             repository.verifikasiPengembalian(token, id, request).collect {
                 _verifikasiState.value = it
+            }
+        }
+    }
+
+    fun cancelTransaksi(token: String, id: Int) {
+        viewModelScope.launch {
+            repository.cancelTransaksi(token, id).collect {
+                _cancelStatus.value = it
             }
         }
     }

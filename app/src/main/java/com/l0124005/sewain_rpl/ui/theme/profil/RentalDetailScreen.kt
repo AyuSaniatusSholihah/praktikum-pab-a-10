@@ -9,6 +9,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -53,14 +54,20 @@ fun RentalDetailScreen(
     token: String,
     viewModel: TransaksiViewModel,
     profileViewModel: com.l0124005.sewain_rpl.viewmodel.ProfileViewModel,
+    isOwner: Boolean = false,
     onBack: () -> Unit,
-    onReturnClick: (Int) -> Unit
+    onReturnClick: (Int) -> Unit,
+    onVerifyClick: (Int) -> Unit = {}
 ) {
     val detailState by viewModel.transaksiDetail.observeAsState()
     val profileState by profileViewModel.profile.observeAsState()
 
     LaunchedEffect(transaksiId) {
-        viewModel.getDetailTransaksi(token, transaksiId)
+        if (isOwner) {
+            viewModel.getOwnerTransaksiDetail(token, transaksiId)
+        } else {
+            viewModel.getDetailTransaksi(token, transaksiId)
+        }
         if (profileState == null) {
             profileViewModel.getProfile(token)
         }
@@ -99,8 +106,13 @@ fun RentalDetailScreen(
                     state.data?.data?.let { transaksi ->
                         RentalDetailContent(
                             transaksi = transaksi,
+                            token = token,
+                            viewModel = viewModel,
                             profileState = profileState,
-                            onAjukanPengembalian = { onReturnClick(transaksi.id) }
+                            isOwner = isOwner,
+                            onAjukanPengembalian = { onReturnClick(transaksi.id) },
+                            onVerifyClick = { onVerifyClick(transaksi.id) },
+                            onCancelSuccess = onBack
                         )
                     }
                 }
@@ -113,9 +125,36 @@ fun RentalDetailScreen(
 @Composable
 private fun RentalDetailContent(
     transaksi: TransaksiData,
+    token: String,
+    viewModel: TransaksiViewModel,
     profileState: Resource<com.l0124005.sewain_rpl.network.ProfileResponse>?,
-    onAjukanPengembalian: () -> Unit
+    isOwner: Boolean = false,
+    onAjukanPengembalian: () -> Unit,
+    onVerifyClick: () -> Unit = {},
+    onCancelSuccess: () -> Unit
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val cancelState by viewModel.cancelStatus.observeAsState()
+
+    LaunchedEffect(cancelState) {
+        if (cancelState is Resource.Success) {
+            android.widget.Toast.makeText(context, "Penyewaan berhasil dibatalkan", android.widget.Toast.LENGTH_SHORT).show()
+            // Setelah batal, kita refresh detail agar UI update ke status CANCELED
+            if (isOwner) viewModel.getOwnerTransaksiDetail(token, transaksi.id)
+            else viewModel.getDetailTransaksi(token, transaksi.id)
+            viewModel.resetStates()
+        } else if (cancelState is Resource.Error) {
+            val msg = (cancelState as Resource.Error).message ?: "Gagal membatalkan"
+            val displayMsg = when {
+                msg.contains("<html>", ignoreCase = true) -> "Gagal: Endpoint tidak ditemukan di server (404)."
+                msg.contains("404") -> "Gagal: Transaksi tidak ditemukan atau rute salah (404)."
+                else -> msg
+            }
+            android.widget.Toast.makeText(context, displayMsg, android.widget.Toast.LENGTH_LONG).show()
+            viewModel.resetStates()
+        }
+    }
+
     val status = RentalStatus.fromTransaksi(transaksi)
     val barang = transaksi.barang
     val imageUrl = if (barang != null && !barang.foto_barang.isNullOrEmpty()) {
@@ -130,9 +169,18 @@ private fun RentalDetailContent(
         val parsed = RentalStatus.parseFlexibleDate(dateStr)
         if (parsed != null) outputSdf.format(parsed) else "N/A"
     }
+    val formatTglFull = { dateStr: String? ->
+        val parsed = RentalStatus.parseFlexibleDate(dateStr)
+        if (parsed != null) SimpleDateFormat("dd/MM/yyyy HH:mm 'WIB'", Locale.getDefault()).format(parsed) else "N/A"
+    }
 
     // ── Hitung Denda Dinamis ──
     val calculatedDenda = RentalStatus.calculateFine(transaksi)
+    
+    val rawStatus = transaksi.status.lowercase()
+    val isDisewa = rawStatus in listOf("disewa", "aktif", "active")
+    val hasSubmittedReturn = !transaksi.foto_buktipengembalian.isNullOrEmpty() && transaksi.foto_buktipengembalian != "null" || 
+                           rawStatus in listOf("menunggu_verifikasi", "dikembalikan", "selesai", "completed", "done")
 
     val durasiSewa = try {
         val d1 = RentalStatus.parseFlexibleDate(transaksi.tanggal_sewa)
@@ -176,7 +224,7 @@ private fun RentalDetailContent(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "My Rentals",
+                            text = if (isOwner) "Owner History" else "My Rentals",
                             fontFamily = VolkhovFont,
                             fontWeight = FontWeight.Bold,
                             fontSize = 22.sp,
@@ -184,7 +232,7 @@ private fun RentalDetailContent(
                         )
                         Spacer(Modifier.height(4.dp))
                         Text(
-                            text = "Detail transaksi penyewaan kamu.",
+                            text = if (isOwner) "Detail transaksi dari sisi owner." else "Detail transaksi penyewaan kamu.",
                             fontFamily = VolkhovFont,
                             fontSize = 12.sp,
                             color = TextMuted
@@ -192,9 +240,9 @@ private fun RentalDetailContent(
                     }
 
                     // ── Tombol "AJUKAN PENGEMBALIAN" ──
-                    // Izinkan pengembalian untuk status ACTIVE, RETURN, atau UPCOMING yang sudah berstatus "disewa" atau "aktif"
-                    val isDisewa = transaksi.status.lowercase() == "disewa" || transaksi.status.lowercase() == "aktif"
-                    if (status == RentalStatus.ACTIVE || status == RentalStatus.RETURN || (status == RentalStatus.UPCOMING && isDisewa)) {
+                    // Izinkan pengembalian untuk status ACTIVE atau UPCOMING yang sudah berstatus "disewa" atau "aktif"
+                    // Jangan tampilkan jika sudah ada bukti pengembalian (status RETURN)
+                    if (!isOwner && !hasSubmittedReturn && (status == RentalStatus.ACTIVE || (status == RentalStatus.UPCOMING && isDisewa))) {
                         Button(
                             onClick = onAjukanPengembalian,
                             enabled = true,
@@ -219,6 +267,64 @@ private fun RentalDetailContent(
                             )
                         }
                     }
+
+                    // ── Tombol "VERIFIKASI PENGEMBALIAN" (Hanya Owner) ──
+                    if (isOwner && rawStatus == "menunggu_verifikasi") {
+                        Button(
+                            onClick = onVerifyClick,
+                            modifier = Modifier
+                                .width(140.dp)
+                                .height(56.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = ProfileAccentBlue
+                            ),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = "VERIFIKASI\nPENGEMBALIAN",
+                                fontFamily = AbrilFatfaceFont,
+                                fontSize = 11.sp,
+                                color = Color.White,
+                                textAlign = TextAlign.Center,
+                                letterSpacing = 0.3.sp,
+                                lineHeight = 14.sp
+                            )
+                        }
+                    }
+
+                    // ── Tombol "BATALKAN SEWA" (Hanya untuk Upcoming) ──
+                    // Muncul jika status UPCOMING dan belum dalam status "disewa"
+                    val isCanceled = rawStatus in listOf("dibatalkan", "expired", "canceled", "cancelled")
+                    if (!isOwner && status == RentalStatus.UPCOMING && !isDisewa && !isCanceled) {
+                        Button(
+                            onClick = { viewModel.cancelTransaksi(token, transaksi.id) },
+                            enabled = cancelState !is Resource.Loading,
+                            modifier = Modifier
+                                .width(140.dp)
+                                .height(56.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF9F5556), 
+                                disabledContainerColor = Color(0xFF9F5556).copy(alpha = 0.5f)
+                            ),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            if (cancelState is Resource.Loading) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
+                            } else {
+                                Text(
+                                    text = "BATALKAN\nPENYEWAAN",
+                                    fontFamily = AbrilFatfaceFont,
+                                    fontSize = 11.sp,
+                                    color = Color.White,
+                                    textAlign = TextAlign.Center,
+                                    letterSpacing = 0.3.sp,
+                                    lineHeight = 14.sp
+                                )
+                            }
+                        }
+                    }
                 }
 
                 Spacer(Modifier.height(20.dp))
@@ -237,14 +343,24 @@ private fun RentalDetailContent(
                     ?: (profileState as? Resource.Success)?.data?.data?.name 
                     ?: "Customer"
 
+                // ── Hitung Denda Dinamis atau Ambil dari DB ──
+                val displayDendaVal = if (transaksi.total_denda > 0) transaksi.total_denda else calculatedDenda
+                val dendaText = if (displayDendaVal > 0) "Rp ${formatRupiah(displayDendaVal)}" else "Tidak ada denda"
+
+                val tglKembaliDisplay = if (transaksi.tanggal_kembali_aktual != null && transaksi.tanggal_kembali_aktual != "null") {
+                    formatTglFull(transaksi.tanggal_kembali_aktual)
+                } else {
+                    formatTgl(transaksi.tanggal_kembali_rencana)
+                }
+
                 // ── Grid info transaksi (.rd-form-grid) ──
                 RentalDetailInfoGrid(
                     idTransaksi = "TRX-${transaksi.id}",
                     owner = transaksi.barang?.user?.name ?: "Owner",
                     user = currentUser,
-                    denda = "Rp ${formatRupiah(calculatedDenda)}",
+                    denda = dendaText,
                     tanggalSewa = formatTgl(transaksi.tanggal_sewa),
-                    tanggalPengembalian = formatTgl(transaksi.tanggal_kembali_rencana)
+                    tanggalPengembalian = tglKembaliDisplay
                 )
 
                 Spacer(Modifier.height(28.dp))
@@ -273,10 +389,99 @@ private fun RentalDetailContent(
                     subtotal = "Rp ${formatRupiah(transaksi.total_harga)}",
                     shipping = "Free",
                     jaminan = "Rp ${formatRupiah(barang?.harga_jaminan ?: 0.0)}",
-                    total = "Rp ${formatRupiah(transaksi.total_harga + (barang?.harga_jaminan ?: 0.0) + calculatedDenda)}",
-                    catatanDenda = if (calculatedDenda > 0) "Denda: Rp ${formatRupiah(calculatedDenda)}" else "-"
+                    total = "Rp ${formatRupiah(transaksi.total_harga + (barang?.harga_jaminan ?: 0.0) + displayDendaVal)}",
+                    catatanDenda = if (displayDendaVal > 0) "Denda: Rp ${formatRupiah(displayDendaVal)}" else "-"
                 )
+
+                // ── Form Confirmation (Status Info) ──
+                // Muncul jika sudah mengajukan pengembalian (ada bukti atau status verifikasi)
+                if (hasSubmittedReturn) {
+                    Spacer(Modifier.height(28.dp))
+                    FormConfirmationStatus(statusStr = rawStatus)
+                }
             }
+        }
+    }
+}
+
+@Composable
+private fun FormConfirmationStatus(statusStr: String) {
+    val isCompleted = statusStr == "selesai" || statusStr == "completed" || statusStr == "done"
+    val headerText = if (isCompleted) "ACCEPT RETURN CONFIRMED!" else "RETURN CONFIRMED!"
+    val verificationStatus = if (isCompleted) {
+        "COMPLETED RENT ✓"
+    } else {
+        "MENUNGGU VERIFIKASI OWNER"
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color(0xFFE8F4FB)) // LightBlueBg
+            .padding(32.dp, 36.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .size(80.dp)
+                .clip(androidx.compose.foundation.shape.CircleShape)
+                .background(ProfileAccentBlue),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Check,
+                contentDescription = null,
+                tint = Color(0xFFC3D4E9), // CheckTint
+                modifier = Modifier.size(44.dp)
+            )
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        Text(
+            text = headerText,
+            fontFamily = VolkhovFont,
+            fontWeight = FontWeight.Bold,
+            fontSize = 24.sp,
+            color = Color(0xFF484848), // ConfirmedDark
+            letterSpacing = 0.5.sp,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(Modifier.height(12.dp))
+
+        Text(
+            text = "Terima Kasih telah menggunakan Website SEWAIN sebagai platform penyewaan Anda!",
+            fontFamily = MontaguSlabFont,
+            fontWeight = FontWeight.Light,
+            fontSize = 14.sp,
+            color = Color(0xFFAAAAAA),
+            textAlign = TextAlign.Center,
+            lineHeight = 20.sp
+        )
+
+        Spacer(Modifier.height(14.dp))
+
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = "Status Return Rent Anda saat ini:",
+                fontFamily = MontaguSlabFont,
+                fontWeight = FontWeight.Normal,
+                fontSize = 14.sp,
+                color = Color(0xFFAAAAAA),
+                textAlign = TextAlign.Center
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = verificationStatus,
+                fontFamily = AbrilFatfaceFont,
+                fontWeight = FontWeight.Bold,
+                fontSize = 17.sp,
+                color = Color(0xFF818181),
+                textAlign = TextAlign.Center
+            )
         }
     }
 }
@@ -668,8 +873,11 @@ fun RentalDetailContentPreview() {
     Sewain_rplTheme {
         RentalDetailContent(
             transaksi = dummyTransaksi,
+            token = "dummy",
+            viewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
             profileState = null,
-            onAjukanPengembalian = {}
+            onAjukanPengembalian = {},
+            onCancelSuccess = {}
         )
     }
 }

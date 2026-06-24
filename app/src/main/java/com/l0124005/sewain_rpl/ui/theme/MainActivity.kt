@@ -5,6 +5,7 @@ import androidx.compose.ui.platform.LocalContext
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.*
@@ -45,11 +46,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import coil.compose.AsyncImage
-import com.l0124005.sewain_rpl.network.ApiClient
-import com.l0124005.sewain_rpl.network.CatalogData
-import com.l0124005.sewain_rpl.network.KatalogListResponse
-import com.l0124005.sewain_rpl.network.KategoriListResponse
-import com.l0124005.sewain_rpl.network.KeranjangItem
+import com.l0124005.sewain_rpl.network.*
 import com.l0124005.sewain_rpl.repository.KatalogRepository
 import com.l0124005.sewain_rpl.repository.KeranjangRepository
 import com.l0124005.sewain_rpl.repository.ProfileRepository
@@ -58,6 +55,7 @@ import com.l0124005.sewain_rpl.ui.theme.auth.LoginActivity
 import com.l0124005.sewain_rpl.ui.theme.katalog.*
 import com.l0124005.sewain_rpl.ui.theme.landing.LandingActivity
 import com.l0124005.sewain_rpl.ui.theme.profil.ProfileScreen
+import com.l0124005.sewain_rpl.ui.theme.profil.FormPersetujuanScreen
 import com.l0124005.sewain_rpl.ui.theme.profil.MyWalletScreen
 import com.l0124005.sewain_rpl.ui.theme.profil.MyRentalsScreen
 import com.l0124005.sewain_rpl.ui.theme.profil.RentalsOwnerScreen
@@ -182,7 +180,7 @@ class MainActivity : ComponentActivity() {
 }
 
 enum class Screen {
-    Home, Rental, Keranjang, MyKatalog, Profile, RiwayatTransaksi, AddItem, EditItem, DetailTransaksi, Pembayaran, MyRental, RentalsOwner, CheckoutPayment, Confirm, MyWallet, Settings, RentalDetail, FormPengembalian, ReturnConfirmed
+    Home, Rental, Keranjang, MyKatalog, Profile, RiwayatTransaksi, AddItem, EditItem, DetailTransaksi, Pembayaran, MyRental, RentalsOwner, CheckoutPayment, Confirm,    MyWallet, Settings, RentalDetail, FormPengembalian, FormPersetujuan, ReturnConfirmed
 }
 
 @Composable
@@ -205,10 +203,33 @@ fun MainContainer(
     var selectedItemsForCheckout by remember { mutableStateOf<List<KeranjangItem>>(emptyList()) }
     var selectedBarangForEdit by remember { mutableStateOf<CatalogData?>(null) }
     var selectedTransaksiId by remember { mutableStateOf<Int?>(null) }
+    var isOwnerDetail by remember { mutableStateOf(false) }
     var selectedTransaksiIdsForPayment by remember { mutableStateOf<List<Int>>(emptyList()) }
     var lastCheckoutFormData by remember { mutableStateOf<com.l0124005.sewain_rpl.ui.theme.checkout.CheckoutFormData?>(null) }
     var initialSearchQuery by remember { mutableStateOf("") }
     var initialCategory by remember { mutableStateOf("Semua") }
+
+    BackHandler(enabled = currentScreen != Screen.Home) {
+        currentScreen = when (currentScreen) {
+            Screen.Rental, Screen.Keranjang, Screen.MyKatalog, Screen.Profile -> Screen.Home
+            Screen.CheckoutPayment -> Screen.Keranjang
+            Screen.Confirm -> Screen.Home
+            Screen.Pembayaran -> Screen.DetailTransaksi
+            Screen.AddItem -> Screen.MyKatalog
+            Screen.EditItem -> Screen.MyKatalog
+            Screen.MyRental -> Screen.Profile
+            Screen.RentalDetail -> if (isOwnerDetail) Screen.RentalsOwner else Screen.MyRental
+            Screen.FormPengembalian -> Screen.RentalDetail
+            Screen.ReturnConfirmed -> Screen.MyRental
+            Screen.FormPersetujuan -> Screen.RentalsOwner
+            Screen.RentalsOwner -> Screen.Profile
+            Screen.RiwayatTransaksi -> Screen.Profile
+            Screen.MyWallet -> Screen.Profile
+            Screen.Settings -> Screen.Profile
+            Screen.DetailTransaksi -> if (isOwnerDetail) Screen.RentalsOwner else Screen.RiwayatTransaksi
+            else -> Screen.Home
+        }
+    }
 
     val keranjangState by keranjangViewModel.keranjang.observeAsState()
     val addToCartState by keranjangViewModel.addToCartState.observeAsState()
@@ -283,6 +304,8 @@ fun MainContainer(
         }
     }
 
+    val pembayaranState by transaksiViewModel.pembayaranState.observeAsState()
+
     LaunchedEffect(addToCartState) {
         if (addToCartState is Resource.Success) {
             Toast.makeText(context, "Berhasil ditambahkan ke keranjang!", Toast.LENGTH_SHORT).show()
@@ -295,12 +318,50 @@ fun MainContainer(
 
     LaunchedEffect(checkoutState) {
         if (checkoutState is Resource.Success) {
-            Toast.makeText(context, "Sewa berhasil!", Toast.LENGTH_SHORT).show()
-            keranjangViewModel.getKeranjang(token)
-            currentScreen = Screen.Confirm
+            val response = checkoutState?.data?.data
+            val transaksiIds = response?.transaksi?.map { it.id } ?: emptyList()
+            
+            if (transaksiIds.isNotEmpty() && lastCheckoutFormData != null) {
+                val formData = lastCheckoutFormData!!
+                // Mapping PaymentType enum ke string yang diterima backend (transfer bank, e-wallet, qris)
+                val metode = when (formData.paymentType) {
+                    com.l0124005.sewain_rpl.ui.theme.checkout.PaymentType.TRANSFER -> "transfer bank"
+                    com.l0124005.sewain_rpl.ui.theme.checkout.PaymentType.EWALLET -> "e-wallet"
+                    com.l0124005.sewain_rpl.ui.theme.checkout.PaymentType.QRIS -> "qris"
+                    com.l0124005.sewain_rpl.ui.theme.checkout.PaymentType.CREDIT -> "transfer bank" // Fallback jika credit card belum didukung penuh
+                }
+                val detail = formData.paymentDetail
+                
+                // Kirim permintaan pembayaran ke API
+                transaksiViewModel.bayar(token, BayarRequest(transaksiIds, metode, detail))
+            } else {
+                Toast.makeText(context, "Sewa berhasil!", Toast.LENGTH_SHORT).show()
+                keranjangViewModel.getKeranjang(token)
+                currentScreen = Screen.Confirm
+            }
         } else if (checkoutState is Resource.Error) {
             Toast.makeText(context, "Checkout gagal: ${checkoutState?.message}", Toast.LENGTH_SHORT).show()
             transaksiViewModel.resetCheckoutState()
+        }
+    }
+
+    LaunchedEffect(pembayaranState) {
+        if (pembayaranState is Resource.Success) {
+            Toast.makeText(context, "Pembayaran berhasil!", Toast.LENGTH_SHORT).show()
+            keranjangViewModel.getKeranjang(token)
+            currentScreen = Screen.Confirm
+            selectedItemsForCheckout = emptyList()
+        } else if (pembayaranState is Resource.Error) {
+            val msg = pembayaranState?.message ?: ""
+            // Jika transaksi sudah dibayar (mungkin karena retry), anggap sukses saja
+            if (msg.contains("sudah dibayar", ignoreCase = true) || msg.contains("already paid", ignoreCase = true)) {
+                Toast.makeText(context, "Pembayaran sudah terverifikasi!", Toast.LENGTH_SHORT).show()
+                keranjangViewModel.getKeranjang(token)
+                currentScreen = Screen.Confirm
+                selectedItemsForCheckout = emptyList()
+            } else {
+                Toast.makeText(context, "Pembayaran gagal: $msg", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -523,6 +584,7 @@ fun MainContainer(
                             onBack = { currentScreen = Screen.Profile },
                             onRentalClick = { transaksiId ->
                                 selectedTransaksiId = transaksiId
+                                isOwnerDetail = false
                                 currentScreen = Screen.RentalDetail
                             },
                             onRentalsOwnerClick = { currentScreen = Screen.RentalsOwner },
@@ -537,8 +599,13 @@ fun MainContainer(
                             token = token,
                             viewModel = transaksiViewModel,
                             profileViewModel = profileViewModel,
-                            onBack = { currentScreen = Screen.MyRental },
-                            onReturnClick = { currentScreen = Screen.FormPengembalian }
+                            isOwner = isOwnerDetail,
+                            onBack = { 
+                                if (isOwnerDetail) currentScreen = Screen.RentalsOwner
+                                else currentScreen = Screen.MyRental 
+                            },
+                            onReturnClick = { currentScreen = Screen.FormPengembalian },
+                            onVerifyClick = { currentScreen = Screen.FormPersetujuan }
                         )
                     }
                     Screen.FormPengembalian -> selectedTransaksiId?.let { id ->
@@ -556,9 +623,22 @@ fun MainContainer(
                             transaksiId = id,
                             token = token,
                             viewModel = transaksiViewModel,
+                            profileViewModel = profileViewModel,
                             onDone = {
                                 transaksiViewModel.getRiwayatTransaksi(token)
                                 currentScreen = Screen.MyRental
+                            }
+                        )
+                    }
+                    Screen.FormPersetujuan -> selectedTransaksiId?.let { id ->
+                        FormPersetujuanScreen(
+                            transaksiId = id,
+                            token = token,
+                            viewModel = transaksiViewModel,
+                            onBack = { currentScreen = Screen.RentalsOwner },
+                            onSuccess = {
+                                transaksiViewModel.getOwnerDashboard(token)
+                                currentScreen = Screen.RentalsOwner
                             }
                         )
                     }
@@ -574,7 +654,13 @@ fun MainContainer(
                             onWalletClick = { currentScreen = Screen.MyWallet },
                             onRentalClick = { transaksi ->
                                 selectedTransaksiId = transaksi.id
-                                currentScreen = Screen.DetailTransaksi
+                                val status = com.l0124005.sewain_rpl.utils.RentalStatus.fromTransaksi(transaksi)
+                                if (status == com.l0124005.sewain_rpl.utils.RentalStatus.RETURN) {
+                                    currentScreen = Screen.FormPersetujuan
+                                } else {
+                                    isOwnerDetail = true
+                                    currentScreen = Screen.RentalDetail
+                                }
                             },
                             onSettingsClick = { currentScreen = Screen.Settings }
                         )
@@ -585,6 +671,7 @@ fun MainContainer(
                         onBack = { currentScreen = Screen.Profile },
                         onDetailClick = { id ->
                             selectedTransaksiId = id
+                            isOwnerDetail = false
                             currentScreen = Screen.DetailTransaksi
                         }
                     )
@@ -675,64 +762,69 @@ fun HomeScreenContent(
         modifier = Modifier
             .fillMaxSize()
             .background(HomeColors.Background)
-            .verticalScroll(rememberScrollState())
     ) {
         HomeTopBar(onLogout = onLogout, onMenuClick = onMenuClick, onCartClick = onCartClick)
-        HeroCollage(onRentNow = { onSeeAllRentals(null) })
-        Spacer(modifier = Modifier.height(20.dp))
-        
-        // State Logika Pencarian di Home
-        var location by remember { mutableStateOf("Choose Location") }
-        var tempSearchQuery by remember { mutableStateOf("") }
-        var startDate by remember { mutableStateOf("17 July 2024") }
-        var endDate by remember { mutableStateOf("20 July 2024") }
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+        ) {
+            HeroCollage(onRentNow = { onSeeAllRentals(null) })
+            Spacer(modifier = Modifier.height(20.dp))
+            
+            // State Logika Pencarian di Home
+            var location by remember { mutableStateOf("Choose Location") }
+            var tempSearchQuery by remember { mutableStateOf("") }
+            var startDate by remember { mutableStateOf("17 July 2024") }
+            var endDate by remember { mutableStateOf("20 July 2024") }
 
-        SearchCard(
-            location = location,
-            onLocationChange = { location = it },
-            searchQuery = tempSearchQuery,
-            onQueryChange = { tempSearchQuery = it },
-            startDate = startDate,
-            onStartDateChange = { startDate = it },
-            endDate = endDate,
-            onEndDateChange = { endDate = it },
-            onSearchClick = { onSeeAllRentals(tempSearchQuery) }
-        )
-        Spacer(modifier = Modifier.height(36.dp))
-        BrandLogosSection()
-        Spacer(modifier = Modifier.height(36.dp))
-        AboutUsSection()
-        Spacer(modifier = Modifier.height(32.dp))
-        // NOTE: sebelumnya FeaturesSection() didefinisikan tapi nggak pernah dipanggil di sini,
-        // jadi 3 ikon "Wide Range / Easy & Fast Booking / 24/7 Support" hilang dari app.
-        FeaturesSection()
-        Spacer(modifier = Modifier.height(48.dp))
-        CategoriesSection(kategoriState = kategoriState, onCategoryClick = onCategoryClick)
-        Spacer(modifier = Modifier.height(48.dp))
-        RentItemsSection(
-            katalogState = katalogState,
-            currentUserId = currentUserId,
-            onProductClick = onProductClick,
-            onSeeAllRentals = { onSeeAllRentals(null) },
-            onAddToCart = { product ->
-                val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                val tglSewa = sdf.format(Calendar.getInstance().time)
-                val calendar = Calendar.getInstance()
-                calendar.add(Calendar.DAY_OF_YEAR, 1)
-                val tglKembali = sdf.format(calendar.time)
+            SearchCard(
+                location = location,
+                onLocationChange = { location = it },
+                searchQuery = tempSearchQuery,
+                onQueryChange = { tempSearchQuery = it },
+                startDate = startDate,
+                onStartDateChange = { startDate = it },
+                endDate = endDate,
+                onEndDateChange = { endDate = it },
+                onSearchClick = { onSeeAllRentals(tempSearchQuery) }
+            )
+            Spacer(modifier = Modifier.height(36.dp))
+            BrandLogosSection()
+            Spacer(modifier = Modifier.height(36.dp))
+            AboutUsSection()
+            Spacer(modifier = Modifier.height(32.dp))
+            // NOTE: sebelumnya FeaturesSection() didefinisikan tapi nggak pernah dipanggil di sini,
+            // jadi 3 ikon "Wide Range / Easy & Fast Booking / 24/7 Support" hilang dari app.
+            FeaturesSection()
+            Spacer(modifier = Modifier.height(48.dp))
+            CategoriesSection(kategoriState = kategoriState, onCategoryClick = onCategoryClick)
+            Spacer(modifier = Modifier.height(48.dp))
+            RentItemsSection(
+                katalogState = katalogState,
+                currentUserId = currentUserId,
+                onProductClick = onProductClick,
+                onSeeAllRentals = { onSeeAllRentals(null) },
+                onAddToCart = { product ->
+                    val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                    val tglSewa = sdf.format(Calendar.getInstance().time)
+                    val calendar = Calendar.getInstance()
+                    calendar.add(Calendar.DAY_OF_YEAR, 1)
+                    val tglKembali = sdf.format(calendar.time)
 
-                keranjangViewModel.addToKeranjang(
-                    token = token,
-                    barangId = product.id,
-                    jumlah = 1,
-                    tglSewa = tglSewa,
-                    tglKembali = tglKembali
-                )
-            }
-        )
-        Spacer(modifier = Modifier.height(40.dp))
-        TestimonialsSection()
-        Spacer(modifier = Modifier.height(24.dp))
+                    keranjangViewModel.addToKeranjang(
+                        token = token,
+                        barangId = product.id,
+                        jumlah = 1,
+                        tglSewa = tglSewa,
+                        tglKembali = tglKembali
+                    )
+                }
+            )
+            Spacer(modifier = Modifier.height(40.dp))
+            TestimonialsSection()
+            Spacer(modifier = Modifier.height(24.dp))
+        }
     }
 }
 
@@ -740,9 +832,7 @@ fun HomeScreenContent(
 fun HomeTopBar(onLogout: () -> Unit, onMenuClick: () -> Unit, onCartClick: () -> Unit) {
     SewainTopBar(
         navigationIcon = null,
-        onNavigationClick = onMenuClick,
-        actionIcon = null,
-        onActionClick = onCartClick
+        actionIcon = null
     )
 }
 

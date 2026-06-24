@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -29,34 +30,30 @@ import com.l0124005.sewain_rpl.utils.RentalStatus
 import com.l0124005.sewain_rpl.ui.theme.*
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.viewmodel.TransaksiViewModel
+import com.l0124005.sewain_rpl.viewmodel.ProfileViewModel
 
 // ── Warna tema tambahan (unik untuk layar konfirmasi) ──
-private val LightBlueBg   = Color(0xFFE8F4FB) // .rd-field .rd-value & .confirmed-box background
-private val CheckTint     = Color(0xFFC3D4E9) // warna centang biru muda (.confirmed-box .check svg)
-private val ConfirmedDark = Color(0xFF484848) // .confirmed-box h3
-private val ConfirmedGray = Color(0xFF818181) // .confirmed-box p
+private val LightBlueBg   = Color(0xFFE8F4FB) 
+private val CheckTint     = Color(0xFFC3D4E9) 
+private val ConfirmedDark = Color(0xFF484848) 
+private val ConfirmedGray = Color(0xFFAAAAAA)
 
-// ── Status verifikasi pengembalian -- sesuai returnStatusLabels di script ──
 enum class ReturnVerificationStatus(val label: String) {
     WAITING("MENUNGGU VERIFIKASI OWNER"),
-    APPROVED("PENGEMBALIAN DISETUJUI ✓")
+    APPROVED("COMPLETED RENT ✓")
 }
 
-/**
- * Data ringkas untuk menampilkan header & grid info transaksi di screen konfirmasi pengembalian.
- * Isi dari data transaksi/pengembalian asli (hasil response setelah kirim form pengembalian)
- * sebelum ditampilkan ke screen ini.
- */
 data class ReturnConfirmedData(
     val itemName: String,
     val itemImageUrl: String,
     val status: RentalStatus = RentalStatus.RETURN,
     val idTransaksi: String,
     val owner: String,
-    val tanggalMulai: String,
-    val tanggalSelesai: String,
-    val metodePembayaran: String,
-    val lokasiPengambilan: String,
+    val user: String,
+    val denda: String,
+    val tanggalSewa: String,
+    val tanggalKembaliRencana: String,
+    val tanggalKembaliAktual: String,
     val returnStatus: ReturnVerificationStatus = ReturnVerificationStatus.WAITING
 )
 
@@ -65,16 +62,26 @@ fun ReturnConfirmedScreen(
     transaksiId: Int,
     token: String,
     viewModel: TransaksiViewModel,
+    profileViewModel: ProfileViewModel,
     onDone: () -> Unit
 ) {
     val detailState by viewModel.transaksiDetail.observeAsState()
+    val profileState by profileViewModel.profile.observeAsState()
 
     LaunchedEffect(transaksiId) {
         viewModel.getDetailTransaksi(token, transaksiId)
+        if (profileState == null) {
+            profileViewModel.getProfile(token)
+        }
     }
 
     Scaffold(
-        topBar = { SewainTopBar() },
+        topBar = {
+            SewainTopBar(
+                navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
+                onNavigationClick = onDone
+            )
+        },
         containerColor = Color.White
     ) { padding ->
         Box(
@@ -96,7 +103,7 @@ fun ReturnConfirmedScreen(
                 }
                 is Resource.Success -> {
                     state.data?.data?.let { transaksi ->
-                        val detail = mapTransaksiToReturnConfirmed(transaksi)
+                        val detail = mapTransaksiToReturnConfirmed(transaksi, profileState)
                         ReturnConfirmedContent(detail = detail, onDone = onDone)
                     }
                 }
@@ -106,16 +113,17 @@ fun ReturnConfirmedScreen(
     }
 }
 
-private fun mapTransaksiToReturnConfirmed(transaksi: TransaksiData): ReturnConfirmedData {
+private fun mapTransaksiToReturnConfirmed(
+    transaksi: TransaksiData,
+    profileState: Resource<com.l0124005.sewain_rpl.network.ProfileResponse>?
+): ReturnConfirmedData {
     val barang = transaksi.barang
     val imageUrl = if (barang != null && !barang.foto_barang.isNullOrEmpty()) {
         if (barang.foto_barang.startsWith("http")) barang.foto_barang
         else "${ApiClient.IMAGE_BASE_URL}${barang.foto_barang}"
     } else ""
 
-    // Logika Status Verifikasi
-    val returnVerStatus = if (transaksi.status.lowercase() == "selesai" || 
-                             transaksi.status.lowercase() == "completed" ||
+    val returnVerStatus = if (transaksi.status.lowercase() in listOf("selesai", "completed", "verified") || 
                              transaksi.tanggal_verifikasipengembalian != null) {
         ReturnVerificationStatus.APPROVED
     } else {
@@ -123,10 +131,24 @@ private fun mapTransaksiToReturnConfirmed(transaksi: TransaksiData): ReturnConfi
     }
 
     val outputSdf = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault())
+    val outputDateTimeSdf = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault())
+
     val formatTgl = { dateStr: String? ->
         val parsed = RentalStatus.parseFlexibleDate(dateStr)
         if (parsed != null) outputSdf.format(parsed) else dateStr ?: "-"
     }
+    
+    val formatTglJam = { dateStr: String? ->
+        val parsed = RentalStatus.parseFlexibleDate(dateStr)
+        if (parsed != null) "${outputDateTimeSdf.format(parsed)} WIB" else dateStr ?: "-"
+    }
+
+    val dendaValue = RentalStatus.calculateFine(transaksi)
+    val dendaText = if (dendaValue > 0) "Rp ${com.l0124005.sewain_rpl.utils.CurrencyUtils.formatRupiah(dendaValue)}" else "Tidak ada denda"
+
+    val currentUserName = transaksi.user?.name 
+        ?: (profileState as? Resource.Success)?.data?.data?.name 
+        ?: "Customer"
 
     return ReturnConfirmedData(
         itemName = barang?.nama_barang ?: "-",
@@ -134,10 +156,11 @@ private fun mapTransaksiToReturnConfirmed(transaksi: TransaksiData): ReturnConfi
         status = RentalStatus.fromTransaksi(transaksi),
         idTransaksi = "TRX-${transaksi.id}",
         owner = barang?.user?.name ?: "-",
-        tanggalMulai = formatTgl(transaksi.tanggal_sewa),
-        tanggalSelesai = formatTgl(transaksi.tanggal_kembali_rencana),
-        metodePembayaran = transaksi.pembayaran?.metode ?: "Saldo SEWAIN",
-        lokasiPengambilan = barang?.lokasi ?: "-",
+        user = currentUserName,
+        denda = dendaText,
+        tanggalSewa = formatTgl(transaksi.tanggal_sewa),
+        tanggalKembaliRencana = formatTgl(transaksi.tanggal_kembali_rencana),
+        tanggalKembaliAktual = formatTglJam(transaksi.tanggal_kembali_aktual),
         returnStatus = returnVerStatus
     )
 }
@@ -153,7 +176,6 @@ private fun ReturnConfirmedContent(
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
-        // ── Panel luar warna #4D6674 (.dash-panel/.dash-content) ──
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -161,7 +183,6 @@ private fun ReturnConfirmedContent(
                 .background(MidBlue)
                 .padding(20.dp)
         ) {
-            // ── Card konten dalam warna #21394F (.dash-content-card) ──
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -169,7 +190,6 @@ private fun ReturnConfirmedContent(
                     .background(DarkNavy)
                     .padding(24.dp)
             ) {
-                // ── Judul "My Rentals" + subjudul ──
                 Text(
                     text = "My Rentals",
                     fontFamily = VolkhovFont,
@@ -187,17 +207,14 @@ private fun ReturnConfirmedContent(
 
                 Spacer(Modifier.height(20.dp))
 
-                // ── Header detail rental (.rental-detail-header) ──
                 ReturnDetailHeaderBlock(detail = detail)
 
                 Spacer(Modifier.height(24.dp))
 
-                // ── Grid info transaksi (.rd-form-grid) ──
                 ReturnDetailInfoGrid(detail = detail)
 
                 Spacer(Modifier.height(24.dp))
 
-                // ── Kotak konfirmasi (.confirmed-box) ──
                 ConfirmedBox(
                     returnStatus = detail.returnStatus,
                     onBackToProfile = onDone
@@ -207,7 +224,6 @@ private fun ReturnConfirmedContent(
     }
 }
 
-// ── Header: foto thumbnail + badge status + nama barang ──
 @Composable
 private fun ReturnDetailHeaderBlock(detail: ReturnConfirmedData) {
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -240,7 +256,8 @@ private fun ReturnDetailHeaderBlock(detail: ReturnConfirmedData) {
         Spacer(Modifier.width(18.dp))
         Text(
             text = detail.itemName,
-            fontFamily = AbrilFatfaceFont,
+            fontFamily = VolkhovFont,
+            fontWeight = FontWeight.Bold,
             fontSize = 22.sp,
             color = TextLight,
             lineHeight = 28.sp,
@@ -249,17 +266,16 @@ private fun ReturnDetailHeaderBlock(detail: ReturnConfirmedData) {
     }
 }
 
-// ── Grid info transaksi: ID Transaksi, Owner, Tanggal Mulai, Tanggal Selesai,
-// Metode Pembayaran, Lokasi Pengambilan ──
 @Composable
 private fun ReturnDetailInfoGrid(detail: ReturnConfirmedData) {
     val fields = listOf(
         "ID Transaksi" to detail.idTransaksi,
         "Owner" to detail.owner,
-        "Tanggal Mulai" to detail.tanggalMulai,
-        "Tanggal Selesai" to detail.tanggalSelesai,
-        "Metode Pembayaran" to detail.metodePembayaran,
-        "Lokasi Pengambilan" to detail.lokasiPengambilan
+        "User" to detail.user,
+        "Denda" to detail.denda,
+        "Tanggal Sewa" to detail.tanggalSewa,
+        "Rencana Kembali" to detail.tanggalKembaliRencana,
+        "Tanggal Kembali" to detail.tanggalKembaliAktual
     )
 
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -298,9 +314,6 @@ private fun ReturnDetailInfoGrid(detail: ReturnConfirmedData) {
     }
 }
 
-// ── Kotak konfirmasi (.confirmed-box) -- background terang, ikon centang bulat,
-// judul "RETURN CONFIRMED!", paragraf ucapan terima kasih, status verifikasi,
-// dan tombol "Back to SEWAIN Profile" ──
 @Composable
 private fun ConfirmedBox(
     returnStatus: ReturnVerificationStatus,
@@ -314,7 +327,6 @@ private fun ConfirmedBox(
             .padding(32.dp, 36.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // ── Lingkaran centang ──
         Box(
             modifier = Modifier
                 .size(80.dp)
@@ -332,21 +344,23 @@ private fun ConfirmedBox(
 
         Spacer(Modifier.height(20.dp))
 
-        // ── Judul "RETURN CONFIRMED!" ──
         Text(
-            text = "RETURN CONFIRMED!",
+            text = if (returnStatus == ReturnVerificationStatus.APPROVED) "ACCEPT RETURN CONFIRMED!" else "RETURN CONFIRMED!",
             fontFamily = VolkhovFont,
-            fontWeight = FontWeight.Bold,
-            fontSize = 22.sp,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 24.sp,
             color = ConfirmedDark,
-            letterSpacing = 0.5.sp
+            letterSpacing = 0.5.sp,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
         )
 
         Spacer(Modifier.height(12.dp))
 
-        // ── Paragraf ucapan terima kasih ──
         Text(
             text = "Terima Kasih telah menggunakan Website SEWAIN sebagai platform penyewaan Anda!",
+            fontFamily = MontaguSlabFont,
+            fontWeight = FontWeight.Light,
             fontSize = 14.sp,
             color = ConfirmedGray,
             textAlign = TextAlign.Center,
@@ -355,10 +369,11 @@ private fun ConfirmedBox(
 
         Spacer(Modifier.height(14.dp))
 
-        // ── Status verifikasi pengembalian ──
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = "Status Return Rent Anda saat ini:",
+                fontFamily = MontaguSlabFont,
+                fontWeight = FontWeight.Normal,
                 fontSize = 14.sp,
                 color = ConfirmedGray,
                 textAlign = TextAlign.Center
@@ -366,55 +381,31 @@ private fun ConfirmedBox(
             Spacer(Modifier.height(4.dp))
             Text(
                 text = returnStatus.label,
-                fontWeight = FontWeight.ExtraBold,
+                fontFamily = AbrilFatfaceFont,
+                fontWeight = FontWeight.Bold,
                 fontSize = 17.sp,
-                color = ConfirmedGray,
+                color = Color(0xFF818181),
                 textAlign = TextAlign.Center
             )
         }
 
         Spacer(Modifier.height(24.dp))
 
-        // ── Tombol "Back to SEWAIN Profile" ──
         Button(
             onClick = onBackToProfile,
             modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp),
+                .width(200.dp)
+                .height(56.dp),
             shape = RoundedCornerShape(8.dp),
             colors = ButtonDefaults.buttonColors(containerColor = ProfileAccentBlue)
         ) {
             Text(
                 text = "Back to SEWAIN Profile",
+                fontFamily = AbrilFatfaceFont,
                 fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
-                color = Color.White
+                color = Color.White,
+                textAlign = TextAlign.Center
             )
         }
-    }
-}
-
-// ── Preview ──
-@androidx.compose.ui.tooling.preview.Preview(showBackground = true, widthDp = 390, heightDp = 1500)
-@Composable
-private fun ReturnConfirmedScreenPreview() {
-    val dummyDetail = ReturnConfirmedData(
-        itemName = "ALLTREK Tenda Camping 1 Bedroom - 1 Guest Room",
-        itemImageUrl = "https://images.example.com/tent.png",
-        status = RentalStatus.COMPLETED,
-        idTransaksi = "TRX-20260517-0042",
-        owner = "Camping Groups Bandung",
-        tanggalMulai = "17/05/2026",
-        tanggalSelesai = "17/06/2026",
-        metodePembayaran = "Saldo SEWAIN Wallet",
-        lokasiPengambilan = "Jl. Ir. H. Juanda No. 50 (Dago), Bandung",
-        returnStatus = ReturnVerificationStatus.WAITING
-    )
-
-    Sewain_rplTheme {
-        ReturnConfirmedContent(
-            detail = dummyDetail,
-            onDone = {}
-        )
     }
 }
