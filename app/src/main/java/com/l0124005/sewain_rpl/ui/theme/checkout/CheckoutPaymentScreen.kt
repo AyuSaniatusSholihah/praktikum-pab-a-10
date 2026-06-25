@@ -35,12 +35,12 @@ import com.l0124005.sewain_rpl.ui.theme.LatoFont
 import com.l0124005.sewain_rpl.ui.theme.MonsterratFont
 import com.l0124005.sewain_rpl.ui.theme.VolkhovFont
 import com.l0124005.sewain_rpl.utils.CurrencyUtils
+import com.l0124005.sewain_rpl.utils.DateUtils
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.viewmodel.KeranjangViewModel
 import com.l0124005.sewain_rpl.viewmodel.ProfileViewModel
 import com.l0124005.sewain_rpl.viewmodel.TransaksiViewModel
-import java.text.SimpleDateFormat
-import java.util.Locale
+import java.util.Date
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
@@ -466,28 +466,7 @@ data class CartItem(
     val dendaPerJam: Long,
     val jaminanBase: Long
 ) {
-    fun durasiHari(): Int {
-        val formats = listOf(
-            SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()),
-            SimpleDateFormat("d MMMM yyyy", Locale("id", "ID")),
-            SimpleDateFormat("d MMMM yyyy", Locale.US)
-        )
-        return try {
-            var d1: java.util.Date? = null
-            var d2: java.util.Date? = null
-
-            for (sdf in formats) {
-                try {
-                    d1 = sdf.parse(tglMulai)
-                    d2 = sdf.parse(tglSelesai)
-                    if (d1 != null && d2 != null) break
-                } catch (e: Exception) { continue }
-            }
-
-            val diff = ((d2?.time ?: 0L) - (d1?.time ?: 0L)) / (1000 * 60 * 60 * 24)
-            if (diff > 0) diff.toInt() else 1
-        } catch (e: Exception) { 1 }
-    }
+    fun durasiHari(): Int = DateUtils.calculateDaysBetween(tglMulai, tglSelesai)
     fun subtotal(durasi: Int): Long = harga * qty * durasi.toLong()
     fun jaminan(): Long = jaminanBase * qty
 }
@@ -1043,8 +1022,8 @@ fun SummaryProductCard(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.padding(bottom = 14.dp)
         ) {
-            SummaryDateBox("Tanggal Mulai Penyewaan", item.tglMulai, Modifier.weight(1f))
-            SummaryDateBox("Tanggal Selesai Penyewaan", item.tglSelesai, Modifier.weight(1f))
+            SummaryDateBox("Tanggal Mulai Penyewaan", DateUtils.formatDateForUI(item.tglMulai), Modifier.weight(1f))
+            SummaryDateBox("Tanggal Selesai Penyewaan", DateUtils.formatDateForUI(item.tglSelesai), Modifier.weight(1f))
         }
 
 

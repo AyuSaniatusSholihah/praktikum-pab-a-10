@@ -42,9 +42,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Locale
 import coil.compose.AsyncImage
 import com.l0124005.sewain_rpl.network.*
 import com.l0124005.sewain_rpl.repository.KatalogRepository
@@ -62,6 +59,7 @@ import com.l0124005.sewain_rpl.ui.theme.profil.RentalsOwnerScreen
 import com.l0124005.sewain_rpl.ui.theme.transaksi.RiwayatTransaksiScreen
 import com.l0124005.sewain_rpl.ui.theme.transaksi.DetailTransaksiScreen
 import com.l0124005.sewain_rpl.ui.theme.keranjang.KeranjangScreen
+import com.l0124005.sewain_rpl.utils.DateUtils
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.utils.SessionManager
 import com.l0124005.sewain_rpl.utils.CurrencyUtils
@@ -304,7 +302,9 @@ fun MainContainer(
         }
     }
 
-    val pembayaranState by transaksiViewModel.pembayaranState.observeAsState()
+    // Gunakan nama berbeda untuk state dari transaksiViewModel agar tidak konflik
+    val pembayaranTransaksiState by transaksiViewModel.pembayaranState.observeAsState()
+
 
     LaunchedEffect(addToCartState) {
         if (addToCartState is Resource.Success) {
@@ -345,14 +345,14 @@ fun MainContainer(
         }
     }
 
-    LaunchedEffect(pembayaranState) {
-        if (pembayaranState is Resource.Success) {
+    LaunchedEffect(pembayaranTransaksiState) {
+        if (pembayaranTransaksiState is Resource.Success) {
             Toast.makeText(context, "Pembayaran berhasil!", Toast.LENGTH_SHORT).show()
             keranjangViewModel.getKeranjang(token)
             currentScreen = Screen.Confirm
             selectedItemsForCheckout = emptyList()
-        } else if (pembayaranState is Resource.Error) {
-            val msg = pembayaranState?.message ?: ""
+        } else if (pembayaranTransaksiState is Resource.Error) {
+            val msg = pembayaranTransaksiState?.message ?: ""
             // Jika transaksi sudah dibayar (mungkin karena retry), anggap sukses saja
             if (msg.contains("sudah dibayar", ignoreCase = true) || msg.contains("already paid", ignoreCase = true)) {
                 Toast.makeText(context, "Pembayaran sudah terverifikasi!", Toast.LENGTH_SHORT).show()
@@ -806,11 +806,8 @@ fun HomeScreenContent(
                 onProductClick = onProductClick,
                 onSeeAllRentals = { onSeeAllRentals(null) },
                 onAddToCart = { product ->
-                    val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                    val tglSewa = sdf.format(Calendar.getInstance().time)
-                    val calendar = Calendar.getInstance()
-                    calendar.add(Calendar.DAY_OF_YEAR, 1)
-                    val tglKembali = sdf.format(calendar.time)
+                    val tglSewa = DateUtils.getCurrentDateBackend()
+                    val tglKembali = DateUtils.getTomorrowDateBackend()
 
                     keranjangViewModel.addToKeranjang(
                         token = token,

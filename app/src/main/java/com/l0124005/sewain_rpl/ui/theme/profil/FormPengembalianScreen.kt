@@ -32,15 +32,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
-import java.text.SimpleDateFormat
-import java.util.Locale
-import java.util.Calendar
+import java.util.Date
 import com.l0124005.sewain_rpl.network.ApiClient
 import com.l0124005.sewain_rpl.ui.theme.*
-import com.l0124005.sewain_rpl.utils.CurrencyUtils
-import com.l0124005.sewain_rpl.utils.ImageUtils
-import com.l0124005.sewain_rpl.utils.RentalStatus
-import com.l0124005.sewain_rpl.utils.Resource
+import com.l0124005.sewain_rpl.utils.*
 import com.l0124005.sewain_rpl.viewmodel.TransaksiViewModel
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
@@ -89,11 +84,6 @@ fun FormPengembalianScreen(
 
     val kembalikanState by viewModel.kembalikanState.observeAsState()
     var showConfirmDialog by remember { mutableStateOf(false) }
-
-    val formatTgl = { dateStr: String? ->
-        val parsed = RentalStatus.parseFlexibleDate(dateStr)
-        if (parsed != null) SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(parsed) else "N/A"
-    }
 
     LaunchedEffect(transaksiId) {
         viewModel.getDetailTransaksi(token, transaksiId)
@@ -154,13 +144,13 @@ fun FormPengembalianScreen(
                             ?: (profileState as? Resource.Success)?.data?.data?.name 
                             ?: "Customer"
 
-                        // ── Kalkulasi Tanggal & Denda Dinamis ──
-                        val now = Calendar.getInstance().time
-                        val sdfFull = SimpleDateFormat("dd/MM/yyyy HH:mm 'WIB'", Locale.getDefault())
-                        val currentDateDisplay = sdfFull.format(now)
+                        // ── Kalkulasi Tanggal & Denda Dinamis Menggunakan Utilities ──
+                        val now = Date()
+                        val currentDateDisplay = DateUtils.dateToFullUiString(now)
+                        val currentDateIso = DateUtils.dateToFullBackendString(now)
 
-                        val calculatedDenda = RentalStatus.calculateFine(transaksi)
-                        val dendaInt = calculatedDenda.toInt().coerceAtLeast(0)
+                        val calculatedFine = RentalStatus.calculateFine(transaksi)
+                        val dendaInt = calculatedFine.toInt().coerceAtLeast(0)
 
                         val detail = ReturnFormDetail(
                             itemName = transaksi.barang?.nama_barang ?: "-",
@@ -170,15 +160,12 @@ fun FormPengembalianScreen(
                             owner = transaksi.barang?.user?.name ?: "-",
                             user = currentUser,
                             infoDenda = "Rp ${CurrencyUtils.formatRupiah(transaksi.barang?.harga_denda_perjam ?: 0.0)}/jam",
-                            tanggalSewa = formatTgl(transaksi.tanggal_sewa),
-                            tanggalPengambilan = formatTgl(transaksi.tanggal_sewa),
-                            tanggalPengembalian = formatTgl(transaksi.tanggal_kembali_rencana),
+                            tanggalSewa = DateUtils.formatDateForUI(transaksi.tanggal_sewa),
+                            tanggalPengambilan = DateUtils.formatDateForUI(transaksi.tanggal_sewa),
+                            tanggalPengembalian = DateUtils.formatDateForUI(transaksi.tanggal_kembali_rencana),
                             tanggalPengembalianAktual = currentDateDisplay,
                             dendaText = if (dendaInt > 0) "Rp ${CurrencyUtils.formatRupiah(dendaInt.toDouble())}" else "Tidak ada denda"
                         )
-
-                        val isoFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-                        val currentDateIso = isoFormat.format(now)
 
                         FormContent(
                             transaksiId = transaksiId,
@@ -195,8 +182,7 @@ fun FormPengembalianScreen(
                             calculatedDendaValue = dendaInt.toDouble(),
                             currentDateIso = currentDateIso,
                             showConfirmDialog = showConfirmDialog,
-                            onConfirmDialogChange = { showConfirmDialog = it },
-                            currentTime = now
+                            onConfirmDialogChange = { showConfirmDialog = it }
                         )
                     }
                 }
@@ -222,8 +208,7 @@ private fun FormContent(
     calculatedDendaValue: Double,
     currentDateIso: String,
     showConfirmDialog: Boolean,
-    onConfirmDialogChange: (Boolean) -> Unit,
-    currentTime: java.util.Date
+    onConfirmDialogChange: (Boolean) -> Unit
 ) {
     val context = LocalContext.current
 
@@ -252,8 +237,7 @@ private fun FormContent(
 
                         val ratingBody = rating.toString().toRequestBody("text/plain".toMediaTypeOrNull())
                         val komentarBody = review.toRequestBody("text/plain".toMediaTypeOrNull())
-                        val sendSdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-                        val tglBody = sendSdf.format(currentTime).toRequestBody("text/plain".toMediaTypeOrNull())
+                        val tglBody = currentDateIso.toRequestBody("text/plain".toMediaTypeOrNull())
                         val dendaInt = calculatedDendaValue.toInt().coerceAtLeast(0)
                         val dendaBody = dendaInt.toString().toRequestBody("text/plain".toMediaTypeOrNull())
 

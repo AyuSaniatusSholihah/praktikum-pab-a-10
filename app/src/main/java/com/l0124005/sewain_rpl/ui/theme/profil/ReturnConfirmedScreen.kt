@@ -26,6 +26,8 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.l0124005.sewain_rpl.network.ApiClient
 import com.l0124005.sewain_rpl.network.TransaksiData
+import com.l0124005.sewain_rpl.utils.DateUtils
+import com.l0124005.sewain_rpl.utils.CurrencyUtils
 import com.l0124005.sewain_rpl.utils.RentalStatus
 import com.l0124005.sewain_rpl.ui.theme.*
 import com.l0124005.sewain_rpl.utils.Resource
@@ -130,21 +132,8 @@ private fun mapTransaksiToReturnConfirmed(
         ReturnVerificationStatus.WAITING
     }
 
-    val outputSdf = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault())
-    val outputDateTimeSdf = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault())
-
-    val formatTgl = { dateStr: String? ->
-        val parsed = RentalStatus.parseFlexibleDate(dateStr)
-        if (parsed != null) outputSdf.format(parsed) else dateStr ?: "-"
-    }
-    
-    val formatTglJam = { dateStr: String? ->
-        val parsed = RentalStatus.parseFlexibleDate(dateStr)
-        if (parsed != null) "${outputDateTimeSdf.format(parsed)} WIB" else dateStr ?: "-"
-    }
-
     val dendaValue = RentalStatus.calculateFine(transaksi)
-    val dendaText = if (dendaValue > 0) "Rp ${com.l0124005.sewain_rpl.utils.CurrencyUtils.formatRupiah(dendaValue)}" else "Tidak ada denda"
+    val dendaText = if (dendaValue > 0) "Rp ${CurrencyUtils.formatRupiah(dendaValue)}" else "Tidak ada denda"
 
     val currentUserName = transaksi.user?.name 
         ?: (profileState as? Resource.Success)?.data?.data?.name 
@@ -158,9 +147,9 @@ private fun mapTransaksiToReturnConfirmed(
         owner = barang?.user?.name ?: "-",
         user = currentUserName,
         denda = dendaText,
-        tanggalSewa = formatTgl(transaksi.tanggal_sewa),
-        tanggalKembaliRencana = formatTgl(transaksi.tanggal_kembali_rencana),
-        tanggalKembaliAktual = formatTglJam(transaksi.tanggal_kembali_aktual),
+        tanggalSewa = DateUtils.formatDateForUI(transaksi.tanggal_sewa),
+        tanggalKembaliRencana = DateUtils.formatDateForUI(transaksi.tanggal_kembali_rencana),
+        tanggalKembaliAktual = DateUtils.formatFullDateForUI(transaksi.tanggal_kembali_aktual).ifBlank { "-" },
         returnStatus = returnVerStatus
     )
 }

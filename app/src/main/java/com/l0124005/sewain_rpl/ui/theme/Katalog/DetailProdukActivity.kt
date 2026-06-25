@@ -51,7 +51,6 @@ import com.l0124005.sewain_rpl.viewmodel.KeranjangViewModel
 import com.l0124005.sewain_rpl.viewmodel.KeranjangViewModelFactory
 import com.l0124005.sewain_rpl.viewmodel.TransaksiViewModel
 import com.l0124005.sewain_rpl.viewmodel.TransaksiViewModelFactory
-import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlinx.coroutines.launch
@@ -168,7 +167,9 @@ fun ProductDetailScreen(
     var selectedTab   by remember { mutableStateOf(0) }
 
     var dateStartRaw by remember { mutableStateOf(Date()) }
-    var dateEndRaw by remember { mutableStateOf(Date(System.currentTimeMillis() + 86400000)) }
+    var dateEndRaw by remember { 
+        mutableStateOf(DateUtils.backendStringToDate(DateUtils.getTomorrowDateBackend()) ?: Date(System.currentTimeMillis() + 86400000)) 
+    }
 
     var showDatePickerStart by remember { mutableStateOf(false) }
     var showDatePickerEnd by remember { mutableStateOf(false) }
@@ -277,8 +278,8 @@ fun ProductDetailScreen(
                             isRentNowClicked = false
                             keranjangViewModel.addToKeranjang(
                                 token, productId, quantity,
-                                sdfApi.format(dateStartRaw),
-                                sdfApi.format(dateEndRaw)
+                                DateUtils.dateToBackendString(dateStartRaw),
+                                DateUtils.dateToBackendString(dateEndRaw)
                             )
                         }
                     },
@@ -287,8 +288,8 @@ fun ProductDetailScreen(
                             isRentNowClicked = true
                             keranjangViewModel.addToKeranjang(
                                 token, productId, quantity,
-                                sdfApi.format(dateStartRaw),
-                                sdfApi.format(dateEndRaw)
+                                DateUtils.dateToBackendString(dateStartRaw),
+                                DateUtils.dateToBackendString(dateEndRaw)
                             )
                         }
                     },

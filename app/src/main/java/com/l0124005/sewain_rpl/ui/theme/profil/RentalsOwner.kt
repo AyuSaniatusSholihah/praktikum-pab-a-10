@@ -23,11 +23,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import java.text.SimpleDateFormat
-import java.util.*
 import com.l0124005.sewain_rpl.network.ApiClient
 import com.l0124005.sewain_rpl.network.TransaksiData
 import com.l0124005.sewain_rpl.utils.RentalStatus
+import com.l0124005.sewain_rpl.utils.CurrencyUtils
+import com.l0124005.sewain_rpl.utils.DateUtils
 import com.l0124005.sewain_rpl.ui.theme.AbrilFatfaceFont
 import com.l0124005.sewain_rpl.ui.theme.MontaguSlabFont
 import com.l0124005.sewain_rpl.ui.theme.BluePrimary
@@ -298,17 +298,12 @@ private fun RentalCard(
 ) {
     val status = RentalStatus.fromTransaksi(item)
     
-    val outputSdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-    val outputFullSdf = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
-    
     val formatTgl = { dateStr: String? ->
-        val parsed = RentalStatus.parseFlexibleDate(dateStr)
-        if (parsed != null) outputSdf.format(parsed) else "N/A"
+        DateUtils.formatDateForUI(dateStr)
     }
 
     val formatTglFull = { dateStr: String? ->
-        val parsed = RentalStatus.parseFlexibleDate(dateStr)
-        if (parsed != null) outputFullSdf.format(parsed) else "N/A"
+        DateUtils.formatFullDateForUI(dateStr)
     }
 
     val barang = item.barang
@@ -382,7 +377,7 @@ private fun RentalCard(
             }
 
             Text(
-                text = "Rp ${com.l0124005.sewain_rpl.utils.CurrencyUtils.formatRupiah(barang?.harga_sewa ?: 0.0)}/hari",
+                text = "Rp ${CurrencyUtils.formatRupiah(barang?.harga_sewa ?: 0.0)}/hari",
                 fontFamily = AbrilFatfaceFont,
                 fontSize = 16.sp,
                 color = Color.White

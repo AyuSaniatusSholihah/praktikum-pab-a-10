@@ -28,7 +28,8 @@ import coil.compose.AsyncImage
 import com.l0124005.sewain_rpl.ui.theme.*
 import com.l0124005.sewain_rpl.viewmodel.TransaksiViewModel
 import com.l0124005.sewain_rpl.network.ApiClient
-import com.l0124005.sewain_rpl.utils.CurrencyUtils.formatRupiah
+import com.l0124005.sewain_rpl.utils.CurrencyUtils
+import com.l0124005.sewain_rpl.utils.DateUtils
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.utils.RentalStatus
 import com.l0124005.sewain_rpl.viewmodel.ProfileViewModel
@@ -85,27 +86,22 @@ fun MyWalletScreen(
     val ownerTxns = (transaksiViewModel.ownerDashboard.observeAsState().value as? Resource.Success)?.data?.data?.daftar_transaksi ?: emptyList()
     val tenantTxns = (transaksiViewModel.transaksiList.observeAsState().value as? Resource.Success)?.data?.data ?: emptyList()
 
-    val outputSdf = remember { java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault()) }
-    val outputFullSdf = remember { java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault()) }
-
     val formatTgl = { dateStr: String? ->
-        val parsed = RentalStatus.parseFlexibleDate(dateStr)
-        if (parsed != null) outputSdf.format(parsed) else dateStr ?: "-"
+        DateUtils.formatDateForUI(dateStr).ifEmpty { "-" }
     }
 
     val formatTglFull = { dateStr: String? ->
-        val parsed = RentalStatus.parseFlexibleDate(dateStr)
-        if (parsed != null) outputFullSdf.format(parsed) else dateStr ?: "-"
+        DateUtils.formatFullDateForUI(dateStr).ifEmpty { "-" }
     }
 
     // Gabungkan data: Owner -> Pemasukan, Tenant -> Pembayaran
     val history = remember(ownerTxns, tenantTxns) {
         val income = ownerTxns.map { txn ->
-            val rDate = RentalStatus.parseFlexibleDate(txn.tanggal_verifikasipengembalian ?: txn.tanggal_sewa)
+            val rDate = DateUtils.parseFlexibleDate(txn.tanggal_verifikasipengembalian ?: txn.tanggal_sewa)
             val isReturned = !txn.tanggal_kembali_aktual.isNullOrEmpty() && !txn.tanggal_kembali_aktual.startsWith("0000")
             
             val returnTimeText = if (isReturned) {
-                "${formatTglFull(txn.tanggal_kembali_aktual)} WIB"
+                formatTglFull(txn.tanggal_kembali_aktual)
             } else {
                 "${formatTgl(txn.tanggal_kembali_rencana)} 23:59 WIB"
             }
@@ -113,7 +109,7 @@ fun MyWalletScreen(
             WalletTransaction(
                 title = txn.barang?.nama_barang ?: "Produk",
                 location = txn.barang?.lokasi ?: "Indonesia",
-                amount = "+ Rp ${formatRupiah(txn.total_harga)}",
+                amount = "+ Rp ${CurrencyUtils.formatRupiah(txn.total_harga)}",
                 dateStart = formatTgl(txn.tanggal_sewa),
                 dateEnd = formatTgl(txn.tanggal_kembali_rencana),
                 dateReturn = returnTimeText,
@@ -125,11 +121,11 @@ fun MyWalletScreen(
             )
         }
         val expense = tenantTxns.map { txn ->
-            val rDate = RentalStatus.parseFlexibleDate(txn.pembayaran?.tanggal_bayar ?: txn.tanggal_sewa)
+            val rDate = DateUtils.parseFlexibleDate(txn.pembayaran?.tanggal_bayar ?: txn.tanggal_sewa)
             val isReturned = !txn.tanggal_kembali_aktual.isNullOrEmpty() && !txn.tanggal_kembali_aktual.startsWith("0000")
 
             val returnTimeText = if (isReturned) {
-                "${formatTglFull(txn.tanggal_kembali_aktual)} WIB"
+                formatTglFull(txn.tanggal_kembali_aktual)
             } else {
                 "${formatTgl(txn.tanggal_kembali_rencana)} 23:59 WIB"
             }
@@ -137,7 +133,7 @@ fun MyWalletScreen(
             WalletTransaction(
                 title = txn.barang?.nama_barang ?: "Produk",
                 location = txn.barang?.lokasi ?: "Indonesia",
-                amount = "- Rp ${formatRupiah(txn.total_harga)}",
+                amount = "- Rp ${CurrencyUtils.formatRupiah(txn.total_harga)}",
                 dateStart = formatTgl(txn.tanggal_sewa),
                 dateEnd = formatTgl(txn.tanggal_kembali_rencana),
                 dateReturn = returnTimeText,
@@ -495,7 +491,7 @@ private fun WalletSaldoCard(saldo: Double) {
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = "Rp ${formatRupiah(saldo)}",
+                    text = "Rp ${CurrencyUtils.formatRupiah(saldo)}",
                     fontFamily = AbrilFatfaceFont,
                     fontSize = 24.sp,
                     color = Color.Black

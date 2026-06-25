@@ -22,7 +22,7 @@ import androidx.compose.ui.unit.sp
 import com.l0124005.sewain_rpl.network.BayarRequest
 import com.l0124005.sewain_rpl.ui.theme.SewainTopBar
 import com.l0124005.sewain_rpl.ui.theme.BluePrimary
-import com.l0124005.sewain_rpl.ui.theme.katalog.formatRupiah
+import com.l0124005.sewain_rpl.utils.CurrencyUtils
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.viewmodel.PaymentViewModel
 

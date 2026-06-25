@@ -23,12 +23,12 @@ import com.l0124005.sewain_rpl.network.ApiClient
 import com.l0124005.sewain_rpl.network.TransaksiData
 import com.l0124005.sewain_rpl.ui.theme.BluePrimary
 import com.l0124005.sewain_rpl.ui.theme.NavyPrimary
-import com.l0124005.sewain_rpl.ui.theme.katalog.formatRupiah
+import com.l0124005.sewain_rpl.utils.CurrencyUtils
+import com.l0124005.sewain_rpl.utils.DateUtils
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.viewmodel.TransaksiViewModel
 
 import com.l0124005.sewain_rpl.utils.RentalStatus
-import java.text.SimpleDateFormat
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -140,25 +140,11 @@ fun TransaksiItem(transaksi: TransaksiData, onClick: (Int) -> Unit) {
                     )
                 }
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(text = "Total: Rp ${formatRupiah(transaksi.total_harga)}", fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                Text(text = "Total: Rp ${CurrencyUtils.formatRupiah(transaksi.total_harga)}", fontSize = 14.sp, fontWeight = FontWeight.Medium)
                 
-                val outputSdf = SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault())
-                val tglSewa = RentalStatus.parseFlexibleDate(transaksi.tanggal_sewa)
-                val tglDisplay = if (tglSewa != null) outputSdf.format(tglSewa) else transaksi.tanggal_sewa
-                Text(text = "$tglDisplay", fontSize = 11.sp, color = Color.Gray)
+                val tglDisplay = DateUtils.formatDateForUI(transaksi.tanggal_sewa)
+                Text(text = tglDisplay, fontSize = 11.sp, color = Color.Gray)
             }
         }
-    }
-}
-
-fun getStatusColor(status: String): Color {
-    return when (status.lowercase()) {
-        "pending" -> Color.Gray
-        "menunggu pembayaran" -> Color(0xFFFFA500)
-        "dibayar", "disewa" -> NavyPrimary
-        "dikembalikan" -> BluePrimary
-        "selesai" -> BluePrimary
-        "dibatalkan" -> Color.Red
-        else -> Color.Black
     }
 }

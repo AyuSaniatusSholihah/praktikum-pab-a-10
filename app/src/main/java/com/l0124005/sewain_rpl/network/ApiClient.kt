@@ -9,7 +9,7 @@ import java.util.concurrent.TimeUnit
 object ApiClient {
 
     // Ganti IP di bawah sesuai dengan IP Laptop Anda (cek cmd: ipconfig)
-    private const val IP_LAPTOP = "10.76.36.196"
+    private const val IP_LAPTOP = "10.183.95.196"
 
     private const val BASE_URL = "http://$IP_LAPTOP:8000/api/"
 

@@ -34,6 +34,7 @@ import com.l0124005.sewain_rpl.network.CatalogData
 import com.l0124005.sewain_rpl.ui.theme.SewainTopBar
 import com.l0124005.sewain_rpl.ui.theme.Sewain_rplTheme
 import com.l0124005.sewain_rpl.ui.theme.BluePrimary
+import com.l0124005.sewain_rpl.utils.CurrencyUtils
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.viewmodel.KatalogViewModel
 import com.l0124005.sewain_rpl.viewmodel.ProfileViewModel
@@ -433,7 +434,7 @@ private fun MyKatalogCard(
             }
             Text("($reviewCount) Customer Reviews", fontSize = 9.5.sp, color = Color(0xFF484848))
             Spacer(Modifier.height(4.dp))
-            Text(text = "Rp ${formatRupiah(item.harga_sewa)}/hari", fontWeight = FontWeight.Bold, fontSize = 12.5.sp, color = Black)
+            Text(text = "Rp ${CurrencyUtils.formatRupiah(item.harga_sewa)}/hari", fontWeight = FontWeight.Bold, fontSize = 12.5.sp, color = Black)
             Spacer(Modifier.height(6.dp))
             HorizontalDivider(color = Color(0xFFF0F0F0), thickness = 1.dp)
             Spacer(Modifier.height(6.dp))

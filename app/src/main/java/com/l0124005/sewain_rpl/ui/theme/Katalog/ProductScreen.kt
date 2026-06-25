@@ -32,13 +32,11 @@ import coil.compose.AsyncImage
 import com.l0124005.sewain_rpl.network.ApiClient
 import com.l0124005.sewain_rpl.network.CatalogData
 import com.l0124005.sewain_rpl.network.KategoriData
+import com.l0124005.sewain_rpl.utils.DateUtils
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.utils.SessionManager
 import com.l0124005.sewain_rpl.viewmodel.KatalogViewModel
 import com.l0124005.sewain_rpl.viewmodel.KeranjangViewModel
-import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Locale
 import androidx.compose.ui.tooling.preview.Preview
 import com.l0124005.sewain_rpl.ui.theme.*
 import com.l0124005.sewain_rpl.network.KatalogListResponse
@@ -181,12 +179,8 @@ fun ProductScreen(
                                     return@ProductGrid
                                 }
 
-                                val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                                val calendar = Calendar.getInstance()
-                                val tglSewa = sdf.format(calendar.time)
-
-                                calendar.add(Calendar.DAY_OF_YEAR, 1)
-                                val tglKembali = sdf.format(calendar.time)
+                                val tglSewa = DateUtils.getCurrentDateBackend()
+                                val tglKembali = DateUtils.getTomorrowDateBackend()
 
                                 keranjangViewModel.addToKeranjang(
                                     token = token,

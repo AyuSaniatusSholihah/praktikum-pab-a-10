@@ -3,7 +3,6 @@ package com.l0124005.sewain_rpl.utils
 import androidx.compose.ui.graphics.Color
 import com.l0124005.sewain_rpl.network.ApiClient
 import com.l0124005.sewain_rpl.network.TransaksiData
-import java.text.SimpleDateFormat
 import java.util.*
 
 // ── Warna badge status ──
@@ -30,29 +29,6 @@ enum class RentalStatus(
     RETURN("Return Rent", StatusReturnBg, StatusReturnText);
 
     companion object {
-        fun parseFlexibleDate(dateStr: String?): Date? {
-            if (dateStr.isNullOrEmpty() || dateStr.startsWith("0000")) return null
-            val formats = listOf(
-                "yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'",
-                "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
-                "yyyy-MM-dd'T'HH:mm:ss'Z'",
-                "yyyy-MM-dd'T'HH:mm:ss",
-                "yyyy-MM-dd'T'HH:mm",
-                "yyyy-MM-dd HH:mm:ss",
-                "yyyy-MM-dd HH:mm",
-                "yyyy-MM-dd"
-            )
-            for (fmt in formats) {
-                try {
-                    val sdf = SimpleDateFormat(fmt, Locale.getDefault())
-                    if (fmt.contains("'Z'")) sdf.timeZone = TimeZone.getTimeZone("UTC")
-                    val d = sdf.parse(dateStr)
-                    if (d != null) return d
-                } catch (e: Exception) {}
-            }
-            return null
-        }
-
         fun fromTransaksi(item: TransaksiData): RentalStatus {
             val status = item.status.lowercase()
             val isDisewa = status in listOf("disewa", "aktif", "active")
@@ -68,7 +44,7 @@ enum class RentalStatus(
             // Jika belum bayar atau status menunggu, tetap UPCOMING
             if (status in listOf("menunggu_pembayaran", "menunggu pembayaran", "pending", "menunggu") && !isDisewa) return UPCOMING
 
-            val tglSewa = parseFlexibleDate(item.tanggal_sewa)
+            val tglSewa = DateUtils.backendStringToDate(item.tanggal_sewa)
             // val tglKembaliRencana = parseFlexibleDate(item.tanggal_kembali_rencana)
             // val now = Calendar.getInstance().time
 
@@ -83,8 +59,8 @@ enum class RentalStatus(
         }
 
         fun calculateFine(transaksi: TransaksiData, referenceTime: Date? = null): Double {
-            val tglKembaliRencana = parseFlexibleDate(transaksi.tanggal_kembali_rencana)
-            val tglKembaliAktual = parseFlexibleDate(transaksi.tanggal_kembali_aktual)
+            val tglKembaliRencana = DateUtils.backendStringToDate(transaksi.tanggal_kembali_rencana)
+            val tglKembaliAktual = DateUtils.backendStringToDate(transaksi.tanggal_kembali_aktual)
             
             val fineRate = transaksi.barang?.harga_denda_perjam ?: 0.0
 
@@ -115,8 +91,8 @@ enum class RentalStatus(
         }
 
         fun calculateLateHours(transaksi: TransaksiData, referenceTime: Date? = null): Double {
-            val tglKembaliRencana = parseFlexibleDate(transaksi.tanggal_kembali_rencana)
-            val tglKembaliAktual = parseFlexibleDate(transaksi.tanggal_kembali_aktual)
+            val tglKembaliRencana = DateUtils.backendStringToDate(transaksi.tanggal_kembali_rencana)
+            val tglKembaliAktual = DateUtils.backendStringToDate(transaksi.tanggal_kembali_aktual)
             
             if (tglKembaliRencana == null) return 0.0
 

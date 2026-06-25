@@ -36,13 +36,12 @@ import com.l0124005.sewain_rpl.ui.theme.SewainTopBar
 import com.l0124005.sewain_rpl.ui.theme.Sewain_rplTheme
 import com.l0124005.sewain_rpl.ui.theme.TextMuted
 import com.l0124005.sewain_rpl.ui.theme.VolkhovFont
-import com.l0124005.sewain_rpl.utils.CurrencyUtils.formatRupiah
+import com.l0124005.sewain_rpl.utils.CurrencyUtils
+import com.l0124005.sewain_rpl.utils.DateUtils
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.viewmodel.ProfileViewModel
 import com.l0124005.sewain_rpl.viewmodel.TransaksiViewModel
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Locale
 
 // ── Warna tema -- SAMA PERSIS dengan ProfileScreen.kt / MyWalletScreen.kt biar konsisten ──
 private val CardBlue   = Color(0xFF21394F)
@@ -308,17 +307,12 @@ private fun RentalCard(
 ) {
     val status = RentalStatus.fromTransaksi(item)
     
-    val outputSdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-    val outputFullSdf = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
-    
     val formatTgl = { dateStr: String? ->
-        val parsed = RentalStatus.parseFlexibleDate(dateStr)
-        if (parsed != null) outputSdf.format(parsed) else "N/A"
+        DateUtils.formatDateForUI(dateStr)
     }
     
     val formatTglFull = { dateStr: String? ->
-        val parsed = RentalStatus.parseFlexibleDate(dateStr)
-        if (parsed != null) outputFullSdf.format(parsed) else "N/A"
+        DateUtils.formatFullDateForUI(dateStr)
     }
 
     val barang = item.barang
@@ -400,7 +394,7 @@ private fun RentalCard(
             }
 
             Text(
-                text = "Rp ${formatRupiah(barang?.harga_sewa ?: 0.0)}/hari",
+                text = "Rp ${CurrencyUtils.formatRupiah(barang?.harga_sewa ?: 0.0)}/hari",
                 fontFamily = AbrilFatfaceFont,
                 fontSize = 16.sp,
                 color = Color.White

@@ -38,8 +38,7 @@ import com.l0124005.sewain_rpl.network.KeranjangItem
 import com.l0124005.sewain_rpl.network.CatalogData
 import com.l0124005.sewain_rpl.network.UpdateKeranjangRequest
 import com.l0124005.sewain_rpl.utils.CurrencyUtils
-import java.text.SimpleDateFormat
-import java.util.Locale
+import com.l0124005.sewain_rpl.utils.DateUtils
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 
@@ -62,25 +61,6 @@ object CartColors {
 object CartFonts {
     val Heading = com.l0124005.sewain_rpl.ui.theme.VolkhovFont
     val Body    = FontFamily.Default
-}
-
-// ── Helper ────────────────────────────────────────────────────
-fun hitungDurasi(tglMulai: String, tglSelesai: String): Int {
-    return try {
-        val sdf  = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        val d1   = sdf.parse(tglMulai)
-        val d2   = sdf.parse(tglSelesai)
-        val diff = ((d2?.time ?: 0L) - (d1?.time ?: 0L)) / (1000 * 60 * 60 * 24)
-        if (diff > 0) diff.toInt() else 1
-    } catch (e: Exception) { 1 }
-}
-
-fun formatTanggal(tgl: String): String {
-    return try {
-        val input  = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        val output = SimpleDateFormat("dd MMM", Locale("id"))
-        output.format(input.parse(tgl)!!)
-    } catch (e: Exception) { tgl }
 }
 
 // ── Screen utama ──────────────────────────────────────────────
@@ -236,7 +216,7 @@ private fun CartRow(
     onRemove: () -> Unit,
     onQtyChange: (Int) -> Unit
 ) {
-    val hari = hitungDurasi(item.tanggal_sewa, item.tanggal_kembali_rencana)
+    val hari = DateUtils.calculateDaysBetween(item.tanggal_sewa, item.tanggal_kembali_rencana)
 
     Row(
         modifier = Modifier
@@ -353,9 +333,9 @@ private fun CartRow(
 
             // Tanggal pill
             Row(verticalAlignment = Alignment.CenterVertically) {
-                DatePill(formatTanggal(item.tanggal_sewa))
+                DatePill(DateUtils.formatDateForUI(item.tanggal_sewa))
                 Text("  →  ", fontSize = 20.sp, color = CartColors.Gray, fontWeight = FontWeight.ExtraBold)
-                DatePill(formatTanggal(item.tanggal_kembali_rencana))
+                DatePill(DateUtils.formatDateForUI(item.tanggal_kembali_rencana))
             }
 
             Spacer(Modifier.height(8.dp))

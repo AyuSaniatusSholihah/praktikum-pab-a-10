@@ -19,7 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.l0124005.sewain_rpl.ui.theme.BluePrimary
-import com.l0124005.sewain_rpl.ui.theme.katalog.formatRupiah
+import com.l0124005.sewain_rpl.utils.CurrencyUtils
 import com.l0124005.sewain_rpl.ui.theme.SewainTopBar
 import com.l0124005.sewain_rpl.ui.theme.transaksi.TransaksiItem
 import com.l0124005.sewain_rpl.utils.Resource
@@ -73,7 +73,7 @@ fun OwnerDashboardScreen(
                                 ) {
                                     StatCard(
                                         title = "Pendapatan",
-                                        value = "Rp ${formatRupiah(data.total_saldo_pendapatan)}",
+                                        value = "Rp ${CurrencyUtils.formatRupiah(data.total_saldo_pendapatan)}",
                                         icon = Icons.Default.Payments,
                                         modifier = Modifier.weight(1f)
                                     )

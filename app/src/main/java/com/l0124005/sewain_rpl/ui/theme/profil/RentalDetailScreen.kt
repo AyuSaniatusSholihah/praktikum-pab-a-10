@@ -32,11 +32,10 @@ import coil.compose.AsyncImage
 import com.l0124005.sewain_rpl.network.*
 import com.l0124005.sewain_rpl.utils.RentalStatus
 import com.l0124005.sewain_rpl.ui.theme.*
-import com.l0124005.sewain_rpl.utils.CurrencyUtils.formatRupiah
+import com.l0124005.sewain_rpl.utils.CurrencyUtils
+import com.l0124005.sewain_rpl.utils.DateUtils
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.viewmodel.TransaksiViewModel
-import java.text.SimpleDateFormat
-import java.util.*
 
 // ── Kartu Receipt (.receipt-item) / .paid-badge ──
 private val LightBlueBg   = Color(0xFFE8F4FB) // .rd-field .rd-value background
@@ -164,35 +163,22 @@ private fun RentalDetailContent(
         "https://picsum.photos/seed/${barang?.id ?: 0}/600/400"
     }
 
-    val outputSdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
     val formatTgl = { dateStr: String? ->
-        val parsed = RentalStatus.parseFlexibleDate(dateStr)
-        if (parsed != null) outputSdf.format(parsed) else "N/A"
+        DateUtils.formatDateForUI(dateStr).ifEmpty { "N/A" }
     }
     val formatTglFull = { dateStr: String? ->
-        val parsed = RentalStatus.parseFlexibleDate(dateStr)
-        if (parsed != null) SimpleDateFormat("dd/MM/yyyy HH:mm 'WIB'", Locale.getDefault()).format(parsed) else "N/A"
+        DateUtils.formatFullDateForUI(dateStr).ifEmpty { "N/A" }
     }
 
     // ── Hitung Denda Dinamis ──
-    val calculatedDenda = RentalStatus.calculateFine(transaksi)
+    val displayDendaVal = RentalStatus.calculateFine(transaksi)
+    val rentalStatus = RentalStatus.fromTransaksi(transaksi)
     
     val rawStatus = transaksi.status.lowercase()
     val isDisewa = rawStatus in listOf("disewa", "aktif", "active")
-    val hasSubmittedReturn = !transaksi.foto_buktipengembalian.isNullOrEmpty() && transaksi.foto_buktipengembalian != "null" || 
-                           rawStatus in listOf("menunggu_verifikasi", "dikembalikan", "selesai", "completed", "done")
+    val hasSubmittedReturn = rentalStatus == RentalStatus.RETURN || rentalStatus == RentalStatus.COMPLETED
 
-    val durasiSewa = try {
-        val d1 = RentalStatus.parseFlexibleDate(transaksi.tanggal_sewa)
-        val d2 = RentalStatus.parseFlexibleDate(transaksi.tanggal_kembali_rencana)
-        if (d1 != null && d2 != null) {
-            val diff = d2.time - d1.time
-            val days = diff / (1000 * 60 * 60 * 24)
-            "${days.coerceAtLeast(0)} Hari"
-        } else "-"
-    } catch (e: Exception) {
-        "-"
-    }
+    val durasiSewa = "${DateUtils.calculateDaysBetween(transaksi.tanggal_sewa, transaksi.tanggal_kembali_rencana)} Hari"
 
     Column(
         modifier = Modifier
@@ -343,9 +329,7 @@ private fun RentalDetailContent(
                     ?: (profileState as? Resource.Success)?.data?.data?.name 
                     ?: "Customer"
 
-                // ── Hitung Denda Dinamis atau Ambil dari DB ──
-                val displayDendaVal = if (transaksi.total_denda > 0) transaksi.total_denda else calculatedDenda
-                val dendaText = if (displayDendaVal > 0) "Rp ${formatRupiah(displayDendaVal)}" else "Tidak ada denda"
+                val dendaText = if (displayDendaVal > 0) "Rp ${CurrencyUtils.formatRupiah(displayDendaVal)}" else "Tidak ada denda"
 
                 val tglKembaliDisplay = if (transaksi.tanggal_kembali_aktual != null && transaksi.tanggal_kembali_aktual != "null") {
                     formatTglFull(transaksi.tanggal_kembali_aktual)
@@ -380,17 +364,17 @@ private fun RentalDetailContent(
                 ReceiptCard(
                     receiptItemName = barang?.nama_barang ?: "-",
                     receiptItemImageUrl = imageUrl,
-                    pricePerDay = "Rp ${formatRupiah(barang?.harga_sewa ?: 0.0)}/hari",
+                    pricePerDay = "Rp ${CurrencyUtils.formatRupiah(barang?.harga_sewa ?: 0.0)}/hari",
                     isPaid = transaksi.status.lowercase() != "menunggu_pembayaran",
                     paymentMethod = paymentMethod,
                     tanggalMulai = formatTgl(transaksi.tanggal_sewa),
                     tanggalSelesai = "${formatTgl(transaksi.tanggal_kembali_rencana)} 23:59 WIB",
                     durasiSewa = durasiSewa,
-                    subtotal = "Rp ${formatRupiah(transaksi.total_harga)}",
+                    subtotal = "Rp ${CurrencyUtils.formatRupiah(transaksi.total_harga)}",
                     shipping = "Free",
-                    jaminan = "Rp ${formatRupiah(barang?.harga_jaminan ?: 0.0)}",
-                    total = "Rp ${formatRupiah(transaksi.total_harga + (barang?.harga_jaminan ?: 0.0) + displayDendaVal)}",
-                    catatanDenda = if (displayDendaVal > 0) "Denda: Rp ${formatRupiah(displayDendaVal)}" else "-"
+                    jaminan = "Rp ${CurrencyUtils.formatRupiah(barang?.harga_jaminan ?: 0.0)}",
+                    total = "Rp ${CurrencyUtils.formatRupiah(transaksi.total_harga + (barang?.harga_jaminan ?: 0.0) + displayDendaVal)}",
+                    catatanDenda = if (displayDendaVal > 0) "Denda: Rp ${CurrencyUtils.formatRupiah(displayDendaVal)}" else "-"
                 )
 
                 // ── Form Confirmation (Status Info) ──

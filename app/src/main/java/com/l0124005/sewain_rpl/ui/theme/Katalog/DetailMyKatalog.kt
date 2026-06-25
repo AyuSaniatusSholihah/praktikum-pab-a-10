@@ -29,7 +29,6 @@ import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.utils.SessionManager
 import com.l0124005.sewain_rpl.viewmodel.KatalogViewModel
 import com.l0124005.sewain_rpl.viewmodel.KatalogViewModelFactory
-import java.text.SimpleDateFormat
 import java.util.*
 import com.l0124005.sewain_rpl.ui.theme.katalog.DetailMainImageSection
 import com.l0124005.sewain_rpl.ui.theme.katalog.DetailRatingRow

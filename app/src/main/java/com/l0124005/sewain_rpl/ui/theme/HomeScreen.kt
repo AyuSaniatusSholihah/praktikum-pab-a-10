@@ -35,6 +35,7 @@ import coil.compose.AsyncImage
 import com.l0124005.sewain_rpl.network.ApiClient
 import com.l0124005.sewain_rpl.network.CatalogData
 import com.l0124005.sewain_rpl.repository.KatalogRepository
+import com.l0124005.sewain_rpl.utils.DateUtils
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.viewmodel.KatalogViewModel
 import com.l0124005.sewain_rpl.viewmodel.KatalogViewModelFactory
@@ -44,9 +45,7 @@ import com.l0124005.sewain_rpl.repository.KeranjangRepository
 import com.l0124005.sewain_rpl.utils.SessionManager
 import com.l0124005.sewain_rpl.viewmodel.KeranjangViewModel
 import com.l0124005.sewain_rpl.viewmodel.KeranjangViewModelFactory
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import com.l0124005.sewain_rpl.utils.CurrencyUtils
 
 // ═══════════════════════════════════════
 // ACTIVITY
@@ -231,9 +230,8 @@ fun RentalsScreen(
                             items       = filteredList,
                             onItemClick = onItemClick,
                             onAddToCart = { barang ->
-                                val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                                val today = sdf.format(Date())
-                                val tomorrow = sdf.format(Date(System.currentTimeMillis() + 86400000))
+                                val today = DateUtils.getCurrentDateBackend()
+                                val tomorrow = DateUtils.getTomorrowDateBackend()
                                 keranjangViewModel.addToKeranjang(token, barang.id, 1, today, tomorrow)
                             }
                         )
@@ -530,7 +528,7 @@ private fun RentalCard(
                 ) {
                     Column {
                         Text(
-                            text       = "Rp ${formatHarga(barang.harga_sewa)}",
+                            text       = "Rp ${CurrencyUtils.formatRupiah(barang.harga_sewa)}",
                             fontSize   = 13.sp,
                             fontWeight = FontWeight.Bold,
                             color      = HomeBluePrimary
@@ -588,12 +586,4 @@ private fun EmptyState(modifier: Modifier = Modifier) {
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
     }
-}
-
-// ═══════════════════════════════════════
-// HELPER
-// ═══════════════════════════════════════
-
-private fun formatHarga(harga: Double): String {
-    return String.format(Locale.getDefault(), "%,.0f", harga).replace(",", ".")
 }

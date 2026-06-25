@@ -31,12 +31,11 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.l0124005.sewain_rpl.network.VerifikasiPengembalianRequest
 import com.l0124005.sewain_rpl.ui.theme.*
+import com.l0124005.sewain_rpl.utils.DateUtils
 import com.l0124005.sewain_rpl.utils.CurrencyUtils
 import com.l0124005.sewain_rpl.utils.RentalStatus
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.viewmodel.TransaksiViewModel
-import java.text.SimpleDateFormat
-import java.util.Locale
 
 private val LightBlueBg  = Color(0xFFE8F4FB)
 private val LightBlueLn  = Color(0xFFDFEAF2)
@@ -178,18 +177,11 @@ private fun PersetujuanContent(
         )
     }
 
-    val formatTgl = { dateStr: String? ->
-        val parsed = RentalStatus.parseFlexibleDate(dateStr)
-        if (parsed != null) SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(parsed) else "N/A"
-    }
-
-    val formatTglFull = { dateStr: String? ->
-        val parsed = RentalStatus.parseFlexibleDate(dateStr)
-        if (parsed != null) {
-            SimpleDateFormat("dd/MM/yyyy HH:mm 'WIB'", Locale.getDefault()).format(parsed)
-        } else {
-            "Belum dikembalikan"
-        }
+    val fineAmount = RentalStatus.calculateFine(transaksi)
+    val dendaDisplay = if (fineAmount > 0) {
+        "Rp ${CurrencyUtils.formatRupiah(fineAmount)}"
+    } else {
+        "Tidak ada denda"
     }
 
     Column(
@@ -270,8 +262,8 @@ private fun PersetujuanContent(
                         "Owner" to (transaksi.barang?.user?.name ?: "-"),
                         "User" to (transaksi.user?.name ?: "-"),
                         "Denda" to dendaDisplay,
-                        "Tanggal Sewa" to formatTgl(transaksi.tanggal_sewa),
-                        "Tanggal Pengembalian" to formatTglFull(transaksi.tanggal_kembali_aktual)
+                        "Tanggal Sewa" to DateUtils.formatDateForUI(transaksi.tanggal_sewa),
+                        "Tanggal Pengembalian" to (DateUtils.formatFullDateForUI(transaksi.tanggal_kembali_aktual).ifEmpty { "Belum dikembalikan" })
                     )
                 )
 
@@ -295,7 +287,7 @@ private fun PersetujuanContent(
 
                     Spacer(Modifier.height(16.dp))
                     PenyewaSubmissionBox(
-                        tanggalPengembalianAktual = formatTglFull(transaksi.tanggal_kembali_aktual),
+                        tanggalPengembalianAktual = DateUtils.formatFullDateForUI(transaksi.tanggal_kembali_aktual).ifEmpty { "Belum dikembalikan" },
                         dendaText = dendaDisplay,
                         fotoBuktiUrl = transaksi.buktiPengembalianUrl,
                         rating = transaksi.review?.rating ?: 0,

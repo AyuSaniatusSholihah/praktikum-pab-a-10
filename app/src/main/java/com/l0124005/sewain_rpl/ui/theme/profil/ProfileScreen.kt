@@ -40,7 +40,8 @@ import com.l0124005.sewain_rpl.ui.theme.MontaguSlabFont
 import com.l0124005.sewain_rpl.ui.theme.SewainTopBar
 import com.l0124005.sewain_rpl.ui.theme.Sewain_rplTheme
 import com.l0124005.sewain_rpl.ui.theme.VolkhovFont
-import com.l0124005.sewain_rpl.utils.CurrencyUtils.formatRupiah
+import com.l0124005.sewain_rpl.utils.CurrencyUtils
+import com.l0124005.sewain_rpl.utils.DateUtils
 import com.l0124005.sewain_rpl.utils.ImageUtils
 import com.l0124005.sewain_rpl.utils.RentalStatus
 import com.l0124005.sewain_rpl.utils.Resource
@@ -56,7 +57,6 @@ import kotlinx.coroutines.launch
 import okhttp3.MultipartBody
 import java.io.File
 import java.io.FileOutputStream
-import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 
@@ -317,11 +317,9 @@ internal fun ProfileContent(
     // Inisialisasi calendar dari tanggalLahir jika ada
     LaunchedEffect(user.tanggal_lahir) {
         if (!user.tanggal_lahir.isNullOrBlank()) {
-            try {
-                val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                val date = sdf.parse(user.tanggal_lahir)
-                if (date != null) calendar.time = date
-            } catch (e: Exception) {}
+            DateUtils.backendStringToDate(user.tanggal_lahir)?.let {
+                calendar.time = it
+            }
         }
     }
 
@@ -333,8 +331,7 @@ internal fun ProfileContent(
                 set(Calendar.MONTH, month)
                 set(Calendar.DAY_OF_MONTH, dayOfMonth)
             }
-            val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-            tanggalLahir = formatter.format(selectedDate.time)
+            tanggalLahir = DateUtils.dateToBackendString(selectedDate.time)
         },
         calendar.get(Calendar.YEAR),
         calendar.get(Calendar.MONTH),
@@ -525,7 +522,7 @@ internal fun ProfileContent(
                                 color = DarkNavy
                             )
                             Text(
-                                text = "Rp ${formatRupiah(user.saldo)}",
+                                text = "Rp ${CurrencyUtils.formatRupiah(user.saldo)}",
                                 fontFamily = AbrilFatfaceFont,
                                 fontSize = 22.sp,
                                 color = Color.Black

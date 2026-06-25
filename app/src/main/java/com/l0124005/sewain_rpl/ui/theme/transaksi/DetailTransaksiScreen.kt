@@ -28,7 +28,9 @@ import com.l0124005.sewain_rpl.network.VerifikasiPengembalianRequest
 import com.l0124005.sewain_rpl.ui.theme.BluePrimary
 import com.l0124005.sewain_rpl.ui.theme.NavyPrimary
 import com.l0124005.sewain_rpl.ui.theme.SewainTopBar
-import com.l0124005.sewain_rpl.ui.theme.katalog.formatRupiah
+import com.l0124005.sewain_rpl.utils.CurrencyUtils
+import com.l0124005.sewain_rpl.utils.DateUtils
+import com.l0124005.sewain_rpl.utils.RentalStatus
 import com.l0124005.sewain_rpl.utils.Resource
 import com.l0124005.sewain_rpl.utils.SessionManager
 import com.l0124005.sewain_rpl.viewmodel.TransaksiViewModel
@@ -125,11 +127,11 @@ fun TransaksiDetailContent(
     val currentUserId = sessionManager.getUserId()
     
     val isOwner = transaksi.barang?.user_id == currentUserId
+    val rentalStatus = RentalStatus.fromTransaksi(transaksi)
     
     // Status is waiting for verification if status is "dikembalikan" or "menunggu_verifikasi"
     // or if the photo proof of return is uploaded but verification date is null.
-    val isWaitingVerification = transaksi.status.lowercase() in listOf("dikembalikan", "menunggu_verifikasi", "menunggu verifikasi") ||
-            (!transaksi.foto_buktipengembalian.isNullOrEmpty() && transaksi.tanggal_verifikasipengembalian.isNullOrEmpty())
+    val isWaitingVerification = rentalStatus == RentalStatus.RETURN
 
     var showVerificationDialog by remember { mutableStateOf(false) }
 
@@ -143,7 +145,7 @@ fun TransaksiDetailContent(
         // Status Card
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = getStatusColor(transaksi.status).copy(alpha = 0.1f))
+            colors = CardDefaults.cardColors(containerColor = rentalStatus.badgeColor.copy(alpha = 0.1f))
         ) {
             Row(
                 modifier = Modifier.padding(16.dp),
@@ -152,13 +154,16 @@ fun TransaksiDetailContent(
                 Column(modifier = Modifier.weight(1f)) {
                     Text("Status", fontSize = 14.sp, color = Color.Gray)
                     Text(
-                        transaksi.status.uppercase(),
+                        rentalStatus.label.uppercase(),
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp,
-                        color = getStatusColor(transaksi.status)
+                        color = rentalStatus.badgeTextColor
                     )
                 }
-                val imageUrl = transaksi.barang?.mainFotoUrl
+                val imageUrl = if (transaksi.barang != null && !transaksi.barang.foto_barang.isNullOrEmpty()) {
+                    if (transaksi.barang.foto_barang.startsWith("http")) transaksi.barang.foto_barang
+                    else "${ApiClient.IMAGE_BASE_URL}${transaksi.barang.foto_barang}"
+                } else null
                 if (!imageUrl.isNullOrEmpty()) {
                     AsyncImage(
                         model = imageUrl,
@@ -182,7 +187,7 @@ fun TransaksiDetailContent(
                 Column(modifier = Modifier.padding(12.dp)) {
                     InfoRow("Nama Barang", transaksi.barang?.nama_barang ?: "-")
                     InfoRow("Jumlah", "${transaksi.jumlah} unit")
-                    InfoRow("Harga Sewa", "Rp ${formatRupiah(transaksi.barang?.harga_sewa ?: 0.0)} / hari")
+                    InfoRow("Harga Sewa", "Rp ${CurrencyUtils.formatRupiah(transaksi.barang?.harga_sewa ?: 0)} / hari")
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         "Lihat Detail Produk >", 
@@ -196,22 +201,23 @@ fun TransaksiDetailContent(
         }
 
         InfoSection("Informasi Sewa") {
-            InfoRow("Tanggal Sewa", transaksi.tanggal_sewa)
-            InfoRow("Rencana Kembali", transaksi.tanggal_kembali_rencana)
+            InfoRow("Tanggal Sewa", DateUtils.formatDateForUI(transaksi.tanggal_sewa))
+            InfoRow("Rencana Kembali", DateUtils.formatDateForUI(transaksi.tanggal_kembali_rencana))
             if (transaksi.tanggal_kembali_aktual != null) {
-                InfoRow("Tanggal Kembali", transaksi.tanggal_kembali_aktual)
+                InfoRow("Tanggal Kembali", DateUtils.formatDateForUI(transaksi.tanggal_kembali_aktual))
             }
         }
 
         InfoSection("Rincian Biaya") {
-            InfoRow("Total Harga", "Rp ${formatRupiah(transaksi.total_harga)}")
-            if (transaksi.total_denda > 0) {
-                InfoRow("Total Denda", "Rp ${formatRupiah(transaksi.total_denda)}", color = Color.Red)
+            val dendaValue = RentalStatus.calculateFine(transaksi)
+            InfoRow("Total Harga", "Rp ${CurrencyUtils.formatRupiah(transaksi.total_harga)}")
+            if (dendaValue > 0) {
+                InfoRow("Total Denda", "Rp ${CurrencyUtils.formatRupiah(dendaValue)}", color = Color.Red)
             }
         }
 
         // Action Buttons
-        if (transaksi.status.lowercase() == "menunggu pembayaran") {
+        if (rentalStatus == RentalStatus.UPCOMING && transaksi.status.lowercase().contains("pembayaran")) {
             Button(
                 onClick = { onPayClick(listOf(transaksi.id)) },
                 modifier = Modifier.fillMaxWidth().height(50.dp),

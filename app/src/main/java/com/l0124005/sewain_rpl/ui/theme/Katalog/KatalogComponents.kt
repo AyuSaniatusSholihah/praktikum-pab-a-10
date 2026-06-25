@@ -35,13 +35,12 @@ import com.l0124005.sewain_rpl.network.CatalogData
 import com.l0124005.sewain_rpl.network.KategoriData
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.runtime.remember
-import java.text.SimpleDateFormat
-import java.util.*
 import com.l0124005.sewain_rpl.ui.theme.MonsterratFont
 import com.l0124005.sewain_rpl.ui.theme.VolkhovFont
 import com.l0124005.sewain_rpl.ui.theme.LatoFont
 import com.l0124005.sewain_rpl.ui.theme.JostFont
 
+import com.l0124005.sewain_rpl.utils.CurrencyUtils
 import com.l0124005.sewain_rpl.utils.DateUtils
 
 // ============================================================
@@ -84,10 +83,6 @@ val CkBody = TextStyle(
     color = TextMuted
 )
 
-fun formatRupiah(number: Double): String {
-    val format = java.text.NumberFormat.getCurrencyInstance(java.util.Locale("id", "ID"))
-    return format.format(number).replace("Rp", "").trim()
-}
 
 @Composable
 fun ProductCard(
@@ -215,7 +210,7 @@ fun ProductCard(
 
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Rp ${formatRupiah(product.harga_sewa)}/hari",
+                text = "Rp ${CurrencyUtils.formatRupiah(product.harga_sewa)}/hari",
                 fontWeight = FontWeight.Bold,
                 fontSize = 12.5.sp,
                 color = if (isOutOfStock) TextMuted else TextDark
